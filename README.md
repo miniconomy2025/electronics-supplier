@@ -5,3 +5,4 @@ Supplying electronics
 
 - Tevlen Naidoo
 - Kyle Wilkins
+- Go Bokke!
