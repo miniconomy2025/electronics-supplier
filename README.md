@@ -1,4 +1,5 @@
-# electronics-supplier
+# Electronics Supplier
+
 Supplying electronics
 
 ## Members
@@ -7,4 +8,4 @@ Supplying electronics
 - Kyle Wilkins
 - Shailyn Ramsamy Moodley
 - Samkele Munyu
-- Go Bokke!
+- Rorisang Shadung
