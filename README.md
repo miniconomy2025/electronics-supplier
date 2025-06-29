@@ -5,4 +5,5 @@ Supplying electronics
 
 - Tevlen Naidoo
 - Kyle Wilkins
+- Samkele Munyu
 - Go Bokke!
