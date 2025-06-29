@@ -5,4 +5,5 @@ Supplying electronics
 
 - Tevlen Naidoo
 - Kyle Wilkins
+- Shailyn Ramsamy Moodley
 - Go Bokke!
