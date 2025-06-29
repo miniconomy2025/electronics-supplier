@@ -1,11 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using esAPI.Models;
 
 namespace esAPI.Data
 {
-    public class AppDbContext : DbContext
+    public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
     {
-        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
-
         public DbSet<Material> Materials { get; set; }
         public DbSet<Supply> Supplies { get; set; }
         public DbSet<Machine> Machines { get; set; }
