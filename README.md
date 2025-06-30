@@ -7,4 +7,4 @@ Supplying electronics
 - Kyle Wilkins
 - Shailyn Ramsamy Moodley
 - Samkele Munyu
-- Go Bokke!
+- Rorisang Shadung
