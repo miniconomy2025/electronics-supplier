@@ -7,3 +7,4 @@ obj/
 
 *.tfvars
 *.config
+.terraform/
