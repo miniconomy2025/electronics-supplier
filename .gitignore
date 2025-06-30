@@ -4,3 +4,6 @@ obj/
 *.Development.*
 
 *.conf
+
+*.tfvars
+*.config
