@@ -4,3 +4,7 @@ obj/
 *.Development.*
 
 *.conf
+
+*.tfvars
+*.config
+.terraform/
