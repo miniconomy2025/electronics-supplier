@@ -1,26 +1,57 @@
 CREATE OR REPLACE PROCEDURE add_machine(
     IN p_purchase_price FLOAT,
-    IN p_purchased_at TIMESTAMPTZ DEFAULT NOW()
+    IN p_purchased_at TIMESTAMPTZ DEFAULT NOW(),
+    IN p_material_ratios JSON
 ) LANGUAGE plpgsql AS $$
+DECLARE
+    v_machine_id INT;
+    v_key VARCHAR(8);
+    v_ratio INT;
+    v_material_id INT;
+    v_count INT;
+    v_seen_names VARCHAR(8)[] := ARRAY[]::VARCHAR(8)[];
 BEGIN
-
-    IF p_purchase_price <= 0 THEN
+    
+    IF p_purchase_price IS NULL OR p_purchase_price <= 0 THEN
         RAISE EXCEPTION 'Purchase price must be greater than 0';
     END IF;
 
     IF p_purchased_at IS NOT NULL AND p_purchased_at > NOW() THEN
         RAISE EXCEPTION 'Purchased at must be in the past';
     END IF;
+    
+    SELECT COUNT(*) INTO v_count FROM json_object_keys(p_material_ratios);
+    IF v_count < 2 OR v_count > 3 THEN
+        RAISE EXCEPTION 'A machine must have at least 2 materials';
+    END IF;
+    
+    INSERT INTO machines (purchase_price, purchased_at) VALUES (p_purchase_price, p_purchased_at) RETURNING machine_id INTO v_machine_id;
+    
+    FOR v_key IN SELECT json_object_keys(p_material_ratios) LOOP
+        IF v_key = ANY(v_seen_names) THEN
+            RAISE EXCEPTION 'Duplicate material name: %', v_key;
+        END IF;
+        v_seen_names := array_append(v_seen_names, v_key);
+        
+        v_ratio := (p_material_ratios ->> v_key)::INT;
+        IF v_ratio IS NULL OR v_ratio <= 0 THEN
+            RAISE EXCEPTION 'Ratio for material % must be a positive integer', v_key;
+        END IF;
+        
+        SELECT material_id INTO v_material_id FROM materials WHERE material_name = v_key;
+        IF v_material_id IS NULL THEN
+            RAISE EXCEPTION 'Material name % does not exist', v_key;
+        END IF;
+        
+        INSERT INTO machine_ratios (material_id, ratio, machine_id) VALUES (v_material_id, v_ratio, v_machine_id);
+    END LOOP;
 
-    INSERT INTO machines (purchase_price, purchased_at)
-    VALUES (p_purchase_price, p_purchased_at);
+    RAISE NOTICE 'Machine and ratios added successfully';
 
-    RAISE NOTICE 'Machine added successfully';
+EXCEPTION
+    WHEN others THEN
+        RAISE EXCEPTION 'Error adding machine: %', SQLERRM;
 
-    EXCEPTION
-        WHEN others THEN
-            RAISE EXCEPTION 'Error adding machine: %', SQLERRM;
-            
 END;
 $$;
 
