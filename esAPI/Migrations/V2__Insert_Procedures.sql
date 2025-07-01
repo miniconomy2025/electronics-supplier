@@ -1,7 +1,7 @@
 CREATE OR REPLACE PROCEDURE add_machine(
+    IN p_material_ratios JSON,
     IN p_purchase_price FLOAT,
-    IN p_purchased_at TIMESTAMPTZ DEFAULT NOW(),
-    IN p_material_ratios JSON
+    IN p_purchased_at TIMESTAMPTZ DEFAULT NOW()
 ) LANGUAGE plpgsql AS $$
 DECLARE
     v_machine_id INT;
