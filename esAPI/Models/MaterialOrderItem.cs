@@ -1,7 +1,10 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace esAPI.Models
 {
     public class MaterialOrderItem
     {
+        [Key]
         public int ItemId { get; set; }
         public int MaterialId { get; set; }
         public int Amount { get; set; }
