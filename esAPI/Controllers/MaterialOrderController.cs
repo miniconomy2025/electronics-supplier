@@ -93,7 +93,8 @@ public class MaterialOrdersController : ControllerBase
         var itemsJson = JsonSerializer.Serialize(request.Items);
         var createdOrderIdParam = new NpgsqlParameter("p_created_order_id", DbType.Int32)
         {
-            Direction = ParameterDirection.Output
+            Direction = ParameterDirection.InputOutput,
+            Value = DBNull.Value 
         };
 
         try

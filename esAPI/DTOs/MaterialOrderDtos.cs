@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace esAPI.DTOs;
 
@@ -25,9 +26,11 @@ public class MaterialOrderResponse
 public class CreateMaterialOrderItemRequest
 {
     [Required]
+    [JsonPropertyName("material_id")]
     public int MaterialId { get; set; }
 
     [Required]
+    [JsonPropertyName("amount")]
     [Range(1, int.MaxValue, ErrorMessage = "Amount must be a positive integer.")]
     public int Amount { get; set; }
 }
@@ -35,10 +38,12 @@ public class CreateMaterialOrderItemRequest
 public class CreateMaterialOrderRequest
 {
     [Required]
+    [JsonPropertyName("supplier_id")]
     public int SupplierId { get; set; }
 
     [Required]
     [MinLength(1, ErrorMessage = "Order must contain at least one item.")]
+    [JsonPropertyName("items")]
     public List<CreateMaterialOrderItemRequest> Items { get; set; } = new();
 }
 
