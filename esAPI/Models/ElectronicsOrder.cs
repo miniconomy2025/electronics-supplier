@@ -3,8 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace esAPI.Models
 {
-    
-[Table("electronics_orders")]
+    [Table("electronics_orders")]
     public class ElectronicsOrder
     {
         [Key]
@@ -18,7 +17,6 @@ namespace esAPI.Models
         public DateTime OrderedAt { get; set; }
         [Column("processed_at")]
         public DateTime? ProcessedAt { get; set; }
-
         [ForeignKey("ManufacturerId")]
         public PhoneManufacturer? Manufacturer { get; set; }
     }
