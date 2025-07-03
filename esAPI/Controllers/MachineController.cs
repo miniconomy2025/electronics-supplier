@@ -15,54 +15,92 @@ public class MachinesController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<Machine>> CreateMachine([FromBody] Machine machine)
+    public async Task<ActionResult<MachineDto>> CreateMachine([FromBody] MachineDto dto)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
+        var status = await _context.Set<MachineStatuses>()
+            .FirstOrDefaultAsync(s => s.Status == dto.Status);
+
+        if (status == null)
+            return BadRequest($"Status '{dto.Status}' does not exist.");
+
+        var machine = new Machine
+        {
+            StatusId = status.StatusId,
+            PurchasePrice = dto.PurchasePrice,
+            PurchasedAt = dto.PurchasedAt
+        };
+
         _context.Machines.Add(machine);
         await _context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetMachineById), new { machineId = machine.MachineId }, machine);
+        dto.MachineId = machine.MachineId;
+        return CreatedAtAction(nameof(GetMachineById), new { machineId = machine.MachineId }, dto);
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Machine>>> GetMachines()
+    public async Task<ActionResult<IEnumerable<MachineDto>>> GetMachines()
     {
-        return await _context.Machines.ToListAsync();
+        return await _context.Machines
+            .Join(_context.Set<MachineStatuses>(),
+                  m => m.StatusId,
+                  s => s.StatusId,
+                  (m, s) => new MachineDto
+                  {
+                      MachineId = m.MachineId,
+                      Status = s.Status,
+                      PurchasePrice = m.PurchasePrice,
+                      PurchasedAt = m.PurchasedAt
+                  })
+            .ToListAsync();
     }
 
     [HttpGet("{machineId}")]
-    public async Task<ActionResult<Machine>> GetMachineById(int machineId)
+    public async Task<ActionResult<MachineDto>> GetMachineById(int machineId)
     {
-        var machine = await _context.Machines.FindAsync(machineId);
+        var result = await _context.Machines
+            .Where(m => m.MachineId == machineId)
+            .Join(_context.Set<MachineStatuses>(),
+                  m => m.StatusId,
+                  s => s.StatusId,
+                  (m, s) => new MachineDto
+                  {
+                      MachineId = m.MachineId,
+                      Status = s.Status,
+                      PurchasePrice = m.PurchasePrice,
+                      PurchasedAt = m.PurchasedAt
+                  })
+            .FirstOrDefaultAsync();
 
-        if (machine == null)
+        if (result == null)
             return NotFound();
 
-        return machine;
+        return result;
     }
 
     [HttpPut("{machineId}")]
-    public async Task<IActionResult> UpdateMachine(int machineId, Machine machine)
+    public async Task<IActionResult> UpdateMachine(int machineId, MachineDto dto)
     {
-        if (machineId != machine.MachineId)
+        if (machineId != dto.MachineId)
             return BadRequest("Machine ID in URL does not match body.");
 
-        _context.Entry(machine).State = EntityState.Modified;
+        var machine = await _context.Machines.FindAsync(machineId);
+        if (machine == null)
+            return NotFound();
 
-        try
-        {
-            await _context.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            if (!await MachineExistsAsync(machineId))
-                return NotFound();
+        var status = await _context.Set<MachineStatuses>()
+            .FirstOrDefaultAsync(s => s.Status == dto.Status);
 
-            throw;
-        }
+        if (status == null)
+            return BadRequest($"Status '{dto.Status}' does not exist.");
 
+        machine.StatusId = status.StatusId;
+        machine.PurchasePrice = dto.PurchasePrice;
+        machine.PurchasedAt = dto.PurchasedAt;
+
+        await _context.SaveChangesAsync();
         return NoContent();
     }
 
@@ -77,10 +115,5 @@ public class MachinesController : ControllerBase
         await _context.SaveChangesAsync();
 
         return NoContent();
-    }
-
-    private async Task<bool> MachineExistsAsync(int machineId)
-    {
-        return await _context.Machines.AnyAsync(e => e.MachineId == machineId);
     }
 }
