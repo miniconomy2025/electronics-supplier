@@ -8,14 +8,9 @@ namespace esAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class SuppliesController : ControllerBase
+    public class SuppliesController(AppDbContext context) : ControllerBase
     {
-        private readonly AppDbContext _context;
-
-        public SuppliesController(AppDbContext context)
-        {
-            _context = context;
-        }
+        private readonly AppDbContext _context = context;
 
         [HttpPost]
         public async Task<IActionResult> CreateSupply([FromBody] CreateSupplyDto dto)
