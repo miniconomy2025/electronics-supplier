@@ -1,8 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+
 using esAPI.Data;
 using esAPI.Models;
-using esAPI.Dtos;
+using esAPI.DTOs.Supply;
 
 namespace esAPI.Controllers
 {
