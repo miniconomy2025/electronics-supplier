@@ -64,7 +64,7 @@ $$;
 
 CREATE OR REPLACE PROCEDURE update_machine(
     IN p_machine_id INT,
-    IN p_status machine_status DEFAULT NULL,
+    IN p_status_id INT DEFAULT NULL,
     IN p_purchase_price FLOAT DEFAULT NULL,
     IN p_purchased_at TIMESTAMPTZ DEFAULT NULL
 ) LANGUAGE plpgsql AS $$
@@ -72,6 +72,10 @@ BEGIN
 
     IF p_machine_id IS NULL OR NOT EXISTS (SELECT 1 FROM machines WHERE machine_id = p_machine_id) THEN
         RAISE EXCEPTION 'Machine ID % does not exist', p_machine_id;
+    END IF;
+
+    IF p_status_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM machine_statuses WHERE status_id = p_status_id) THEN
+        RAISE EXCEPTION 'Status ID % does not exist', p_status_id;
     END IF;
 
     IF p_purchase_price IS NOT NULL AND p_purchase_price <= 0 THEN
@@ -83,7 +87,7 @@ BEGIN
     END IF;
 
     UPDATE machines
-    SET status = COALESCE(p_status, status),
+    SET status_id = COALESCE(p_status_id, status_id),
         purchase_price = COALESCE(p_purchase_price, purchase_price),
         purchased_at = COALESCE(p_purchased_at, purchased_at)
     WHERE machine_id = p_machine_id;

@@ -9,7 +9,7 @@ public class ElectronicsOrdersController : ControllerBase
 {
     private readonly AppDbContext _context;
 
-        public ElectronicsOrdersController(AppDbContext context)
+    public ElectronicsOrdersController(AppDbContext context)
     {
         _context = context;
     }
@@ -17,20 +17,30 @@ public class ElectronicsOrdersController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateOrder([FromBody] ElectronicsOrder order)
     {
-        if (order == null || order.ManufacturerId <= 0 || order.Amount <= 0)
-        {
+        if (order == null)
+            return BadRequest("Order data is required.");
+
+        if (!ModelState.IsValid || order.ManufacturerId <= 0 || order.Amount <= 0)
             return BadRequest("Invalid order data.");
+
+        order.OrderedAt = DateTime.UtcNow;
+        _context.ElectronicsOrders.Add(order);
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            return StatusCode(500, "An error occurred while saving the order.");
         }
 
-        _context.ElectronicsOrders.Add(order);
-        order.OrderedAt = DateTime.UtcNow;
-        await _context.SaveChangesAsync();
-
-        return CreatedAtAction(nameof(GetOrderById), new { id = order.OrderId }, order);
+        // Use correct route parameter name
+        return CreatedAtAction(nameof(GetOrderById), new { orderId = order.OrderId }, order);
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<ElectronicsOrder>>> GetAllOrders()
+    public async Task<ActionResult<List<ElectronicsOrder>>> GetAllOrders()
     {
         return await _context.ElectronicsOrders.ToListAsync();
     }
@@ -49,15 +59,50 @@ public class ElectronicsOrdersController : ControllerBase
     [HttpPut("{orderId}")]
     public async Task<IActionResult> UpdateOrder(int orderId, [FromBody] ElectronicsOrder order)
     {
-        if (order == null || order.OrderId != orderId || order.ManufacturerId <= 0 || order.Amount <= 0)
-        {
-            return BadRequest("Invalid order data.");
-        }
+        if (order == null)
+            return BadRequest("Order data is required.");
 
-        _context.Entry(order).State = EntityState.Modified;
-        await _context.SaveChangesAsync();
+        if (order.OrderId != orderId || order.ManufacturerId <= 0 || order.Amount <= 0)
+            return BadRequest("Invalid order data.");
+
+        var existingOrder = await _context.ElectronicsOrders.FindAsync(orderId);
+        if (existingOrder == null)
+            return NotFound();
+
+        existingOrder.ManufacturerId = order.ManufacturerId;
+        existingOrder.Amount = order.Amount;
+        existingOrder.OrderedAt = order.OrderedAt;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            return StatusCode(500, "An error occurred while updating the order.");
+        }
 
         return NoContent();
     }
 
+    [HttpDelete("{orderId}")]
+    public async Task<IActionResult> DeleteOrder(int orderId)
+    {
+        var order = await _context.ElectronicsOrders.FindAsync(orderId);
+        if (order == null)
+            return NotFound();
+
+        _context.ElectronicsOrders.Remove(order);
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            return StatusCode(500, "An error occurred while deleting the order.");
+        }
+
+        return NoContent();
+    }
 }

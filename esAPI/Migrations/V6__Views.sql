@@ -8,11 +8,12 @@ LEFT JOIN supplies s ON m.material_id = s.material_id AND s.processed_at IS NULL
 GROUP BY m.material_id, m.material_name;
 
 CREATE OR REPLACE VIEW operational_machines AS
-SELECT *
-FROM machines
-WHERE status = 'WORKING';
+SELECT m.*, ms.status
+FROM machines m
+JOIN machine_statuses ms ON m.status_id = ms.status_id
+WHERE ms.status = 'WORKING';
 
 CREATE OR REPLACE VIEW electronics_in_stock AS
 SELECT COUNT(*) AS in_stock
 FROM electronics
-WHERE sold_at IS NULL; 
+WHERE sold_at IS NULL;

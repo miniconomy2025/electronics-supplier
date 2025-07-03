@@ -22,7 +22,7 @@ CREATE OR REPLACE FUNCTION get_all_machines()
 RETURNS TABLE (
     machine_id INT,
     ratio JSON,
-    status machine_status,
+    status VARCHAR(8),
     purchase_price FLOAT,
     purchased_at TIMESTAMPTZ,
     sold_at TIMESTAMPTZ
@@ -30,21 +30,22 @@ RETURNS TABLE (
     SELECT
         m.machine_id,
         COALESCE(json_object_agg(mat.material_name, r.ratio) FILTER (WHERE r.ratio_id IS NOT NULL), '{}') AS ratio,
-        m.status,
+        ms.status AS status,
         m.purchase_price,
         m.purchased_at,
         NULL::TIMESTAMPTZ AS sold_at
     FROM machines m
     LEFT JOIN machine_ratios r ON m.machine_id = r.machine_id
     LEFT JOIN materials mat ON r.material_id = mat.material_id
-    GROUP BY m.machine_id, m.status, m.purchase_price, m.purchased_at;
+    INNER JOIN machine_statuses ms ON m.status_id = ms.status_id
+    GROUP BY m.machine_id, ms.status, m.purchase_price, m.purchased_at;
 $$ LANGUAGE sql;
 
 CREATE OR REPLACE FUNCTION get_machine_by_id(p_machine_id INT)
 RETURNS TABLE (
     machine_id INT,
     ratio JSON,
-    status machine_status,
+    status VARCHAR(8),
     purchase_price FLOAT,
     purchased_at TIMESTAMPTZ,
     sold_at TIMESTAMPTZ
@@ -52,15 +53,16 @@ RETURNS TABLE (
     SELECT
         m.machine_id,
         COALESCE(json_object_agg(mat.material_name, r.ratio) FILTER (WHERE r.ratio_id IS NOT NULL), '{}') AS ratio,
-        m.status,
+        ms.status AS status,
         m.purchase_price,
         m.purchased_at,
         NULL::TIMESTAMPTZ AS sold_at
     FROM machines m
     LEFT JOIN machine_ratios r ON m.machine_id = r.machine_id
     LEFT JOIN materials mat ON r.material_id = mat.material_id
+    INNER JOIN machine_statuses ms ON m.status_id = ms.status_id
     WHERE m.machine_id = p_machine_id
-    GROUP BY m.machine_id, m.status, m.purchase_price, m.purchased_at;
+    GROUP BY m.machine_id, ms.status, m.purchase_price, m.purchased_at;
 $$ LANGUAGE sql;
 
 CREATE OR REPLACE FUNCTION get_all_machine_ratios()
@@ -216,4 +218,4 @@ $$ LANGUAGE sql;
 CREATE OR REPLACE FUNCTION get_lookup_value_by_id(p_value_id INT)
 RETURNS lookup_values AS $$
     SELECT * FROM lookup_values WHERE value_id = p_value_id;
-$$ LANGUAGE sql; 
+$$ LANGUAGE sql;
