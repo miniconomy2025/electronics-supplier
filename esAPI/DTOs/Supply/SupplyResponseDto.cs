@@ -1,4 +1,4 @@
-namespace esAPI.Dtos
+namespace esAPI.DTOs.Supply
 {
     public class SupplyDto
     {
