@@ -20,4 +20,4 @@ namespace esAPI.Models
         [ForeignKey("OrderId")]
         public MaterialOrder? Order { get; set; }
     }
-} 
+}
