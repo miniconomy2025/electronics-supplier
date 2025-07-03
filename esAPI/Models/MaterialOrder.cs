@@ -15,8 +15,9 @@ namespace esAPI.Models
         public DateTime OrderedAt { get; set; }
         [Column("received_at")]
         public DateTime? ReceivedAt { get; set; }
+        [ForeignKey("SupplierId")]
         public MaterialSupplier? Supplier { get; set; }
-        
+
         public ICollection<MaterialOrderItem> Items { get; set; } = new List<MaterialOrderItem>();
 
     }
