@@ -1,7 +1,10 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace esAPI.Models
 {
     public class MachineRatio
     {
+        [Key]
         public int RatioId { get; set; }
         public int MaterialId { get; set; }
         public int Ratio { get; set; }
