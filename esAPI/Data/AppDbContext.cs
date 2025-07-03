@@ -19,6 +19,11 @@ namespace esAPI.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.HasPostgresEnum<MachineStatus>("machine_status");
+            modelBuilder.Entity<Machine>()
+                .ToTable("machines")
+                .Property(m => m.Status)
+                .HasColumnType("machine_status");
         }
     }
-} 
+}
