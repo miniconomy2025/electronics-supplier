@@ -4,7 +4,7 @@ SELECT
     m.material_name,
     COUNT(s.supply_id) AS available_supply
 FROM materials m
-LEFT JOIN supplies s ON m.material_id = s.material_id AND s.processed_at IS NULL
+LEFT JOIN material_supplies s ON m.material_id = s.material_id AND s.processed_at IS NULL
 GROUP BY m.material_id, m.material_name;
 
 CREATE OR REPLACE VIEW operational_machines AS

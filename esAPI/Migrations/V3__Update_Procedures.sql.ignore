@@ -35,7 +35,7 @@ CREATE OR REPLACE PROCEDURE update_supply(
 ) LANGUAGE plpgsql AS $$
 BEGIN
 
-    IF p_supply_id IS NULL OR NOT EXISTS (SELECT 1 FROM supplies WHERE supply_id = p_supply_id) THEN
+    IF p_supply_id IS NULL OR NOT EXISTS (SELECT 1 FROM material_supplies WHERE supply_id = p_supply_id) THEN
         RAISE EXCEPTION 'Supply ID % does not exist', p_supply_id;
     END IF;
 
@@ -47,7 +47,7 @@ BEGIN
         RAISE EXCEPTION 'Received at must be in the past';
     END IF;
 
-    UPDATE supplies
+    UPDATE material_supplies
     SET material_id = COALESCE(p_material_id, material_id),
         received_at = COALESCE(p_received_at, received_at),
         processed_at = COALESCE(p_processed_at, processed_at)
@@ -87,7 +87,7 @@ BEGIN
     END IF;
 
     UPDATE machines
-    SET status_id = COALESCE(p_status_id, status_id),
+    SET machine_status = COALESCE(p_status_id, machine_status),
         purchase_price = COALESCE(p_purchase_price, purchase_price),
         purchased_at = COALESCE(p_purchased_at, purchased_at)
     WHERE machine_id = p_machine_id;
@@ -152,7 +152,7 @@ BEGIN
         RAISE EXCEPTION 'Order ID % does not exist', p_order_id;
     END IF;
 
-    IF p_supplier_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM material_suppliers WHERE supplier_id = p_supplier_id) THEN
+    IF p_supplier_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM companies WHERE company_id = p_supplier_id) THEN
         RAISE EXCEPTION 'Supplier ID % does not exist', p_supplier_id;
     END IF;
 
@@ -166,7 +166,7 @@ BEGIN
 
     UPDATE machine_orders
     SET supplier_id = COALESCE(p_supplier_id, supplier_id),
-        ordered_at = COALESCE(p_ordered_at, ordered_at),
+        placed_at = COALESCE(p_ordered_at, placed_at),
         received_at = COALESCE(p_received_at, received_at)
     WHERE order_id = p_order_id;
 
@@ -185,7 +185,7 @@ CREATE OR REPLACE PROCEDURE update_material_supplier(
 ) LANGUAGE plpgsql AS $$
 BEGIN
 
-    IF p_supplier_id IS NULL OR NOT EXISTS (SELECT 1 FROM material_suppliers WHERE supplier_id = p_supplier_id) THEN
+    IF p_supplier_id IS NULL OR NOT EXISTS (SELECT 1 FROM companies WHERE company_id = p_supplier_id) THEN
         RAISE EXCEPTION 'Supplier ID % does not exist', p_supplier_id;
     END IF;
 
@@ -193,9 +193,9 @@ BEGIN
         RAISE EXCEPTION 'Supplier name must not be empty if provided';
     END IF;
 
-    UPDATE material_suppliers
-    SET supplier_name = COALESCE(p_supplier_name, supplier_name)
-    WHERE supplier_id = p_supplier_id;
+    UPDATE companies
+    SET company_name = COALESCE(p_supplier_name, company_name)
+    WHERE company_id = p_supplier_id;
 
     RAISE NOTICE 'Material supplier updated successfully';
 
@@ -218,7 +218,7 @@ BEGIN
         RAISE EXCEPTION 'Order ID % does not exist', p_order_id;
     END IF;
 
-    IF p_supplier_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM material_suppliers WHERE supplier_id = p_supplier_id) THEN
+    IF p_supplier_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM companies WHERE company_id = p_supplier_id) THEN
         RAISE EXCEPTION 'Supplier ID % does not exist', p_supplier_id;
     END IF;
 
@@ -290,7 +290,7 @@ CREATE OR REPLACE PROCEDURE update_phone_manufacturer(
 ) LANGUAGE plpgsql AS $$
 BEGIN
 
-    IF p_manufacturer_id IS NULL OR NOT EXISTS (SELECT 1 FROM phone_manufacturers WHERE manufacturer_id = p_manufacturer_id) THEN
+    IF p_manufacturer_id IS NULL OR NOT EXISTS (SELECT 1 FROM companies WHERE company_id = p_manufacturer_id) THEN
         RAISE EXCEPTION 'Manufacturer ID % does not exist', p_manufacturer_id;
     END IF;
 
@@ -298,9 +298,9 @@ BEGIN
         RAISE EXCEPTION 'Manufacturer name must not be empty if provided';
     END IF;
 
-    UPDATE phone_manufacturers
-    SET manufacturer_name = COALESCE(p_manufacturer_name, manufacturer_name)
-    WHERE manufacturer_id = p_manufacturer_id;
+    UPDATE companies
+    SET company_name = COALESCE(p_manufacturer_name, company_name)
+    WHERE company_id = p_manufacturer_id;
 
     RAISE NOTICE 'Phone manufacturer updated successfully';
 
@@ -357,7 +357,7 @@ BEGIN
         RAISE EXCEPTION 'Order ID % does not exist', p_order_id;
     END IF;
 
-    IF p_manufacturer_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM phone_manufacturers WHERE manufacturer_id = p_manufacturer_id) THEN
+    IF p_manufacturer_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM companies WHERE company_id = p_manufacturer_id) THEN
         RAISE EXCEPTION 'Manufacturer ID % does not exist', p_manufacturer_id;
     END IF;
 

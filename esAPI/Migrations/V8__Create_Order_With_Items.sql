@@ -7,7 +7,7 @@ DECLARE
     v_order_id INT;
     item_record RECORD;
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM material_suppliers WHERE supplier_id = p_supplier_id) THEN
+    IF NOT EXISTS (SELECT 1 FROM companies WHERE company_id = p_supplier_id) THEN
         RAISE EXCEPTION 'Supplier ID % does not exist', p_supplier_id;
     END IF;
 
@@ -20,18 +20,16 @@ BEGIN
     END IF;
 
     FOR item_record IN
-        SELECT * FROM jsonb_to_recordset(p_items) AS x(material_id INT, amount INT)
+        SELECT * FROM jsonb_to_recordset(p_items) AS x(material_id INT, quantity_kg INT, price_per_kg NUMERIC(10,2))
     LOOP
         IF item_record.material_id IS NULL OR NOT EXISTS (SELECT 1 FROM materials WHERE material_id = item_record.material_id) THEN
             RAISE EXCEPTION 'Invalid Material ID % provided in order items', item_record.material_id;
         END IF;
-
-        IF item_record.amount IS NULL OR item_record.amount <= 0 THEN
-            RAISE EXCEPTION 'Amount for material ID % must be a positive integer', item_record.material_id;
+        IF item_record.quantity_kg IS NULL OR item_record.quantity_kg <= 0 THEN
+            RAISE EXCEPTION 'Quantity for material ID % must be a positive integer', item_record.material_id;
         END IF;
-
-        INSERT INTO material_order_items (material_id, amount, order_id)
-        VALUES (item_record.material_id, item_record.amount, v_order_id);
+        INSERT INTO material_order_items (material_id, quantity_kg, price_per_kg, order_id)
+        VALUES (item_record.material_id, item_record.quantity_kg, item_record.price_per_kg, v_order_id);
     END LOOP;
 
     p_created_order_id := v_order_id;

@@ -37,8 +37,8 @@ BEGIN
         RAISE EXCEPTION 'A machine must have at least 2 materials';
     END IF;
     
-    INSERT INTO machines (purchase_price, purchased_at)
-    VALUES (p_purchase_price, p_purchased_at)
+    INSERT INTO machines (output_amount, purchase_price, purchased_at, order_id)
+    VALUES (p_output_amount, p_purchase_price, p_purchased_at, p_order_id)
     RETURNING machine_id INTO v_machine_id;
     
     FOR v_key IN SELECT json_object_keys(p_material_ratios) LOOP
@@ -54,7 +54,7 @@ BEGIN
                 v_key;
         END IF;
         
-        SELECT material_id INTO v_material_id FROM raw_materials
+        SELECT material_id INTO v_material_id FROM materials
         WHERE material_name = v_key;
 
         IF v_material_id IS NULL THEN
@@ -76,7 +76,7 @@ END;
 $$;
 
 CREATE OR REPLACE PROCEDURE add_material(
-    IN p_material_name VARCHAR(8),
+    IN p_material_name VARCHAR(16),
     IN p_price_per_kg NUMERIC(10,2) DEFAULT NULL
 ) LANGUAGE plpgsql AS $$
 BEGIN
@@ -89,7 +89,7 @@ BEGIN
     
     IF p_price_per_kg IS NOT NULL AND p_price_per_kg < 0.0 THEN
         RAISE EXCEPTION 'Price per kg cannot be a negative value';
-    END IF
+    END IF;
 
     INSERT INTO materials (material_name, price_per_kg)
     VALUES (p_material_name, p_price_per_kg);
@@ -116,7 +116,7 @@ BEGIN
     END IF;
     
     IF NOT EXISTS
-        (SELECT 1 FROM raw_materials WHERE material_id = p_material_id)
+        (SELECT 1 FROM materials WHERE material_id = p_material_id)
     THEN
         RAISE EXCEPTION 'Material ID % does not exist', p_material_id;
     END IF;
@@ -129,7 +129,7 @@ BEGIN
         RAISE EXCEPTION 'Received at must be in the past';
     END IF;
 
-    INSERT INTO supplies (material_id, received_at, processed_at)
+    INSERT INTO material_supplies (material_id, received_at, processed_at)
     VALUES (p_material_id, p_received_at, p_processed_at);
 
     RAISE NOTICE 'Supply added successfully';
@@ -149,7 +149,7 @@ CREATE OR REPLACE PROCEDURE add_machine_ratio(
 BEGIN
 
     IF p_material_id IS NULL OR NOT EXISTS
-        (SELECT 1 FROM raw_materials WHERE material_id = p_material_id)
+        (SELECT 1 FROM materials WHERE material_id = p_material_id)
     THEN
         RAISE EXCEPTION 'Material ID % does not exist', p_material_id;
     END IF;
@@ -197,10 +197,8 @@ BEGIN
         RAISE EXCEPTION 'Received at cannot be before ordered at';
     END IF;
 
-    INSERT INTO machine_orders
-        (supplier_id, external_order_id, ordered_at, received_at)
-    VALUES
-        (p_supplier_id, p_external_order_id, p_ordered_at, p_received_at);
+    INSERT INTO machine_orders (supplier_id, external_order_id, placed_at, received_at)
+    VALUES (p_supplier_id, p_external_order_id, p_ordered_at, p_received_at);
 
     RAISE NOTICE 'Machine order added successfully';
 

@@ -1,6 +1,6 @@
 INSERT INTO companies (company_name)
 VALUES
-    ('electronics-supplier')
+    ('electronics-supplier'),
     ('screen-supplier'),
     ('case-supplier'),
     ('bulk-logistics'),

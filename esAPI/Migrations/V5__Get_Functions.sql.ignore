@@ -9,13 +9,13 @@ RETURNS materials AS $$
 $$ LANGUAGE sql;
 
 CREATE OR REPLACE FUNCTION get_all_supplies()
-RETURNS SETOF supplies AS $$
-    SELECT * FROM supplies;
+RETURNS SETOF material_supplies AS $$
+    SELECT * FROM material_supplies;
 $$ LANGUAGE sql;
 
 CREATE OR REPLACE FUNCTION get_supply_by_id(p_supply_id INT)
-RETURNS supplies AS $$
-    SELECT * FROM supplies WHERE supply_id = p_supply_id;
+RETURNS material_supplies AS $$
+    SELECT * FROM material_supplies WHERE supply_id = p_supply_id;
 $$ LANGUAGE sql;
 
 CREATE OR REPLACE FUNCTION get_all_machines()
@@ -79,71 +79,61 @@ CREATE OR REPLACE FUNCTION get_all_machine_orders()
 RETURNS TABLE (
     order_id INT,
     supplier_id INT,
-    supplier_name VARCHAR(16),
-    ordered_at TIMESTAMPTZ,
+    supplier_name VARCHAR(32),
+    placed_at TIMESTAMPTZ,
     received_at TIMESTAMPTZ,
     status TEXT
 ) AS $$
-    SELECT mo.order_id, mo.supplier_id, ms.supplier_name, mo.ordered_at, mo.received_at,
+    SELECT mo.order_id, mo.supplier_id, c.company_name AS supplier_name, mo.placed_at, mo.received_at,
         CASE WHEN mo.received_at IS NULL THEN 'PENDING' ELSE 'COMPLETED' END AS status
     FROM machine_orders mo
-    INNER JOIN material_suppliers ms ON mo.supplier_id = ms.supplier_id;
+    INNER JOIN companies c ON mo.supplier_id = c.company_id;
 $$ LANGUAGE sql;
 
 CREATE OR REPLACE FUNCTION get_machine_order_by_id(p_order_id INT)
 RETURNS TABLE (
     order_id INT,
     supplier_id INT,
-    supplier_name VARCHAR(16),
-    ordered_at TIMESTAMPTZ,
+    supplier_name VARCHAR(32),
+    placed_at TIMESTAMPTZ,
     received_at TIMESTAMPTZ,
     status TEXT
 ) AS $$
-    SELECT mo.order_id, mo.supplier_id, ms.supplier_name, mo.ordered_at, mo.received_at,
+    SELECT mo.order_id, mo.supplier_id, c.company_name AS supplier_name, mo.placed_at, mo.received_at,
         CASE WHEN mo.received_at IS NULL THEN 'PENDING' ELSE 'COMPLETED' END AS status
     FROM machine_orders mo
-    INNER JOIN material_suppliers ms ON mo.supplier_id = ms.supplier_id
+    INNER JOIN companies c ON mo.supplier_id = c.company_id
     WHERE mo.order_id = p_order_id;
-$$ LANGUAGE sql;
-
-CREATE OR REPLACE FUNCTION get_all_material_suppliers()
-RETURNS SETOF material_suppliers AS $$
-    SELECT * FROM material_suppliers;
-$$ LANGUAGE sql;
-
-CREATE OR REPLACE FUNCTION get_material_supplier_by_id(p_supplier_id INT)
-RETURNS material_suppliers AS $$
-    SELECT * FROM material_suppliers WHERE supplier_id = p_supplier_id;
 $$ LANGUAGE sql;
 
 CREATE OR REPLACE FUNCTION get_all_material_orders()
 RETURNS TABLE (
     order_id INT,
     supplier_id INT,
-    supplier_name VARCHAR(16),
-    ordered_at TIMESTAMPTZ,
+    supplier_name VARCHAR(32),
+    placed_at TIMESTAMPTZ,
     received_at TIMESTAMPTZ,
     status TEXT
 ) AS $$
-    SELECT mo.order_id, mo.supplier_id, ms.supplier_name, mo.ordered_at, mo.received_at,
+    SELECT mo.order_id, mo.supplier_id, c.company_name AS supplier_name, mo.placed_at, mo.received_at,
         CASE WHEN mo.received_at IS NULL THEN 'PENDING' ELSE 'COMPLETED' END AS status
     FROM material_orders mo
-    INNER JOIN material_suppliers ms ON mo.supplier_id = ms.supplier_id;
+    INNER JOIN companies c ON mo.supplier_id = c.company_id;
 $$ LANGUAGE sql;
 
 CREATE OR REPLACE FUNCTION get_material_order_by_id(p_order_id INT)
 RETURNS TABLE (
     order_id INT,
     supplier_id INT,
-    supplier_name VARCHAR(16),
-    ordered_at TIMESTAMPTZ,
+    supplier_name VARCHAR(32),
+    placed_at TIMESTAMPTZ,
     received_at TIMESTAMPTZ,
     status TEXT
 ) AS $$
-    SELECT mo.order_id, mo.supplier_id, ms.supplier_name, mo.ordered_at, mo.received_at,
+    SELECT mo.order_id, mo.supplier_id, c.company_name AS supplier_name, mo.placed_at, mo.received_at,
         CASE WHEN mo.received_at IS NULL THEN 'PENDING' ELSE 'COMPLETED' END AS status
     FROM material_orders mo
-    INNER JOIN material_suppliers ms ON mo.supplier_id = ms.supplier_id
+    INNER JOIN companies c ON mo.supplier_id = c.company_id
     WHERE mo.order_id = p_order_id;
 $$ LANGUAGE sql;
 
@@ -155,16 +145,6 @@ $$ LANGUAGE sql;
 CREATE OR REPLACE FUNCTION get_material_order_item_by_id(p_item_id INT)
 RETURNS material_order_items AS $$
     SELECT * FROM material_order_items WHERE item_id = p_item_id;
-$$ LANGUAGE sql;
-
-CREATE OR REPLACE FUNCTION get_all_phone_manufacturers()
-RETURNS SETOF phone_manufacturers AS $$
-    SELECT * FROM phone_manufacturers;
-$$ LANGUAGE sql;
-
-CREATE OR REPLACE FUNCTION get_phone_manufacturer_by_id(p_manufacturer_id INT)
-RETURNS phone_manufacturers AS $$
-    SELECT * FROM phone_manufacturers WHERE manufacturer_id = p_manufacturer_id;
 $$ LANGUAGE sql;
 
 CREATE OR REPLACE FUNCTION get_all_electronics()
@@ -181,32 +161,32 @@ CREATE OR REPLACE FUNCTION get_all_electronics_orders()
 RETURNS TABLE (
     order_id INT,
     manufacturer_id INT,
-    manufacturer_name VARCHAR(8),
+    manufacturer_name VARCHAR(32),
     amount INT,
     ordered_at TIMESTAMPTZ,
     processed_at TIMESTAMPTZ,
     status TEXT
 ) AS $$
-    SELECT eo.order_id, eo.manufacturer_id, pm.manufacturer_name, eo.amount, eo.ordered_at, eo.processed_at,
+    SELECT eo.order_id, eo.manufacturer_id, c.company_name AS manufacturer_name, eo.amount, eo.ordered_at, eo.processed_at,
         CASE WHEN eo.processed_at IS NULL THEN 'PENDING' ELSE 'PROCESSED' END AS status
     FROM electronics_orders eo
-    INNER JOIN phone_manufacturers pm ON eo.manufacturer_id = pm.manufacturer_id;
+    INNER JOIN companies c ON eo.manufacturer_id = c.company_id;
 $$ LANGUAGE sql;
 
 CREATE OR REPLACE FUNCTION get_electronics_order_by_id(p_order_id INT)
 RETURNS TABLE (
     order_id INT,
     manufacturer_id INT,
-    manufacturer_name VARCHAR(8),
+    manufacturer_name VARCHAR(32),
     amount INT,
     ordered_at TIMESTAMPTZ,
     processed_at TIMESTAMPTZ,
     status TEXT
 ) AS $$
-    SELECT eo.order_id, eo.manufacturer_id, pm.manufacturer_name, eo.amount, eo.ordered_at, eo.processed_at,
+    SELECT eo.order_id, eo.manufacturer_id, c.company_name AS manufacturer_name, eo.amount, eo.ordered_at, eo.processed_at,
         CASE WHEN eo.processed_at IS NULL THEN 'PENDING' ELSE 'PROCESSED' END AS status
     FROM electronics_orders eo
-    INNER JOIN phone_manufacturers pm ON eo.manufacturer_id = pm.manufacturer_id
+    INNER JOIN companies c ON eo.manufacturer_id = c.company_id
     WHERE eo.order_id = p_order_id;
 $$ LANGUAGE sql;
 
