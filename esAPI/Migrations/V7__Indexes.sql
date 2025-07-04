@@ -10,10 +10,11 @@ CREATE INDEX idx_electronics_orders_manufacturer_id ON electronics_orders(manufa
 
 -- Indexes for columns used in views/filters
 CREATE INDEX idx_supplies_processed_at ON supplies(processed_at);
-CREATE INDEX idx_machines_status ON machines(status);
+CREATE INDEX idx_machines_status ON machines(status_id);
+CREATE INDEX idx_machines_status_id ON machines(status_id);
 CREATE INDEX idx_electronics_sold_at ON electronics(sold_at);
 
 -- Unique indexes
 CREATE UNIQUE INDEX IF NOT EXISTS idx_materials_material_name ON materials(material_name);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_material_suppliers_supplier_name ON material_suppliers(supplier_name);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_phone_manufacturers_manufacturer_name ON phone_manufacturers(manufacturer_name); 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_phone_manufacturers_manufacturer_name ON phone_manufacturers(manufacturer_name);

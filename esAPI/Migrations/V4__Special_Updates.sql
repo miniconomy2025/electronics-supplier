@@ -58,7 +58,7 @@ BEGIN
     UPDATE machine_orders SET received_at = NOW() WHERE order_id = p_order_id;
 
     -- Insert new machine
-    INSERT INTO machines (status, purchase_price, purchased_at) VALUES ('WORKING', p_purchase_price, NOW());
+    INSERT INTO machines (status_id, purchase_price, purchased_at) VALUES (1, p_purchase_price, NOW());
 
     RAISE NOTICE 'Machine order % completed and machine added', p_order_id;
 
