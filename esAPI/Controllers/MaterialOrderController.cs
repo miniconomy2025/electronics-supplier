@@ -1,7 +1,7 @@
 using System.Data;
 using System.Text.Json;
 using esAPI.Data;
-using esAPI.DTOs;
+using esAPI.DTOs.MaterialOrder;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
