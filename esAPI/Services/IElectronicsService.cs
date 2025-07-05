@@ -1,5 +1,5 @@
 using System.Threading.Tasks;
-using esAPI.Dtos.ElectronicsDtos;
+using esAPI.DTOs.Electronics;
 
 namespace esAPI.Services
 {

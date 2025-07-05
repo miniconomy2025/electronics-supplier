@@ -71,6 +71,11 @@ namespace esAPI.Services
 
         public async Task<MaterialOrderResponse> CreateMaterialOrderAsync(CreateMaterialOrderRequest request)
         {
+            // Get current simulation day
+            var sim = _context.Simulations.FirstOrDefault(s => s.IsRunning);
+            if (sim == null)
+                throw new InvalidOperationException("Simulation not running.");
+
             // This assumes a single item per order for now, as in the original controller
             var createdOrderIdParam = new NpgsqlParameter("p_created_order_id", DbType.Int32)
             {
@@ -88,9 +93,16 @@ namespace esAPI.Services
 
             if (createdOrderIdParam.Value != DBNull.Value && createdOrderIdParam.Value is int newOrderId)
             {
-                var newOrder = await GetMaterialOrderByIdAsync(newOrderId);
+                // Set OrderedAt to the current simulation day
+                var newOrder = await _context.MaterialOrders.FindAsync(newOrderId);
                 if (newOrder != null)
-                    return newOrder;
+                {
+                    newOrder.OrderedAt = sim.DayNumber;
+                    await _context.SaveChangesAsync();
+                }
+                var response = await GetMaterialOrderByIdAsync(newOrderId);
+                if (response != null)
+                    return response;
             }
             throw new InvalidOperationException("Could not retrieve the new order ID after creation.");
         }

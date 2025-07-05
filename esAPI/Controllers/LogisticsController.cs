@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using esAPI.Data;
 using esAPI.Dtos;
+using esAPI.Models;
 
 namespace esAPI.Controllers
 {
@@ -70,17 +71,20 @@ namespace esAPI.Controllers
             if (deliverAmount <= 0)
                 return BadRequest("Nothing to deliver based on the remaining amount.");
 
-            var now = DateTime.UtcNow;
+            // Get current simulation day
+            var sim = _context.Simulations.FirstOrDefault(s => s.IsRunning);
+            if (sim == null)
+                return BadRequest("Simulation not running.");
 
             var suppliesToAdd = Enumerable.Range(0, deliverAmount)
-                .Select(_ => new DTOs.Supply
+                .Select(_ => new MaterialSupply
                 {
                     MaterialId = order.MaterialId,
-                    ReceivedAt = now
+                    ReceivedAt = sim.DayNumber
                 })
                 .ToList();
 
-            _context.Supplies.AddRange(suppliesToAdd);
+            _context.MaterialSupplies.AddRange(suppliesToAdd);
 
             order.RemainingAmount -= deliverAmount;
 

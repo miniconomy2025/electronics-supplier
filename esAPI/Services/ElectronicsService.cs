@@ -1,5 +1,5 @@
 using System.Threading.Tasks;
-using esAPI.Dtos.ElectronicsDtos;
+using esAPI.DTOs.Electronics;
 using esAPI.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -24,6 +24,11 @@ namespace esAPI.Services
 
         public async Task<ProducedElectronicsResultDto> ProduceElectronicsAsync(int? machineId, string? notes)
         {
+            // Get current simulation day
+            var sim = _context.Simulations.FirstOrDefault(s => s.IsRunning);
+            if (sim == null)
+                throw new InvalidOperationException("Simulation not running.");
+
             var result = await _context.Database.SqlQueryRaw<ProduceElectronicsResult>(
                 "CALL produce_electronics()")
                 .ToListAsync();
@@ -33,6 +38,17 @@ namespace esAPI.Services
                 dto.ElectronicsCreated = result[0].ElectronicsCreated;
                 dto.MaterialsUsed["copper"] = result[0].CopperUsed;
                 dto.MaterialsUsed["silicone"] = result[0].SiliconeUsed;
+
+                // Set produced_at for new electronics to the current simulation day
+                var newElectronics = _context.Electronics
+                    .OrderByDescending(e => e.ElectronicId)
+                    .Take(dto.ElectronicsCreated)
+                    .ToList();
+                foreach (var e in newElectronics)
+                {
+                    e.ProducedAt = sim.DayNumber;
+                }
+                await _context.SaveChangesAsync();
             }
             return dto;
         }

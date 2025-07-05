@@ -18,7 +18,7 @@ namespace esAPI.Services
 
         public async Task<IEnumerable<SupplyDto>> GetAllSuppliesAsync()
         {
-            return await _context.Supplies
+            return await _context.MaterialSupplies
                 .Include(s => s.Material)
                 .Select(s => new SupplyDto
                 {
@@ -33,7 +33,7 @@ namespace esAPI.Services
 
         public async Task<SupplyDto?> GetSupplyByIdAsync(int id)
         {
-            var supply = await _context.Supplies
+            var supply = await _context.MaterialSupplies
                 .Include(s => s.Material)
                 .FirstOrDefaultAsync(s => s.SupplyId == id);
             if (supply == null)
@@ -59,17 +59,17 @@ namespace esAPI.Services
                 ReceivedAt = dto.ReceivedAt,
                 ProcessedAt = dto.ProcessedAt ?? 0
             };
-            _context.Supplies.Add(supply);
+            _context.MaterialSupplies.Add(supply);
             await _context.SaveChangesAsync();
             return await GetSupplyByIdAsync(supply.SupplyId) ?? throw new System.Exception("Failed to create supply.");
         }
 
         public async Task<bool> DeleteSupplyByIdAsync(int id)
         {
-            var supply = await _context.Supplies.FindAsync(id);
+            var supply = await _context.MaterialSupplies.FindAsync(id);
             if (supply == null)
                 return false;
-            _context.Supplies.Remove(supply);
+            _context.MaterialSupplies.Remove(supply);
             await _context.SaveChangesAsync();
             return true;
         }

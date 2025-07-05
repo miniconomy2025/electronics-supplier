@@ -12,5 +12,11 @@ namespace esAPI.Models
         
         [Column("day_number")]
         public int DayNumber { get; set; }
+
+        [Column("started_at")]
+        public DateTime? StartedAt { get; set; }
+
+        [Column("is_running")]
+        public bool IsRunning { get; set; }
     }
 }
