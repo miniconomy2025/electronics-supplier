@@ -216,4 +216,35 @@ $$ LANGUAGE sql;
 CREATE OR REPLACE FUNCTION get_lookup_value_by_id(p_value_id INT)
 RETURNS lookup_values AS $$
     SELECT * FROM lookup_values WHERE value_id = p_value_id;
-$$ LANGUAGE sql; 
+$$ LANGUAGE sql;
+
+CREATE OR REPLACE FUNCTION get_inventory_summary()
+RETURNS jsonb AS $$
+DECLARE
+    summary jsonb;
+BEGIN
+    SELECT jsonb_build_object(
+        'machines', (SELECT jsonb_build_object(
+            'total', COUNT(*),
+            'working', COUNT(*) FILTER (WHERE status = 'WORKING'),
+            'broken', COUNT(*) FILTER (WHERE status = 'BROKEN')
+        ) FROM machines),
+
+        'materialsInStock', (SELECT jsonb_agg(
+            jsonb_build_object(
+                'materialId', m.material_id,
+                'materialName', m.material_name,
+                'quantity', cs.available_supply
+            )
+        )
+        FROM materials m
+        JOIN current_supplies cs ON m.material_id = cs.  -- Use the view
+        ),
+
+        'electronicsInStock', (SELECT COUNT(*) FROM electronics WHERE sold_at IS NULL)
+
+    ) INTO summary;
+
+    RETURN summary;
+END;
+$$ LANGUAGE plpgsql;
