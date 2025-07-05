@@ -1,4 +1,9 @@
-CREATE OR REPLACE PROCEDURE produce_electronics()
+CREATE OR REPLACE FUNCTION produce_electronics()
+RETURNS TABLE (
+    electronics_created INT,
+    copper_used INT,
+    silicone_used INT
+)
 LANGUAGE plpgsql
 AS $$
 DECLARE
@@ -119,5 +124,5 @@ BEGIN
            copper_needed * total_units AS copper_used,
            silicone_needed * total_units AS silicone_used;
 
-END;
-$$;
+END
+$$

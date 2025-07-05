@@ -30,7 +30,7 @@ namespace esAPI.Services
                 throw new InvalidOperationException("Simulation not running.");
 
             var result = await _context.Database.SqlQueryRaw<ProduceElectronicsResult>(
-                "CALL produce_electronics()")
+                "SELECT * FROM produce_electronics()")
                 .ToListAsync();
             var dto = new ProducedElectronicsResultDto();
             if (result.Count > 0)
