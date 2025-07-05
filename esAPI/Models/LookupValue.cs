@@ -9,8 +9,10 @@ namespace esAPI.Models
         [Key]
         [Column("value_id")]
         public int ValueId { get; set; }
+
         [Column("electronics_price_per_unit")]
         public decimal ElectronicsPricePerUnit { get; set; }
+        
         [Column("changed_at")]
         public decimal ChangedAt { get; set; }
     }

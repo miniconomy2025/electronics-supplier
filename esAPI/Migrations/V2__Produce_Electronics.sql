@@ -1,4 +1,9 @@
-CREATE OR REPLACE PROCEDURE produce_electronics()
+CREATE OR REPLACE FUNCTION produce_electronics()
+RETURNS TABLE (
+    electronics_created INT,
+    copper_used INT,
+    silicone_used INT
+)
 LANGUAGE plpgsql
 AS $$
 DECLARE
@@ -113,5 +118,11 @@ BEGIN
     SET machine_status = standby_status
     WHERE machine_id = ANY(machine_ids);
 
-END;
-$$;
+    -- Return the number of electronics created and materials used
+    RETURN QUERY
+    SELECT total_units AS electronics_created,
+           copper_needed * total_units AS copper_used,
+           silicone_needed * total_units AS silicone_used;
+
+END
+$$

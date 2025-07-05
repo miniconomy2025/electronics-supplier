@@ -71,22 +71,25 @@ namespace esAPI.Controllers
             if (deliverAmount <= 0)
                 return BadRequest("Nothing to deliver based on the remaining amount.");
 
-            var now = DateTime.UtcNow;
+            // Get current simulation day
+            var sim = _context.Simulations.FirstOrDefault(s => s.IsRunning);
+            if (sim == null)
+                return BadRequest("Simulation not running.");
 
             var suppliesToAdd = Enumerable.Range(0, deliverAmount)
-                .Select(_ => new Supply
+                .Select(_ => new MaterialSupply
                 {
                     MaterialId = order.MaterialId,
-                    ReceivedAt = now
+                    ReceivedAt = sim.DayNumber
                 })
                 .ToList();
 
-            _context.Supplies.AddRange(suppliesToAdd);
+            _context.MaterialSupplies.AddRange(suppliesToAdd);
 
             order.RemainingAmount -= deliverAmount;
 
             if (order.RemainingAmount == 0)
-                order.ReceivedAt = now;
+                // order.ReceivedAt = now; TODO: Fix
 
             await _context.SaveChangesAsync();
 
@@ -125,13 +128,13 @@ namespace esAPI.Controllers
             var now = DateTime.UtcNow;
             foreach (var e in electronicsToRemove)
             {
-                e.SoldAt = now;
+                // e.SoldAt = now; TODO: Fix
             }
 
             order.RemainingAmount -= pickupAmount;
 
             if (order.RemainingAmount == 0)
-                order.ProcessedAt = DateTime.UtcNow;
+                // order.ProcessedAt = DateTime.UtcNow; TODO: Fix
 
             await _context.SaveChangesAsync();
 
