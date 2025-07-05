@@ -2,27 +2,41 @@ CREATE OR REPLACE PROCEDURE complete_material_order(
     IN p_order_id INT
 ) LANGUAGE plpgsql AS $$
 DECLARE
-    rec RECORD;
+    v_material_id INT;
+    v_amount INT;
 BEGIN
-
+    -- Validate the order exists
     IF p_order_id IS NULL OR NOT EXISTS (SELECT 1 FROM material_orders WHERE order_id = p_order_id) THEN
         RAISE EXCEPTION 'Material order ID % does not exist', p_order_id;
     END IF;
 
+    -- Check if already completed
     IF (SELECT received_at FROM material_orders WHERE order_id = p_order_id) IS NOT NULL THEN
         RAISE EXCEPTION 'Material order % is already completed', p_order_id;
     END IF;
 
+    -- Get material ID and remaining amount
+    SELECT material_id, remaining_amount INTO v_material_id, v_amount
+    FROM material_orders
+    WHERE order_id = p_order_id;
+
+    -- Validate remaining amount
+    IF v_amount <= 0 THEN
+        RAISE EXCEPTION 'Remaining amount for order % must be positive', p_order_id;
+    END IF;
+
     -- Mark order as received
-    UPDATE material_orders SET received_at = NOW() WHERE order_id = p_order_id;
+    UPDATE material_orders
+    SET received_at = NOW()
+    WHERE order_id = p_order_id;
 
-    -- For each item, add to supplies
-    FOR rec IN SELECT material_id, amount FROM material_order_items WHERE order_id = p_order_id LOOP
-        INSERT INTO supplies (material_id, received_at, processed_at)
-        SELECT rec.material_id, NOW(), NULL FROM generate_series(1, rec.amount);
-    END LOOP;
+    -- Insert that many supply rows
+    INSERT INTO supplies (material_id, received_at, processed_at)
+    SELECT v_material_id, NOW(), NULL
+    FROM generate_series(1, v_amount);
 
-    RAISE NOTICE 'Material order % completed and supplies updated', p_order_id;
+    RAISE NOTICE 'Material order % completed and % supplies created for material %',
+        p_order_id, v_amount, v_material_id;
 
 EXCEPTION
     WHEN others THEN
@@ -73,39 +87,56 @@ CREATE OR REPLACE PROCEDURE process_electronics_order(
     IN p_order_id INT
 ) LANGUAGE plpgsql AS $$
 DECLARE
-    v_amount INT;
+    v_remaining INT;
     v_count INT;
 BEGIN
 
-    IF p_order_id IS NULL OR NOT EXISTS (SELECT 1 FROM electronics_orders WHERE order_id = p_order_id) THEN
+    -- Validate the order exists
+    IF p_order_id IS NULL OR NOT EXISTS (
+        SELECT 1 FROM electronics_orders WHERE order_id = p_order_id
+    ) THEN
         RAISE EXCEPTION 'Electronics order ID % does not exist', p_order_id;
     END IF;
 
+    -- Check if already processed
     IF (SELECT processed_at FROM electronics_orders WHERE order_id = p_order_id) IS NOT NULL THEN
         RAISE EXCEPTION 'Electronics order % is already processed', p_order_id;
     END IF;
 
-    SELECT amount INTO v_amount FROM electronics_orders WHERE order_id = p_order_id;
+    -- Get remaining amount
+    SELECT remaining_amount INTO v_remaining FROM electronics_orders WHERE order_id = p_order_id;
 
-    -- Mark order as processed
-    UPDATE electronics_orders SET processed_at = NOW() WHERE order_id = p_order_id;
-
-    -- Mark unsold electronics as sold
-    UPDATE electronics SET sold_at = NOW()
-    WHERE electronic_id IN (
-        SELECT electronic_id FROM electronics WHERE sold_at IS NULL ORDER BY produced_at LIMIT v_amount
-    );
-    GET DIAGNOSTICS v_count = ROW_COUNT;
-
-    IF v_count < v_amount THEN
-        RAISE NOTICE 'Only % out of % electronics were marked as sold (not enough unsold stock)', v_count, v_amount;
+    IF v_remaining <= 0 THEN
+        RAISE EXCEPTION 'Electronics order % has no remaining items to process', p_order_id;
     END IF;
 
-    RAISE NOTICE 'Electronics order % processed and electronics sold', p_order_id;
+    -- Mark unsold electronics as sold
+    UPDATE electronics
+    SET sold_at = NOW()
+    WHERE electronic_id IN (
+        SELECT electronic_id FROM electronics
+        WHERE sold_at IS NULL
+        ORDER BY produced_at
+        LIMIT v_remaining
+    );
+
+    GET DIAGNOSTICS v_count = ROW_COUNT;
+
+    -- Update the order
+    UPDATE electronics_orders
+    SET processed_at = NOW(),
+        remaining_amount = GREATEST(v_remaining - v_count, 0)
+    WHERE order_id = p_order_id;
+
+    IF v_count < v_remaining THEN
+        RAISE NOTICE 'Only % out of % electronics were marked as sold (not enough stock)', v_count, v_remaining;
+    ELSE
+        RAISE NOTICE 'All % electronics sold for order %', v_count, p_order_id;
+    END IF;
 
 EXCEPTION
     WHEN others THEN
         RAISE EXCEPTION 'Error processing electronics order: %', SQLERRM;
-        
+
 END;
-$$; 
+$$;
