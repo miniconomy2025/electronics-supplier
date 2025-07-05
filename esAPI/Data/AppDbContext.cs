@@ -11,7 +11,6 @@ namespace esAPI.Data
         public DbSet<MachineRatio> MachineRatios { get; set; }
         public DbSet<MaterialSupplier> MaterialSuppliers { get; set; }
         public DbSet<MaterialOrder> MaterialOrders { get; set; }
-        public DbSet<MaterialOrderItem> MaterialOrderItems { get; set; }
         public DbSet<PhoneManufacturer> PhoneManufacturers { get; set; }
         public DbSet<Electronic> Electronics { get; set; }
         public DbSet<ElectronicsOrder> ElectronicsOrders { get; set; }

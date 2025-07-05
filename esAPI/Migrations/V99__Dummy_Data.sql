@@ -20,14 +20,10 @@ INSERT INTO supplies (material_id, received_at, processed_at) VALUES (1, NOW() -
 INSERT INTO supplies (material_id, received_at, processed_at) VALUES (2, NOW() - INTERVAL '9 days', NOW() - INTERVAL '5 days');
 INSERT INTO supplies (material_id, received_at, processed_at) VALUES (3, NOW() - INTERVAL '8 days', NULL);
 
--- Dummy material orders (explicit IDs, pending and completed)
-INSERT INTO material_orders (order_id, supplier_id, ordered_at, received_at) VALUES (1, 1, NOW() - INTERVAL '7 days', NULL);
-INSERT INTO material_orders (order_id, supplier_id, ordered_at, received_at) VALUES (2, 2, NOW() - INTERVAL '14 days', NOW() - INTERVAL '12 days');
-
--- Dummy material order items
-INSERT INTO material_order_items (material_id, amount, order_id) VALUES (1, 5, 1);
-INSERT INTO material_order_items (material_id, amount, order_id) VALUES (2, 3, 1);
-INSERT INTO material_order_items (material_id, amount, order_id) VALUES (3, 2, 2);
+INSERT INTO material_orders (order_id, supplier_id, material_id, remaining_amount, ordered_at, received_at)
+VALUES 
+  (1, 1, 1, 5, NOW() - INTERVAL '7 days', NULL),           -- Pending order
+  (2, 2, 3, 0, NOW() - INTERVAL '14 days', NOW() - INTERVAL '12 days');
 
 -- Complete a material order (should add supplies)
 CALL complete_material_order(1);
@@ -45,8 +41,8 @@ INSERT INTO electronics (produced_at, sold_at) VALUES (NOW() - INTERVAL '14 days
 INSERT INTO electronics (produced_at, sold_at) VALUES (NOW() - INTERVAL '13 days', NULL);
 
 -- Dummy electronics orders (explicit IDs, pending and processed)
-INSERT INTO electronics_orders (order_id, manufacturer_id, amount, ordered_at, processed_at) VALUES (1, 1, 1, NOW() - INTERVAL '5 days', NULL);
-INSERT INTO electronics_orders (order_id, manufacturer_id, amount, ordered_at, processed_at) VALUES (2, 2, 2, NOW() - INTERVAL '20 days', NOW() - INTERVAL '18 days');
+INSERT INTO electronics_orders (order_id, manufacturer_id, remaining_amount, ordered_at, processed_at) VALUES (1, 1, 1, NOW() - INTERVAL '5 days', NULL);
+INSERT INTO electronics_orders (order_id, manufacturer_id, remaining_amount, ordered_at, processed_at) VALUES (2, 2, 2, NOW() - INTERVAL '20 days', NOW() - INTERVAL '18 days');
 
 -- Process an electronics order (should mark electronics as sold)
 CALL process_electronics_order(1);
