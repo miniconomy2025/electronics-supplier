@@ -104,6 +104,7 @@ CREATE TABLE machines (
 );
 
 ALTER TABLE machines ADD FOREIGN KEY (machine_status) REFERENCES machine_statuses (status_id);
+ALTER TABLE machines ADD FOREIGN KEY (order_id) REFERENCES machine_orders (order_id);
 
 -- Table: machine_ratios
 -- The ratio of a specific raw material for a machine
