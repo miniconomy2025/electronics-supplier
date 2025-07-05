@@ -4,8 +4,6 @@ CREATE INDEX idx_machine_ratios_material_id ON machine_ratios(material_id);
 CREATE INDEX idx_machine_ratios_machine_id ON machine_ratios(machine_id);
 CREATE INDEX idx_machine_orders_supplier_id ON machine_orders(supplier_id);
 CREATE INDEX idx_material_orders_supplier_id ON material_orders(supplier_id);
-CREATE INDEX idx_material_order_items_material_id ON material_order_items(material_id);
-CREATE INDEX idx_material_order_items_order_id ON material_order_items(order_id);
 CREATE INDEX idx_electronics_orders_manufacturer_id ON electronics_orders(manufacturer_id);
 
 -- Indexes for columns used in views/filters

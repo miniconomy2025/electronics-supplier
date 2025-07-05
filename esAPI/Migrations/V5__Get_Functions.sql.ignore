@@ -137,16 +137,34 @@ RETURNS TABLE (
     WHERE mo.order_id = p_order_id;
 $$ LANGUAGE sql;
 
-CREATE OR REPLACE FUNCTION get_all_material_order_items()
-RETURNS SETOF material_order_items AS $$
-    SELECT * FROM material_order_items;
+DROP FUNCTION IF EXISTS get_all_material_orders();
+
+CREATE OR REPLACE FUNCTION get_all_material_orders()
+RETURNS SETOF material_orders AS $$
+    SELECT * FROM material_orders;
 $$ LANGUAGE sql;
 
-CREATE OR REPLACE FUNCTION get_material_order_item_by_id(p_item_id INT)
-RETURNS material_order_items AS $$
-    SELECT * FROM material_order_items WHERE item_id = p_item_id;
+DROP FUNCTION IF EXISTS get_material_order_by_id(INT);
+
+CREATE OR REPLACE FUNCTION get_material_order_by_id(p_order_id INT)
+RETURNS material_orders AS $$
+    SELECT * FROM material_orders WHERE order_id = p_order_id;
 $$ LANGUAGE sql;
 
+<<<<<<< HEAD:esAPI/Migrations/V5__Get_Functions.sql.ignore
+=======
+
+CREATE OR REPLACE FUNCTION get_all_phone_manufacturers()
+RETURNS SETOF phone_manufacturers AS $$
+    SELECT * FROM phone_manufacturers;
+$$ LANGUAGE sql;
+
+CREATE OR REPLACE FUNCTION get_phone_manufacturer_by_id(p_manufacturer_id INT)
+RETURNS phone_manufacturers AS $$
+    SELECT * FROM phone_manufacturers WHERE manufacturer_id = p_manufacturer_id;
+$$ LANGUAGE sql;
+
+>>>>>>> d36f86e28ae5cae41c0ce64ec7a87996439cbd88:esAPI/Migrations/V5__Get_Functions.sql
 CREATE OR REPLACE FUNCTION get_all_electronics()
 RETURNS SETOF electronics AS $$
     SELECT * FROM electronics;
@@ -161,13 +179,22 @@ CREATE OR REPLACE FUNCTION get_all_electronics_orders()
 RETURNS TABLE (
     order_id INT,
     manufacturer_id INT,
+<<<<<<< HEAD:esAPI/Migrations/V5__Get_Functions.sql.ignore
     manufacturer_name VARCHAR(32),
     amount INT,
+=======
+    manufacturer_name VARCHAR(8),
+    remaining_amount INT,
+>>>>>>> d36f86e28ae5cae41c0ce64ec7a87996439cbd88:esAPI/Migrations/V5__Get_Functions.sql
     ordered_at TIMESTAMPTZ,
     processed_at TIMESTAMPTZ,
     status TEXT
 ) AS $$
+<<<<<<< HEAD:esAPI/Migrations/V5__Get_Functions.sql.ignore
     SELECT eo.order_id, eo.manufacturer_id, c.company_name AS manufacturer_name, eo.amount, eo.ordered_at, eo.processed_at,
+=======
+    SELECT eo.order_id, eo.manufacturer_id, pm.manufacturer_name, eo.remaining_amount, eo.ordered_at, eo.processed_at,
+>>>>>>> d36f86e28ae5cae41c0ce64ec7a87996439cbd88:esAPI/Migrations/V5__Get_Functions.sql
         CASE WHEN eo.processed_at IS NULL THEN 'PENDING' ELSE 'PROCESSED' END AS status
     FROM electronics_orders eo
     INNER JOIN companies c ON eo.manufacturer_id = c.company_id;
@@ -177,13 +204,22 @@ CREATE OR REPLACE FUNCTION get_electronics_order_by_id(p_order_id INT)
 RETURNS TABLE (
     order_id INT,
     manufacturer_id INT,
+<<<<<<< HEAD:esAPI/Migrations/V5__Get_Functions.sql.ignore
     manufacturer_name VARCHAR(32),
     amount INT,
+=======
+    manufacturer_name VARCHAR(8),
+    remaining_amount INT,
+>>>>>>> d36f86e28ae5cae41c0ce64ec7a87996439cbd88:esAPI/Migrations/V5__Get_Functions.sql
     ordered_at TIMESTAMPTZ,
     processed_at TIMESTAMPTZ,
     status TEXT
 ) AS $$
+<<<<<<< HEAD:esAPI/Migrations/V5__Get_Functions.sql.ignore
     SELECT eo.order_id, eo.manufacturer_id, c.company_name AS manufacturer_name, eo.amount, eo.ordered_at, eo.processed_at,
+=======
+    SELECT eo.order_id, eo.manufacturer_id, pm.manufacturer_name, eo.remaining_amount, eo.ordered_at, eo.processed_at,
+>>>>>>> d36f86e28ae5cae41c0ce64ec7a87996439cbd88:esAPI/Migrations/V5__Get_Functions.sql
         CASE WHEN eo.processed_at IS NULL THEN 'PENDING' ELSE 'PROCESSED' END AS status
     FROM electronics_orders eo
     INNER JOIN companies c ON eo.manufacturer_id = c.company_id
