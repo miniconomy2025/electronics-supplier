@@ -1,63 +1,141 @@
 using esAPI.Data;
+using esAPI.Dtos.ElectronicsDto;
 using esAPI.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-[ApiController]
-[Route("electronics/orders")]
-public class ElectronicsOrdersController : ControllerBase
+
+namespace esAPI.Controllers
 {
-    private readonly AppDbContext _context;
+    [ApiController]
+    [Route("electronics/orders")]
+    public class ElectronicsOrdersController : ControllerBase
+    {
+        private readonly AppDbContext _context;
 
         public ElectronicsOrdersController(AppDbContext context)
-    {
-        _context = context;
-    }
-
-    [HttpPost]
-    public async Task<IActionResult> CreateOrder([FromBody] ElectronicsOrder order)
-    {
-        if (order == null || order.ManufacturerId <= 0 || order.Amount <= 0)
         {
-            return BadRequest("Invalid order data.");
+            _context = context;
         }
 
-        _context.ElectronicsOrders.Add(order);
-        order.OrderedAt = DateTime.UtcNow;
-        await _context.SaveChangesAsync();
-
-        return CreatedAtAction(nameof(GetOrderById), new { id = order.OrderId }, order);
-    }
-
-    [HttpGet]
-    public async Task<ActionResult<IEnumerable<ElectronicsOrder>>> GetAllOrders()
-    {
-        return await _context.ElectronicsOrders.ToListAsync();
-    }
-
-    [HttpGet("{orderId}")]
-    public async Task<ActionResult<ElectronicsOrder>> GetOrderById(int orderId)
-    {
-        var order = await _context.ElectronicsOrders.FindAsync(orderId);
-
-        if (order == null)
-            return NotFound();
-
-        return order;
-    }
-
-    [HttpPut("{orderId}")]
-    public async Task<IActionResult> UpdateOrder(int orderId, [FromBody] ElectronicsOrder order)
-    {
-        if (order == null || order.OrderId != orderId || order.ManufacturerId <= 0 || order.Amount <= 0)
+        [HttpPost]
+        public async Task<IActionResult> CreateOrder([FromBody] ElectronicsOrderCreateDto dto)
         {
-            return BadRequest("Invalid order data.");
+            if (dto == null || dto.ManufacturerId <= 0 || dto.RemainingAmount <= 0)
+                return BadRequest("Invalid order data.");
+
+            var order = new ElectronicsOrder
+            {
+                ManufacturerId = dto.ManufacturerId,
+                RemainingAmount = dto.RemainingAmount,
+                OrderedAt = DateTime.UtcNow
+            };
+            _context.ElectronicsOrders.Add(order);
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                return StatusCode(500, "An error occurred while saving the order.");
+            }
+
+            var readDto = new ElectronicsOrderReadDto
+            {
+                OrderId = order.OrderId,
+                ManufacturerId = order.ManufacturerId,
+                RemainingAmount = order.RemainingAmount,
+                OrderedAt = order.OrderedAt,
+                ProcessedAt = order.ProcessedAt
+            };
+
+            return CreatedAtAction(nameof(GetOrderById), new { orderId = order.OrderId }, readDto);
         }
 
-        _context.Entry(order).State = EntityState.Modified;
-        await _context.SaveChangesAsync();
+        [HttpGet]
+        public async Task<ActionResult<List<ElectronicsOrderReadDto>>> GetAllOrders()
+        {
+            var orders = await _context.ElectronicsOrders.ToListAsync();
 
-        return NoContent();
+            var dtoList = orders.Select(order => new ElectronicsOrderReadDto
+            {
+                OrderId = order.OrderId,
+                ManufacturerId = order.ManufacturerId,
+                RemainingAmount = order.RemainingAmount,
+                OrderedAt = order.OrderedAt,
+                ProcessedAt = order.ProcessedAt
+            }).ToList();
+
+            return Ok(dtoList);
+        }
+
+        [HttpGet("{orderId}")]
+        public async Task<ActionResult<ElectronicsOrderReadDto>> GetOrderById(int orderId)
+        {
+            var order = await _context.ElectronicsOrders.FindAsync(orderId);
+
+            if (order == null)
+                return NotFound();
+
+            var dto = new ElectronicsOrderReadDto
+            {
+                OrderId = order.OrderId,
+                ManufacturerId = order.ManufacturerId,
+                RemainingAmount = order.RemainingAmount,
+                OrderedAt = order.OrderedAt,
+                ProcessedAt = order.ProcessedAt
+            };
+
+            return Ok(dto);
+        }
+
+        [HttpPut("{orderId}")]
+        public async Task<IActionResult> UpdateOrder(int orderId, [FromBody] ElectronicsOrderUpdateDto dto)
+        {
+            if (dto == null || dto.ManufacturerId <= 0 || dto.RemainingAmount <= 0)
+                return BadRequest("Invalid order data.");
+
+            var existingOrder = await _context.ElectronicsOrders.FindAsync(orderId);
+            if (existingOrder == null)
+                return NotFound();
+
+            existingOrder.ManufacturerId = dto.ManufacturerId;
+            existingOrder.RemainingAmount = dto.RemainingAmount;
+            existingOrder.OrderedAt = dto.OrderedAt;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                return StatusCode(500, "An error occurred while updating the order.");
+            }
+
+            return NoContent();
+        }
+
+        [HttpDelete("{orderId}")]
+        public async Task<IActionResult> DeleteOrder(int orderId)
+        {
+            var order = await _context.ElectronicsOrders.FindAsync(orderId);
+            if (order == null)
+                return NotFound();
+
+            _context.ElectronicsOrders.Remove(order);
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                return StatusCode(500, "An error occurred while deleting the order.");
+            }
+
+            return NoContent();
+        }
     }
-
 }
+

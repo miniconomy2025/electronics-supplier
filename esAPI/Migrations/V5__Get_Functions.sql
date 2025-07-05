@@ -22,7 +22,7 @@ CREATE OR REPLACE FUNCTION get_all_machines()
 RETURNS TABLE (
     machine_id INT,
     ratio JSON,
-    status machine_status,
+    status VARCHAR(8),
     purchase_price FLOAT,
     purchased_at TIMESTAMPTZ,
     sold_at TIMESTAMPTZ
@@ -30,21 +30,22 @@ RETURNS TABLE (
     SELECT
         m.machine_id,
         COALESCE(json_object_agg(mat.material_name, r.ratio) FILTER (WHERE r.ratio_id IS NOT NULL), '{}') AS ratio,
-        m.status,
+        ms.status AS status,
         m.purchase_price,
         m.purchased_at,
         NULL::TIMESTAMPTZ AS sold_at
     FROM machines m
     LEFT JOIN machine_ratios r ON m.machine_id = r.machine_id
     LEFT JOIN materials mat ON r.material_id = mat.material_id
-    GROUP BY m.machine_id, m.status, m.purchase_price, m.purchased_at;
+    INNER JOIN machine_statuses ms ON m.status_id = ms.status_id
+    GROUP BY m.machine_id, ms.status, m.purchase_price, m.purchased_at;
 $$ LANGUAGE sql;
 
 CREATE OR REPLACE FUNCTION get_machine_by_id(p_machine_id INT)
 RETURNS TABLE (
     machine_id INT,
     ratio JSON,
-    status machine_status,
+    status VARCHAR(8),
     purchase_price FLOAT,
     purchased_at TIMESTAMPTZ,
     sold_at TIMESTAMPTZ
@@ -52,15 +53,16 @@ RETURNS TABLE (
     SELECT
         m.machine_id,
         COALESCE(json_object_agg(mat.material_name, r.ratio) FILTER (WHERE r.ratio_id IS NOT NULL), '{}') AS ratio,
-        m.status,
+        ms.status AS status,
         m.purchase_price,
         m.purchased_at,
         NULL::TIMESTAMPTZ AS sold_at
     FROM machines m
     LEFT JOIN machine_ratios r ON m.machine_id = r.machine_id
     LEFT JOIN materials mat ON r.material_id = mat.material_id
+    INNER JOIN machine_statuses ms ON m.status_id = ms.status_id
     WHERE m.machine_id = p_machine_id
-    GROUP BY m.machine_id, m.status, m.purchase_price, m.purchased_at;
+    GROUP BY m.machine_id, ms.status, m.purchase_price, m.purchased_at;
 $$ LANGUAGE sql;
 
 CREATE OR REPLACE FUNCTION get_all_machine_ratios()
@@ -145,15 +147,20 @@ RETURNS TABLE (
     WHERE mo.order_id = p_order_id;
 $$ LANGUAGE sql;
 
-CREATE OR REPLACE FUNCTION get_all_material_order_items()
-RETURNS SETOF material_order_items AS $$
-    SELECT * FROM material_order_items;
+DROP FUNCTION IF EXISTS get_all_material_orders();
+
+CREATE OR REPLACE FUNCTION get_all_material_orders()
+RETURNS SETOF material_orders AS $$
+    SELECT * FROM material_orders;
 $$ LANGUAGE sql;
 
-CREATE OR REPLACE FUNCTION get_material_order_item_by_id(p_item_id INT)
-RETURNS material_order_items AS $$
-    SELECT * FROM material_order_items WHERE item_id = p_item_id;
+DROP FUNCTION IF EXISTS get_material_order_by_id(INT);
+
+CREATE OR REPLACE FUNCTION get_material_order_by_id(p_order_id INT)
+RETURNS material_orders AS $$
+    SELECT * FROM material_orders WHERE order_id = p_order_id;
 $$ LANGUAGE sql;
+
 
 CREATE OR REPLACE FUNCTION get_all_phone_manufacturers()
 RETURNS SETOF phone_manufacturers AS $$
@@ -180,12 +187,12 @@ RETURNS TABLE (
     order_id INT,
     manufacturer_id INT,
     manufacturer_name VARCHAR(8),
-    amount INT,
+    remaining_amount INT,
     ordered_at TIMESTAMPTZ,
     processed_at TIMESTAMPTZ,
     status TEXT
 ) AS $$
-    SELECT eo.order_id, eo.manufacturer_id, pm.manufacturer_name, eo.amount, eo.ordered_at, eo.processed_at,
+    SELECT eo.order_id, eo.manufacturer_id, pm.manufacturer_name, eo.remaining_amount, eo.ordered_at, eo.processed_at,
         CASE WHEN eo.processed_at IS NULL THEN 'PENDING' ELSE 'PROCESSED' END AS status
     FROM electronics_orders eo
     INNER JOIN phone_manufacturers pm ON eo.manufacturer_id = pm.manufacturer_id;
@@ -196,12 +203,12 @@ RETURNS TABLE (
     order_id INT,
     manufacturer_id INT,
     manufacturer_name VARCHAR(8),
-    amount INT,
+    remaining_amount INT,
     ordered_at TIMESTAMPTZ,
     processed_at TIMESTAMPTZ,
     status TEXT
 ) AS $$
-    SELECT eo.order_id, eo.manufacturer_id, pm.manufacturer_name, eo.amount, eo.ordered_at, eo.processed_at,
+    SELECT eo.order_id, eo.manufacturer_id, pm.manufacturer_name, eo.remaining_amount, eo.ordered_at, eo.processed_at,
         CASE WHEN eo.processed_at IS NULL THEN 'PENDING' ELSE 'PROCESSED' END AS status
     FROM electronics_orders eo
     INNER JOIN phone_manufacturers pm ON eo.manufacturer_id = pm.manufacturer_id

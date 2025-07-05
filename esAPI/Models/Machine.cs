@@ -9,8 +9,8 @@ namespace esAPI.Models
         [Key]
         [Column("machine_id")]
         public int MachineId { get; set; }
-        [Column("status")]
-        public MachineStatus Status { get; set; }
+        [Column("status_id")]
+        public int StatusId { get; set; }
         [Column("purchase_price")]
         public float PurchasePrice { get; set; }
         [Column("purchased_at")]
