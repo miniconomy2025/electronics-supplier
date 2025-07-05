@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using esAPI.Data;
 using esAPI.Dtos;
-using esAPI.Models;
 
 namespace esAPI.Controllers
 {
@@ -74,7 +73,7 @@ namespace esAPI.Controllers
             var now = DateTime.UtcNow;
 
             var suppliesToAdd = Enumerable.Range(0, deliverAmount)
-                .Select(_ => new Supply
+                .Select(_ => new DTOs.Supply
                 {
                     MaterialId = order.MaterialId,
                     ReceivedAt = now
@@ -86,7 +85,7 @@ namespace esAPI.Controllers
             order.RemainingAmount -= deliverAmount;
 
             if (order.RemainingAmount == 0)
-                order.ReceivedAt = now;
+                // order.ReceivedAt = now; TODO: Fix
 
             await _context.SaveChangesAsync();
 
@@ -125,13 +124,13 @@ namespace esAPI.Controllers
             var now = DateTime.UtcNow;
             foreach (var e in electronicsToRemove)
             {
-                e.SoldAt = now;
+                // e.SoldAt = now; TODO: Fix
             }
 
             order.RemainingAmount -= pickupAmount;
 
             if (order.RemainingAmount == 0)
-                order.ProcessedAt = DateTime.UtcNow;
+                // order.ProcessedAt = DateTime.UtcNow; TODO: Fix
 
             await _context.SaveChangesAsync();
 

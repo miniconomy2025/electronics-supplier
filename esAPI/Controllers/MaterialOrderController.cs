@@ -1,11 +1,7 @@
-using System.Data;
-using System.Text.Json;
-using esAPI.Data;
+using Microsoft.AspNetCore.Mvc;
+
 using esAPI.DTOs.MaterialOrder;
 using esAPI.Services;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace esAPI.Controllers
 {

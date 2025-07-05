@@ -1,4 +1,4 @@
-namespace esAPI.Dtos.ElectronicsDto
+namespace esAPI.DTOs.Electronics
 {
     public class ElectronicsOrderCreateDto
     {

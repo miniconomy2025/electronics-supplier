@@ -1,7 +1,7 @@
-using esAPI.Data;
-using esAPI.Dtos.ElectronicsDtos;
 using Microsoft.AspNetCore.Mvc;
-using System.Threading.Tasks;
+
+using esAPI.DTOs.Electronics;
+using esAPI.Services;
 
 namespace esAPI.Controllers
 {

@@ -1,5 +1,5 @@
 using esAPI.Data;
-using esAPI.Dtos.ElectronicsDto;
+using esAPI.DTOs.Electronics;
 using esAPI.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -27,7 +27,7 @@ namespace esAPI.Controllers
             {
                 ManufacturerId = dto.ManufacturerId,
                 RemainingAmount = dto.RemainingAmount,
-                OrderedAt = DateTime.UtcNow
+                // OrderedAt = DateTime.UtcNow
             };
             _context.ElectronicsOrders.Add(order);
 
@@ -99,9 +99,9 @@ namespace esAPI.Controllers
             if (existingOrder == null)
                 return NotFound();
 
-            existingOrder.ManufacturerId = dto.ManufacturerId;
-            existingOrder.RemainingAmount = dto.RemainingAmount;
-            existingOrder.OrderedAt = dto.OrderedAt;
+            existingOrder.ManufacturerId = (int)dto.ManufacturerId;
+            existingOrder.RemainingAmount = (int)dto.RemainingAmount;
+            // existingOrder.OrderedAt = dto.OrderedAt;
 
             try
             {
