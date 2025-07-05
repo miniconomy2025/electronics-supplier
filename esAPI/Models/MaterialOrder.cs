@@ -12,10 +12,13 @@ namespace esAPI.Models
 
         [Column("supplier_id")]
         public int? SupplierId { get; set; }
+
         [Column("external_order_id")]
         public int? ExternalOrderId { get; set; }
+
         [Column("order_status")]
         public int OrderStatusId { get; set; }
+
         [Column("material_id")]
         public int MaterialId { get; set; }
 
@@ -33,6 +36,7 @@ namespace esAPI.Models
 
         [ForeignKey("MaterialId")]
         public Material? Material { get; set; }
+        
         [ForeignKey("OrderStatusId")]
         public OrderStatus? OrderStatus { get; set; }
     }

@@ -3,6 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace esAPI.Models
 {
+    [Table("simulation")]
     public class Simulation
     {
         [Key]
