@@ -6,6 +6,20 @@ CREATE TABLE companies (
   bank_account_number VARCHAR(12)
 );
 
+INSERT INTO companies (company_name)
+VALUES
+  ('electronics-supplier'),
+  ('screen-supplier'),
+  ('case-supplier'),
+  ('bulk-logistics'),
+  ('consumer-logistics'),
+  ('pear-company'),
+  ('sumsang-company'),
+  ('commercial-bank'),
+  ('retail-bank'),
+  ('thoh'),
+  ('recycler');
+
 -- Table: order_statuses
 -- Order statuses lookup table
 -- Enum datatype didn't work with Entity Framework
