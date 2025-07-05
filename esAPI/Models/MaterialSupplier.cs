@@ -3,13 +3,15 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace esAPI.Models
 {
-    [Table("material_suppliers")]
-    public class MaterialSupplier
+    [Table("companies")]
+    public class Company
     {
         [Key]
-        [Column("supplier_id")]
-        public int SupplierId { get; set; }
-        [Column("supplier_name")]
-        public string SupplierName { get; set; } = string.Empty;
+        [Column("company_id")]
+        public int CompanyId { get; set; }
+        [Column("company_name")]
+        public string CompanyName { get; set; } = string.Empty;
+        [Column("bank_account_number")]
+        public string? BankAccountNumber { get; set; }
     }
 } 
