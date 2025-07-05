@@ -113,5 +113,11 @@ BEGIN
     SET machine_status = standby_status
     WHERE machine_id = ANY(machine_ids);
 
+    -- Return the number of electronics created and materials used
+    RETURN QUERY
+    SELECT total_units AS electronics_created,
+           copper_needed * total_units AS copper_used,
+           silicone_needed * total_units AS silicone_used;
+
 END;
 $$;

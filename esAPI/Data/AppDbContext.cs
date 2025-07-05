@@ -22,6 +22,5 @@ namespace esAPI.Data
 
             base.OnModelCreating(modelBuilder);
         }
-        
     }
 }
