@@ -10,8 +10,12 @@ namespace esAPI.Models
         [Column("electronic_id")]
         public int ElectronicId { get; set; }
         [Column("produced_at")]
-        public DateTime ProducedAt { get; set; }
+        public decimal ProducedAt { get; set; }
+        [Column("electronics_status")]
+        public int ElectronicsStatusId { get; set; }
         [Column("sold_at")]
-        public DateTime? SoldAt { get; set; }
+        public decimal? SoldAt { get; set; }
+        [ForeignKey("ElectronicsStatusId")]
+        public ElectronicsStatus? ElectronicsStatus { get; set; }
     }
 } 

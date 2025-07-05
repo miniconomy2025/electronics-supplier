@@ -4,7 +4,6 @@ using esAPI.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-
 namespace esAPI.Controllers
 {
     [ApiController]
