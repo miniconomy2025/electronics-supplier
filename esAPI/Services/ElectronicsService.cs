@@ -23,7 +23,7 @@ namespace esAPI.Services
             return result.FirstOrDefault();
         }
 
-        public async Task<ProducedElectronicsResultDto> ProduceElectronicsAsync(int? machineId, string? notes)
+        public async Task<ProducedElectronicsResultDto> ProduceElectronicsAsync()
         {
             // Get current simulation day
             var sim = _context.Simulations.FirstOrDefault(s => s.IsRunning);
@@ -31,7 +31,7 @@ namespace esAPI.Services
                 throw new InvalidOperationException("Simulation not running.");
 
             var result = await _context.Database.SqlQueryRaw<ProduceElectronicsResult>(
-                "SELECT * FROM produce_electronics()")
+                "SELECT electronics_created AS ElectronicsCreated, copper_used AS CopperUsed, silicone_used AS SiliconeUsed FROM produce_electronics()")
                 .ToListAsync();
             var dto = new ProducedElectronicsResultDto();
             if (result.Count > 0)
