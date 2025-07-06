@@ -67,6 +67,7 @@ namespace esAPI.Controllers
                 return NotFound($"No material order found with ID {request.Id}");
 
             if (order.OrderStatusId == 5)
+            if (order.OrderStatusId == 5)
                 return BadRequest($"Order {request.Id} is already fully delivered.");
 
             int deliverAmount = Math.Min(order.RemainingAmount, request.Quantity);
@@ -200,9 +201,15 @@ namespace esAPI.Controllers
             if (sim == null)
                 return BadRequest("Simulation not running.");
 
+            var sim = _context.Simulations.FirstOrDefault(s => s.IsRunning);
+            if (sim == null)
+                return BadRequest("Simulation not running.");
+
             var now = DateTime.UtcNow;
             foreach (var e in electronicsToRemove)
             {
+                e.SoldAt = sim.DayNumber;
+                e.ElectronicsStatusId = 2;
                 e.SoldAt = sim.DayNumber;
                 e.ElectronicsStatusId = 2;
             }
@@ -219,7 +226,7 @@ namespace esAPI.Controllers
                 order.OrderStatusId = 4; // IN_PROGRESS
             }
 
-            await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync();
 
             return Ok(new
             {
