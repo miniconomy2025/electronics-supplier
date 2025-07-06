@@ -137,12 +137,12 @@ namespace esAPI.Tests.Controllers
             
             // Verify response matches swagger schema
             returnedDetails.Should().NotBeNull();
-            returnedDetails.AvailableStock.Should().BeOfType<int>("availableStock should be integer");
-            returnedDetails.PricePerUnit.Should().BeOfType<decimal>("pricePerUnit should be number");
+            returnedDetails.AvailableStock.Should().BeOfType(typeof(int), "availableStock should be integer");
+            returnedDetails.PricePerUnit.Should().BeOfType(typeof(decimal), "pricePerUnit should be number");
             
             // Verify property values are reasonable
-            returnedDetails.AvailableStock.Should().BeGreaterOrEqualTo(0, "stock cannot be negative");
-            returnedDetails.PricePerUnit.Should().BeGreaterOrEqualTo(0, "price cannot be negative");
+            returnedDetails.AvailableStock.Should().BeGreaterThanOrEqualTo(0, "stock cannot be negative");
+            returnedDetails.PricePerUnit.Should().BeGreaterThanOrEqualTo(0, "price cannot be negative");
         }
 
         [Fact]

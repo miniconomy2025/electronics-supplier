@@ -28,7 +28,7 @@ public class MachinesController : ControllerBase
 
         var machine = new Machine
         {
-            StatusId = status.StatusId,
+            MachineStatusId = status.StatusId,
             PurchasePrice = dto.PurchasePrice,
             // PurchasedAt = dto.PurchasedAt // TODO: Fix
         };
@@ -45,7 +45,7 @@ public class MachinesController : ControllerBase
     {
         return await _context.Machines
             .Join(_context.Set<MachineStatus>(),
-                  m => m.StatusId,
+                  m => m.MachineStatusId,
                   s => s.StatusId,
                   (m, s) => new MachineDto
                   {
@@ -63,7 +63,7 @@ public class MachinesController : ControllerBase
         var result = await _context.Machines
             .Where(m => m.MachineId == machineId)
             .Join(_context.Set<MachineStatus>(),
-                  m => m.StatusId,
+                  m => m.MachineStatusId,
                   s => s.StatusId,
                   (m, s) => new MachineDto
                   {
@@ -96,7 +96,7 @@ public class MachinesController : ControllerBase
         if (status == null)
             return BadRequest($"Status '{dto.Status}' does not exist.");
 
-        machine.StatusId = status.StatusId;
+        machine.MachineStatusId = status.StatusId;
         machine.PurchasePrice = dto.PurchasePrice;
         // machine.PurchasedAt = dto.PurchasedAt; // TODO: Fix
 
