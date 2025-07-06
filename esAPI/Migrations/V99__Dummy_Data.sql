@@ -49,13 +49,13 @@ INSERT INTO lookup_values (electronics_price_per_unit, changed_at) VALUES
 -- MACHINE ORDERS - Historical machine purchases
 -- ============================================================================
 
-INSERT INTO machine_orders (supplier_id, external_order_id, order_status, placed_at, received_at) VALUES
+INSERT INTO machine_orders (supplier_id, external_order_id, remaining_amount, order_status, placed_at, received_at) VALUES
 -- Orders from THoH (supplier_id = 10)
-(10, 1001, 5, 1.0, 3.0),   -- COMPLETED order
-(10, 1002, 5, 2.0, 4.0),   -- COMPLETED order
-(10, 1003, 5, 5.0, 7.0),   -- COMPLETED order
-(10, 1004, 4, 10.0, NULL), -- IN_PROGRESS order
-(10, 1005, 1, 12.0, NULL); -- PENDING order
+(10, 1001, 2, 5, 1.0, 3.0),   -- COMPLETED order
+(10, 1002, 1, 5, 2.0, 4.0),   -- COMPLETED order
+(10, 1003, 3, 5, 5.0, 7.0),   -- COMPLETED order
+(10, 1004, 2, 4, 10.0, NULL), -- IN_PROGRESS order
+(10, 1005, 1, 1, 12.0, NULL); -- PENDING order
 
 -- ============================================================================
 -- MACHINES - Manufacturing equipment inventory
