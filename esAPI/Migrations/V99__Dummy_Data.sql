@@ -179,17 +179,17 @@ INSERT INTO electronics (produced_at, electronics_status, sold_at) VALUES
 -- ELECTRONICS ORDERS - Customer orders from phone manufacturers
 -- ============================================================================
 
-INSERT INTO electronics_orders (order_status, manufacturer_id, remaining_amount, ordered_at, processed_at) VALUES
+INSERT INTO electronics_orders (order_status, manufacturer_id, total_amount, remaining_amount, ordered_at, processed_at) VALUES
 -- Completed orders
-(5, 6, 0, 8.0, 9.0),    -- Pear - 25 units (COMPLETED)
-(5, 7, 0, 9.0, 10.0),   -- SumSang - 25 units (COMPLETED)
-(5, 6, 0, 5.0, 6.0),    -- Pear - 50 units (COMPLETED)
+(5, 6, 25, 0, 8.0, 9.0),    -- Pear - 25 units (COMPLETED)
+(5, 7, 25, 0, 9.0, 10.0),   -- SumSang - 25 units (COMPLETED)
+(5, 6, 50, 0, 5.0, 6.0),    -- Pear - 50 units (COMPLETED)
 
 -- Active orders
-(1, 6, 75, 13.0, NULL), -- Pear - 75 units (PENDING)
-(1, 7, 100, 14.0, NULL), -- SumSang - 100 units (PENDING)
-(4, 6, 30, 11.0, NULL), -- Pear - 30 units (IN_PROGRESS)
+(1, 6, 75, 75, 13.0, NULL), -- Pear - 75 units (PENDING)
+(1, 7, 100, 100, 14.0, NULL), -- SumSang - 100 units (PENDING)
+(4, 6, 30, 30, 11.0, NULL), -- Pear - 30 units (IN_PROGRESS)
 
 -- Future orders
-(1, 7, 50, 15.0, NULL), -- SumSang - 50 units (PENDING)
-(1, 6, 40, 15.0, NULL); -- Pear - 40 units (PENDING)
+(1, 7, 50, 50, 15.0, NULL), -- SumSang - 50 units (PENDING)
+(1, 6, 40, 40, 15.0, NULL); -- Pear - 40 units (PENDING)

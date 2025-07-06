@@ -16,6 +16,9 @@ namespace esAPI.Models
         [Column("manufacturer_id")]
         public int ManufacturerId { get; set; }
 
+        [Column("total_amount")]
+        public int TotalAmount { get; set; }
+
         [Column("remaining_amount")]
         public int RemainingAmount { get; set; }
 
