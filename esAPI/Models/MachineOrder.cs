@@ -15,6 +15,8 @@ namespace esAPI.Models
         
         [Column("external_order_id")]
         public int? ExternalOrderId { get; set; }
+        [Column("remaining_amount")]
+        public int RemainingAmount { get; set; }
         
         [Column("order_status")]
         public int OrderStatusId { get; set; }
