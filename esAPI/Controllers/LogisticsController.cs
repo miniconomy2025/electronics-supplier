@@ -7,11 +7,12 @@ using esAPI.Models.Enums;
 
 using Machine = esAPI.Models.Machine;
 using MS = esAPI.Models.Enums.Machine;
+using Electronics = esAPI.Models.Enums.Electronics;
 
 namespace esAPI.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("logistics")]
     public class LogisticsController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -70,7 +71,7 @@ namespace esAPI.Controllers
             if (order == null)
                 return NotFound($"No material order found with ID {request.Id}");
 
-            if (order.OrderStatusId == (int) Order.Status.Pending)
+            if (order.OrderStatusId == (int) Order.Status.Completed)
                 return BadRequest($"Order {request.Id} is already fully delivered.");
 
             int deliverAmount = Math.Min(order.RemainingAmount, request.Quantity);
@@ -204,7 +205,6 @@ namespace esAPI.Controllers
             if (sim == null)
                 return BadRequest("Simulation not running.");
 
-            var now = DateTime.UtcNow;
             foreach (var e in electronicsToRemove)
             {
                 e.SoldAt = sim.DayNumber;
