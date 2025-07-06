@@ -17,7 +17,7 @@ namespace esAPI.Models
         public decimal ReceivedAt { get; set; }
         
         [Column("processed_at")]
-        public decimal ProcessedAt { get; set; }
+        public decimal? ProcessedAt { get; set; }
         
         [ForeignKey("MaterialId")]
         public Material? Material { get; set; }

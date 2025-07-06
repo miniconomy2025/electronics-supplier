@@ -26,7 +26,7 @@ namespace esAPI.Models
         public decimal? ProcessedAt { get; set; }
 
         [ForeignKey("ManufacturerId")]
-        public int Manufacturer { get; set; }
+        public Company? Manufacturer  { get; set; }
 
         [ForeignKey("OrderStatusId")]
         public OrderStatus? OrderStatus { get; set; }
