@@ -9,8 +9,8 @@ using System.Security.Authentication;
 var builder = WebApplication.CreateBuilder(args);
 
 //---------------------------- TLS Configuration ----------------------------
-var sharedRootCA = X509Certificate2.CreateFromPemFile("./certs/miniconomy-root-ca.crt");
-var commercialBankClientCert = X509Certificate2.CreateFromPemFile("certs/commercial-bank-client.pfx", "");
+var sharedRootCA = new X509Certificate2("../certs/miniconomy-root-ca.crt");
+// var commercialBankClientCert = X509Certificate2.CreateFromPemFile("../certs/commercial-bank-client.pfx", "");
 
 // Load other client certificates
 
@@ -49,19 +49,19 @@ builder.WebHost.ConfigureKestrel(options =>
 });
 
 // Example: Commercial Bank HTTP Client Configuration
-builder.Services.AddHttpClient("commercial-bank", client =>
-{
-    client.BaseAddress = new Uri("https://commercial-bank.com");
-})
-.ConfigurePrimaryHttpMessageHandler(() =>
-{
-    var handler = new HttpClientHandler();
-    handler.ClientCertificates.Add(commercialBankClientCert);
+// builder.Services.AddHttpClient("commercial-bank", client =>
+// {
+//     client.BaseAddress = new Uri("https://commercial-bank.com");
+// })
+// .ConfigurePrimaryHttpMessageHandler(() =>
+// {
+//     var handler = new HttpClientHandler();
+//     handler.ClientCertificates.Add(commercialBankClientCert);
 
-    handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
-        ValidateCertificateWithRoot(cert, chain, errors, sharedRootCA);
-    return handler;
-});
+//     handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
+//         ValidateCertificateWithRoot(cert, chain, errors, sharedRootCA);
+//     return handler;
+// });
 //--------------------------------------------------------------------------
 
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(

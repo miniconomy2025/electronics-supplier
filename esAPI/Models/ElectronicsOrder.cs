@@ -13,6 +13,7 @@ namespace esAPI.Models
         [Column("order_status")]
         public int OrderStatusId { get; set; }
 
+        [ForeignKey("ManufacturerId")]
         [Column("manufacturer_id")]
         public int ManufacturerId { get; set; }
 
@@ -24,9 +25,6 @@ namespace esAPI.Models
 
         [Column("processed_at")]
         public decimal? ProcessedAt { get; set; }
-
-        [ForeignKey("ManufacturerId")]
-        public int Manufacturer { get; set; }
 
         [ForeignKey("OrderStatusId")]
         public OrderStatus? OrderStatus { get; set; }

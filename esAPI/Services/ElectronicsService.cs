@@ -16,10 +16,11 @@ namespace esAPI.Services
 
         public async Task<ElectronicsDetailsDto?> GetElectronicsDetailsAsync()
         {
-            return await _context.Set<ElectronicsDetailsDto>()
-                .FromSqlRaw("SELECT * FROM available_electronics_stock")
-                .AsNoTracking()
+            var result = await _context.Database
+                .SqlQueryRaw<ElectronicsDetailsDto>("SELECT * FROM available_electronics_stock")
                 .FirstOrDefaultAsync();
+
+            return result;
         }
 
         public async Task<ProducedElectronicsResultDto> ProduceElectronicsAsync(int? machineId, string? notes)
@@ -60,4 +61,4 @@ namespace esAPI.Services
             public int SiliconeUsed { get; set; }
         }
     }
-} 
+}

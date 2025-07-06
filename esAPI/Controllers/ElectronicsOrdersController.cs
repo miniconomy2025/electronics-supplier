@@ -1,6 +1,7 @@
 using esAPI.Data;
 using esAPI.DTOs.Electronics;
 using esAPI.Models;
+using esAPI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,31 +9,46 @@ namespace esAPI.Controllers
 {
     [ApiController]
     [Route("electronics/orders")]
-    public class ElectronicsOrdersController : ControllerBase
+    public class ElectronicsOrdersController : BaseController
     {
-        private readonly AppDbContext _context;
+        private readonly IElectronicsService _electronicsService;
 
-        public ElectronicsOrdersController(AppDbContext context)
+        public ElectronicsOrdersController(AppDbContext context, IElectronicsService electronicsService) : base(context)
         {
-            _context = context;
+            _electronicsService = electronicsService;
         }
 
         [HttpPost]
         public async Task<IActionResult> CreateOrder([FromBody] ElectronicsOrderCreateDto dto)
         {
-            if (dto == null || dto.ManufacturerId <= 0 || dto.RemainingAmount <= 0)
-                return BadRequest("Invalid order data.");
-
             // Get current simulation day
             var sim = _context.Simulations.FirstOrDefault(s => s.IsRunning);
             if (sim == null)
                 return BadRequest("Simulation not running.");
 
+            // --- for testing disabled
+            // var manufacturer = await GetOrganizationalUnitFromCertificateAsync();
+            // if (manufacturer == null)
+            //     return Unauthorized("You must be authenticated to place an order.");
+            var manufacturer = await _context.Companies
+                .Where(c => c.CompanyId == 6) // 6 is pear-company
+                .FirstOrDefaultAsync();
+
+            if (dto == null || dto.Quantity <= 0)
+                return BadRequest("Invalid order data.");
+
+            var currentStock = await _electronicsService.GetElectronicsDetailsAsync();
+            if (currentStock == null || currentStock.availableStock < dto.Quantity)
+                return BadRequest("Insufficient stock available.");
+            
+
+
             var order = new ElectronicsOrder
             {
-                ManufacturerId = dto.ManufacturerId,
-                RemainingAmount = dto.RemainingAmount,
-                OrderedAt = sim.DayNumber
+                ManufacturerId = manufacturer.CompanyId,
+                RemainingAmount = dto.Quantity,
+                OrderedAt = sim.DayNumber,
+                OrderStatusId = 1
             };
             _context.ElectronicsOrders.Add(order);
 
@@ -40,18 +56,22 @@ namespace esAPI.Controllers
             {
                 await _context.SaveChangesAsync();
             }
-            catch (DbUpdateException)
+            catch (DbUpdateException ex)
             {
-                return StatusCode(500, "An error occurred while saving the order.");
+                return StatusCode(500, "An error occurred while saving the order." + ex);
             }
 
-            var readDto = new ElectronicsOrderReadDto
+            var bankNumber = await _context.Companies.
+                Where(c => c.CompanyId == 1) // 1 is us
+                .Select(c => c.BankAccountNumber)
+                .FirstOrDefaultAsync();
+
+            var readDto = new ElectronicsOrderResponseDto
             {
                 OrderId = order.OrderId,
-                ManufacturerId = order.ManufacturerId,
-                RemainingAmount = order.RemainingAmount,
-                OrderedAt = order.OrderedAt,
-                ProcessedAt = order.ProcessedAt
+                Quantity = order.RemainingAmount,
+                AmountDue = currentStock.pricePerUnit * (decimal)order.RemainingAmount,
+                BankNumber = bankNumber,
             };
 
             return CreatedAtAction(nameof(GetOrderById), new { orderId = order.OrderId }, readDto);
