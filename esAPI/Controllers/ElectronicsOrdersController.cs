@@ -109,8 +109,8 @@ namespace esAPI.Controllers
             if (sim == null)
                 return BadRequest("Simulation not running.");
 
-            existingOrder.ManufacturerId = (int)dto.ManufacturerId;
-            existingOrder.RemainingAmount = (int)dto.RemainingAmount;
+            existingOrder.ManufacturerId = dto.ManufacturerId ?? existingOrder.ManufacturerId;
+            existingOrder.RemainingAmount = dto.RemainingAmount ?? existingOrder.RemainingAmount;
             existingOrder.ProcessedAt = sim.DayNumber;
 
             try
