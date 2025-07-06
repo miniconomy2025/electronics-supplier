@@ -3,6 +3,10 @@ using Microsoft.EntityFrameworkCore;
 using esAPI.Data;
 using esAPI.Dtos;
 using esAPI.Models;
+using esAPI.Models.Enums;
+
+using Machine = esAPI.Models.Machine;
+using MS = esAPI.Models.Enums.Machine;
 
 namespace esAPI.Controllers
 {
@@ -66,7 +70,7 @@ namespace esAPI.Controllers
             if (order == null)
                 return NotFound($"No material order found with ID {request.Id}");
 
-            if (order.OrderStatusId == 5)
+            if (order.OrderStatusId == (int) Order.Status.Pending)
                 return BadRequest($"Order {request.Id} is already fully delivered.");
 
             int deliverAmount = Math.Min(order.RemainingAmount, request.Quantity);
@@ -94,11 +98,11 @@ namespace esAPI.Controllers
             if (order.RemainingAmount == 0)
             {
                 order.ReceivedAt = sim.DayNumber;
-                order.OrderStatusId = 5; // COMPLETED
+                order.OrderStatusId = (int) Order.Status.Completed; // COMPLETED
             }
-            else if (order.OrderStatusId == 1 || order.OrderStatusId == 2) // PENDING or ACCEPTED
+            else if (order.OrderStatusId == (int) Order.Status.Pending || order.OrderStatusId == (int) Order.Status.Accepted) // PENDING or ACCEPTED
             {
-                order.OrderStatusId = 4; // IN_PROGRESS
+                order.OrderStatusId = (int) Order.Status.InProgress; // IN_PROGRESS
             }
 
 
@@ -122,7 +126,7 @@ namespace esAPI.Controllers
             if (order == null)
                 return NotFound($"No machine order found with ID {request.Id}");
 
-            if (order.OrderStatusId == 5)
+            if (order.OrderStatusId == (int) Order.Status.Completed)
                 return BadRequest($"Order {request.Id} is already marked as completed.");
 
             int deliverAmount = Math.Min(order.RemainingAmount, request.Quantity);
@@ -139,7 +143,7 @@ namespace esAPI.Controllers
                 .Select(_ => new Machine
                 {
                     OrderId = order.OrderId,
-                    MachineStatusId = 1,
+                    MachineStatusId = (int) MS.Status.Standby,
                     ReceivedAt = sim.DayNumber,
                     PurchasedAt = sim.DayNumber,
                     PurchasePrice = 0
@@ -154,11 +158,11 @@ namespace esAPI.Controllers
             if (order.RemainingAmount == 0)
             {
                 order.ReceivedAt = sim.DayNumber;
-                order.OrderStatusId = 5; // COMPLETED
+                order.OrderStatusId = (int) Order.Status.Completed; // COMPLETED
             }
-            else if (order.OrderStatusId == 1 || order.OrderStatusId == 2) // PENDING or ACCEPTED
+            else if (order.OrderStatusId == (int) Order.Status.Pending || order.OrderStatusId == (int) Order.Status.Accepted) // PENDING or ACCEPTED
             {
-                order.OrderStatusId = 4; // IN_PROGRESS
+                order.OrderStatusId = (int) Order.Status.InProgress; // IN_PROGRESS
             }
 
             await _context.SaveChangesAsync();
@@ -204,7 +208,7 @@ namespace esAPI.Controllers
             foreach (var e in electronicsToRemove)
             {
                 e.SoldAt = sim.DayNumber;
-                e.ElectronicsStatusId = 2;
+                e.ElectronicsStatusId = (int) Electronics.Status.Reserved;
             }
 
             order.RemainingAmount -= pickupAmount;
@@ -212,11 +216,11 @@ namespace esAPI.Controllers
             if (order.RemainingAmount == 0)
             {
                 order.ProcessedAt = sim.DayNumber;
-                order.OrderStatusId = 5; // COMPLETED
+                order.OrderStatusId = (int) Order.Status.Completed; // COMPLETED
             }
-            else if (order.OrderStatusId == 1 || order.OrderStatusId == 2) // PENDING or ACCEPTED
+            else if (order.OrderStatusId == (int) Order.Status.Pending || order.OrderStatusId == (int) Order.Status.Accepted) // PENDING or ACCEPTED
             {
-                order.OrderStatusId = 4; // IN_PROGRESS
+                order.OrderStatusId = (int) Order.Status.InProgress; // IN_PROGRESS
             }
 
                 await _context.SaveChangesAsync();
