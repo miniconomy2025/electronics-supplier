@@ -12,9 +12,14 @@ namespace esAPI.Models
         public int OrderId { get; set; }
 
         [Column("supplier_id")]
-        public int SupplierId { get; set; }
+        public int? SupplierId { get; set; }
+
         [Column("external_order_id")]
-        public int ExternalOrderId { get; set; }
+        public int? ExternalOrderId { get; set; }
+
+        [Column("order_status")]
+        public int OrderStatusId { get; set; }
+
         [Column("material_id")]
         public int MaterialId { get; set; }
 
@@ -22,16 +27,19 @@ namespace esAPI.Models
         public int RemainingAmount { get; set; }
 
         [Column("ordered_at")]
-        public DateTime OrderedAt { get; set; }
+        public decimal OrderedAt { get; set; }
 
         [Column("received_at")]
-        public DateTime? ReceivedAt { get; set; }
+        public decimal? ReceivedAt { get; set; }
 
         [ForeignKey("SupplierId")]
-        public MaterialSupplier? Supplier { get; set; }
+        public Company? Supplier { get; set; }
 
         [ForeignKey("MaterialId")]
         public Material? Material { get; set; }
+        
+        [ForeignKey("OrderStatusId")]
+        public OrderStatus? OrderStatus { get; set; }
     }
 }
 

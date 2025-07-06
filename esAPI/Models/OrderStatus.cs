@@ -3,15 +3,14 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace esAPI.Models
 {
-    [Table("machine_statuses")]
-    public class MachineStatus
+    [Table("order_statuses")]
+    public class OrderStatus
     {
         [Key]
         [Column("status_id")]
         public int StatusId { get; set; }
         
         [Column("status")]
-        [Required]
-        public required string Status { get; set; }
+        public string Status { get; set; } = string.Empty;
     }
-}
+} 

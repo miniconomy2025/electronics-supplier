@@ -20,7 +20,7 @@ public class MachinesController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var status = await _context.Set<MachineStatuses>()
+        var status = await _context.Set<MachineStatus>()
             .FirstOrDefaultAsync(s => s.Status == dto.Status);
 
         if (status == null)
@@ -30,7 +30,7 @@ public class MachinesController : ControllerBase
         {
             StatusId = status.StatusId,
             PurchasePrice = dto.PurchasePrice,
-            PurchasedAt = dto.PurchasedAt
+            // PurchasedAt = dto.PurchasedAt // TODO: Fix
         };
 
         _context.Machines.Add(machine);
@@ -44,7 +44,7 @@ public class MachinesController : ControllerBase
     public async Task<ActionResult<IEnumerable<MachineDto>>> GetMachines()
     {
         return await _context.Machines
-            .Join(_context.Set<MachineStatuses>(),
+            .Join(_context.Set<MachineStatus>(),
                   m => m.StatusId,
                   s => s.StatusId,
                   (m, s) => new MachineDto
@@ -52,7 +52,7 @@ public class MachinesController : ControllerBase
                       MachineId = m.MachineId,
                       Status = s.Status,
                       PurchasePrice = m.PurchasePrice,
-                      PurchasedAt = m.PurchasedAt
+                    //   PurchasedAt = m.PurchasedAt // TODO: Fix
                   })
             .ToListAsync();
     }
@@ -62,7 +62,7 @@ public class MachinesController : ControllerBase
     {
         var result = await _context.Machines
             .Where(m => m.MachineId == machineId)
-            .Join(_context.Set<MachineStatuses>(),
+            .Join(_context.Set<MachineStatus>(),
                   m => m.StatusId,
                   s => s.StatusId,
                   (m, s) => new MachineDto
@@ -70,7 +70,7 @@ public class MachinesController : ControllerBase
                       MachineId = m.MachineId,
                       Status = s.Status,
                       PurchasePrice = m.PurchasePrice,
-                      PurchasedAt = m.PurchasedAt
+                    //   PurchasedAt = m.PurchasedAt // TODO: Fix
                   })
             .FirstOrDefaultAsync();
 
@@ -90,7 +90,7 @@ public class MachinesController : ControllerBase
         if (machine == null)
             return NotFound();
 
-        var status = await _context.Set<MachineStatuses>()
+        var status = await _context.Set<MachineStatus>()
             .FirstOrDefaultAsync(s => s.Status == dto.Status);
 
         if (status == null)
@@ -98,7 +98,7 @@ public class MachinesController : ControllerBase
 
         machine.StatusId = status.StatusId;
         machine.PurchasePrice = dto.PurchasePrice;
-        machine.PurchasedAt = dto.PurchasedAt;
+        // machine.PurchasedAt = dto.PurchasedAt; // TODO: Fix
 
         await _context.SaveChangesAsync();
         return NoContent();

@@ -1,9 +1,8 @@
 using esAPI.Data;
-using esAPI.Dtos.ElectronicsDto;
+using esAPI.DTOs.Electronics;
 using esAPI.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-
 
 namespace esAPI.Controllers
 {
@@ -24,11 +23,16 @@ namespace esAPI.Controllers
             if (dto == null || dto.ManufacturerId <= 0 || dto.RemainingAmount <= 0)
                 return BadRequest("Invalid order data.");
 
+            // Get current simulation day
+            var sim = _context.Simulations.FirstOrDefault(s => s.IsRunning);
+            if (sim == null)
+                return BadRequest("Simulation not running.");
+
             var order = new ElectronicsOrder
             {
                 ManufacturerId = dto.ManufacturerId,
                 RemainingAmount = dto.RemainingAmount,
-                OrderedAt = DateTime.UtcNow
+                OrderedAt = sim.DayNumber
             };
             _context.ElectronicsOrders.Add(order);
 
@@ -100,9 +104,14 @@ namespace esAPI.Controllers
             if (existingOrder == null)
                 return NotFound();
 
-            existingOrder.ManufacturerId = dto.ManufacturerId;
-            existingOrder.RemainingAmount = dto.RemainingAmount;
-            existingOrder.OrderedAt = dto.OrderedAt;
+            // Get current simulation day
+            var sim = _context.Simulations.FirstOrDefault(s => s.IsRunning);
+            if (sim == null)
+                return BadRequest("Simulation not running.");
+
+            existingOrder.ManufacturerId = (int)dto.ManufacturerId;
+            existingOrder.RemainingAmount = (int)dto.RemainingAmount;
+            existingOrder.ProcessedAt = sim.DayNumber;
 
             try
             {

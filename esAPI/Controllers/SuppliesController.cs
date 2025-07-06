@@ -1,8 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using esAPI.Data;
-using esAPI.Models;
-using esAPI.Dtos;
+
+using esAPI.DTOs.Supply;
+using esAPI.Services;
 
 namespace esAPI.Controllers
 {
@@ -10,87 +9,48 @@ namespace esAPI.Controllers
     [Route("api/[controller]")]
     public class SuppliesController : ControllerBase
     {
-        private readonly AppDbContext _context;
-
-        public SuppliesController(AppDbContext context)
+        private readonly ISupplyService _service;
+        public SuppliesController(ISupplyService service)
         {
-            _context = context;
+            _service = service;
         }
 
         [HttpPost]
         public async Task<IActionResult> CreateSupply([FromBody] CreateSupplyDto dto)
         {
-            var materialExists = await _context.Materials.AnyAsync(m => m.MaterialId == dto.MaterialId);
-            if (!materialExists)
-                return NotFound($"Material with ID {dto.MaterialId} does not exist.");
-
-            var supply = new Supply
+            try
             {
-                MaterialId = dto.MaterialId,
-                ReceivedAt = dto.ReceivedAt,
-                ProcessedAt = dto.ProcessedAt
-            };
-
-            _context.Supplies.Add(supply);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(GetSupplyById), new { id = supply.SupplyId }, supply);
+                var created = await _service.CreateSupplyAsync(dto);
+                return CreatedAtAction(nameof(GetSupplyById), new { id = created.SupplyId }, created);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
         }
-
 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<SupplyDto>>> GetAllSupplies()
         {
-            var supplies = await _context.Supplies
-                .Include(s => s.Material)
-                .Select(s => new SupplyDto
-                {
-                    SupplyId = s.SupplyId,
-                    ReceivedAt = s.ReceivedAt,
-                    ProcessedAt = s.ProcessedAt,
-                    MaterialId = s.MaterialId,
-                    MaterialName = s.Material!.MaterialName
-                })
-                .ToListAsync();
-
+            var supplies = await _service.GetAllSuppliesAsync();
             return Ok(supplies);
         }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<SupplyDto>> GetSupplyById(int id)
         {
-            var supply = await _context.Supplies
-                .Include(s => s.Material)
-                .FirstOrDefaultAsync(s => s.SupplyId == id);
-
+            var supply = await _service.GetSupplyByIdAsync(id);
             if (supply == null)
                 return NotFound();
-
-            var dto = new SupplyDto
-            {
-                SupplyId = supply.SupplyId,
-                MaterialId = supply.MaterialId,
-                ReceivedAt = supply.ReceivedAt,
-                ProcessedAt = supply.ProcessedAt,
-                MaterialName = supply.Material?.MaterialName
-            };
-
-            return Ok(dto);
+            return Ok(supply);
         }
 
-        
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteSupplyById(int id)
         {
-            var supply = await _context.Supplies.FindAsync(id);
-            if (supply == null)
-            {
+            var deleted = await _service.DeleteSupplyByIdAsync(id);
+            if (!deleted)
                 return NotFound($"Supply with ID {id} was not found.");
-            }
-
-            _context.Supplies.Remove(supply);
-            await _context.SaveChangesAsync();
-
             return NoContent();
         }
     }
