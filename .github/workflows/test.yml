@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [ main, dev, tevlen/testing ]
 
+permissions:
+  contents: read
+  actions: read
+  checks: write
+
 jobs:
   unit-tests:
     name: Run Unit Tests
