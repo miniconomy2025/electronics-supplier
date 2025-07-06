@@ -16,11 +16,14 @@ namespace esAPI.Data
         public DbSet<ElectronicsOrder> ElectronicsOrders { get; set; }
         
         public DbSet<MachineStatuses> MachineStatuses { get; set; }
+        public DbSet<CurrentSupply> CurrentSupplies { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
 
             base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<CurrentSupply>().ToView("current_supplies");
         }
         
     }

@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
 
 namespace esAPI.Models
 {
@@ -32,4 +33,17 @@ namespace esAPI.Models
         [ForeignKey("MaterialId")]
         public Material? Material { get; set; }
     }
+}
+
+[Keyless]
+public class CurrentSupply
+{
+    [Column("material_id")]
+    public int MaterialId { get; set; }
+
+    [Column("material_name")]
+    public required string MaterialName { get; set; }
+
+    [Column("available_supply")]
+    public int AvailableSupply { get; set; }
 }

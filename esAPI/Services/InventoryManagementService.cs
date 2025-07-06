@@ -54,25 +54,13 @@ public class InventoryManagementService : BackgroundService
     {
         _logger.LogInformation("Checking inventory levels...");
 
-        // We need to create a new scope to resolve scoped services like DbContext
-        // inside a singleton background service. This is a critical pattern.
         using var scope = _serviceProvider.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        // Get current stock levels for materials we care about
-        var currentStock = await dbContext.Materials
-            .Where(m => _lowStockThresholds.ContainsKey(m.MaterialName))
-            .Select(m => new
-            {
-                m.MaterialId,
-                m.MaterialName,
-                Quantity = m.MaterialOrderItems.SelectMany(i => i.Order!.Items)
-                    .Where(supply => supply.Order!.ReceivedAt != null && supply.Order.Items.All(item => item.Order!.ReceivedAt == null))
-                    .Count()
-            })
+        var currentStock = await dbContext.CurrentSupplies
+            .Where(s => _lowStockThresholds.ContainsKey(s.MaterialName))
             .ToListAsync();
-        
-        // Let's get supplierId for "THoH"
+
         var thohSupplier = await dbContext.MaterialSuppliers
             .FirstOrDefaultAsync(s => s.SupplierName == "THoH");
 
@@ -82,33 +70,26 @@ public class InventoryManagementService : BackgroundService
             return;
         }
 
-        var itemsToOrder = new List<object>();
+        
         foreach (var stockItem in currentStock)
         {
-            if (stockItem.Quantity < _lowStockThresholds[stockItem.MaterialName])
+            if (stockItem.AvailableSupply < _lowStockThresholds[stockItem.MaterialName])
             {
-                _logger.LogInformation("Low stock for {Material}: {Quantity} units. Threshold is {Threshold}. Queueing reorder.",
-                    stockItem.MaterialName, stockItem.Quantity, _lowStockThresholds[stockItem.MaterialName]);
+                _logger.LogInformation("Low stock for {Material}: {Quantity} units. Threshold is {Threshold}. Placing reorder.",
+                    stockItem.MaterialName, stockItem.AvailableSupply, _lowStockThresholds[stockItem.MaterialName]);
 
-                itemsToOrder.Add(new { material_id = stockItem.MaterialId, amount = _reorderAmounts[stockItem.MaterialName] });
+                await PlaceReorderAsync(dbContext,
+                    thohSupplier.SupplierId,
+                    stockItem.MaterialId,
+                    _reorderAmounts[stockItem.MaterialName]
+                );
             }
-        }
-
-        if (itemsToOrder.Any())
-        {
-            await PlaceReorderAsync(dbContext, thohSupplier.SupplierId, itemsToOrder);
-        }
-        else
-        {
-            _logger.LogInformation("Inventory levels are sufficient. No reorder needed.");
         }
     }
 
-    private async Task PlaceReorderAsync(DbContext context, int supplierId, List<object> items)
+    private async Task PlaceReorderAsync(DbContext context, int supplierId, int materialId, int amount)
     {
-        _logger.LogInformation("Placing automatic reorder to supplier ID {SupplierId} for {ItemCount} item types.", supplierId, items.Count);
         
-        var itemsJson = JsonSerializer.Serialize(items);
         var createdOrderIdParam = new NpgsqlParameter("p_created_order_id", DbType.Int32)
         {
             Direction = ParameterDirection.InputOutput,
@@ -118,17 +99,18 @@ public class InventoryManagementService : BackgroundService
         try
         {
             await context.Database.ExecuteSqlRawAsync(
-                "CALL create_material_order_with_items(@p_supplier_id, @p_items::jsonb, @p_created_order_id)",
+                "CALL create_material_order(@p_supplier_id, @p_material_id, @p_remaining_amount, @p_created_order_id)",
                 new NpgsqlParameter("p_supplier_id", supplierId),
-                new NpgsqlParameter("p_items", itemsJson),
+                new NpgsqlParameter("p_material_id", materialId),
+                new NpgsqlParameter("p_remaining_amount", amount),
                 createdOrderIdParam
             );
-            
+
             _logger.LogInformation("Successfully placed automatic reorder. New Order ID: {OrderId}", createdOrderIdParam.Value);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to place automatic reorder.");
+            _logger.LogError(ex, "Failed to place automatic reorder for material ID {MaterialId}.", materialId);
         }
     }
 }
