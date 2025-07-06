@@ -63,7 +63,7 @@ namespace esAPI.Controllers
             if (order == null)
                 return NotFound($"No material order found with ID {request.Id}");
 
-            if (order.RemainingAmount <= 0)
+            if (order.OrderStatusId == 5)
                 return BadRequest($"Order {request.Id} is already fully delivered.");
 
             int deliverAmount = Math.Min(order.RemainingAmount, request.Quantity);
@@ -89,7 +89,15 @@ namespace esAPI.Controllers
             order.RemainingAmount -= deliverAmount;
 
             if (order.RemainingAmount == 0)
-                // order.ReceivedAt = now; TODO: Fix
+            {
+                order.ReceivedAt = sim.DayNumber;
+                order.OrderStatusId = 5; // COMPLETED
+            }
+            if (order.OrderStatusId == 1 || order.OrderStatusId == 2) // PENDING or ACCEPTED
+            {
+                order.OrderStatusId = 4; // IN_PROGRESS
+            }
+
 
             await _context.SaveChangesAsync();
 
@@ -125,18 +133,31 @@ namespace esAPI.Controllers
             if (electronicsToRemove.Count < pickupAmount)
                 return BadRequest("Not enough electronics stock available to fulfill the pickup.");
 
+            var sim = _context.Simulations.FirstOrDefault(s => s.IsRunning);
+            if (sim == null)
+                return BadRequest("Simulation not running.");
+
             var now = DateTime.UtcNow;
             foreach (var e in electronicsToRemove)
             {
-                // e.SoldAt = now; TODO: Fix
+                e.SoldAt = sim.DayNumber;
+                e.ElectronicsStatusId = 2;
             }
 
             order.RemainingAmount -= pickupAmount;
 
             if (order.RemainingAmount == 0)
-                // order.ProcessedAt = DateTime.UtcNow; TODO: Fix
+            {
+                order.ProcessedAt = sim.DayNumber;
+                order.OrderStatusId = 5; // COMPLETED
+            }
 
-            await _context.SaveChangesAsync();
+            if (order.OrderStatusId == 1 || order.OrderStatusId == 2) // PENDING or ACCEPTED
+            {
+                order.OrderStatusId = 4; // IN_PROGRESS
+            }
+
+                await _context.SaveChangesAsync();
 
             return Ok(new
             {

@@ -96,28 +96,28 @@ INSERT INTO material_orders (supplier_id, external_order_id, material_id, remain
 -- Copper supplies (available for production)
 INSERT INTO material_supplies (material_id, received_at, processed_at) VALUES
 -- From order 2001 (500 units) - 200 used, 300 remaining
-(1, 2.0, 0), (1, 2.0, 0), (1, 2.0, 0), (1, 2.0, 0), (1, 2.0, 0),
-(1, 2.0, 0), (1, 2.0, 0), (1, 2.0, 0), (1, 2.0, 0), (1, 2.0, 0),
-(1, 2.0, 0), (1, 2.0, 0), (1, 2.0, 0), (1, 2.0, 0), (1, 2.0, 0),
-(1, 2.0, 0), (1, 2.0, 0), (1, 2.0, 0), (1, 2.0, 0), (1, 2.0, 0),
+(1, 2.0, NULL), (1, 2.0, NULL), (1, 2.0, NULL), (1, 2.0, NULL), (1, 2.0, NULL),
+(1, 2.0, NULL), (1, 2.0, NULL), (1, 2.0, NULL), (1, 2.0, NULL), (1, 2.0, NULL),
+(1, 2.0, NULL), (1, 2.0, NULL), (1, 2.0, NULL), (1, 2.0, NULL), (1, 2.0, NULL),
+(1, 2.0, NULL), (1, 2.0, NULL), (1, 2.0, NULL), (1, 2.0, NULL), (1, 2.0, NULL),
 -- Additional copper from order 2002 (300 units) - 100 used, 200 remaining
-(1, 4.0, 0), (1, 4.0, 0), (1, 4.0, 0), (1, 4.0, 0), (1, 4.0, 0),
-(1, 4.0, 0), (1, 4.0, 0), (1, 4.0, 0), (1, 4.0, 0), (1, 4.0, 0),
-(1, 4.0, 0), (1, 4.0, 0), (1, 4.0, 0), (1, 4.0, 0), (1, 4.0, 0),
-(1, 4.0, 0), (1, 4.0, 0), (1, 4.0, 0), (1, 4.0, 0), (1, 4.0, 0);
+(1, 4.0, NULL), (1, 4.0, NULL), (1, 4.0, NULL), (1, 4.0, NULL), (1, 4.0, NULL),
+(1, 4.0, NULL), (1, 4.0, NULL), (1, 4.0, NULL), (1, 4.0, NULL), (1, 4.0, NULL),
+(1, 4.0, NULL), (1, 4.0, NULL), (1, 4.0, NULL), (1, 4.0, NULL), (1, 4.0, NULL),
+(1, 4.0, NULL), (1, 4.0, NULL), (1, 4.0, NULL), (1, 4.0, NULL), (1, 4.0, NULL);
 
 -- Silicone supplies (available for production)
 INSERT INTO material_supplies (material_id, received_at, processed_at) VALUES
 -- From order 2006 (400 units) - 150 used, 250 remaining
-(2, 2.0, 0), (2, 2.0, 0), (2, 2.0, 0), (2, 2.0, 0), (2, 2.0, 0),
-(2, 2.0, 0), (2, 2.0, 0), (2, 2.0, 0), (2, 2.0, 0), (2, 2.0, 0),
-(2, 2.0, 0), (2, 2.0, 0), (2, 2.0, 0), (2, 2.0, 0), (2, 2.0, 0),
-(2, 2.0, 0), (2, 2.0, 0), (2, 2.0, 0), (2, 2.0, 0), (2, 2.0, 0),
-(2, 2.0, 0), (2, 2.0, 0), (2, 2.0, 0), (2, 2.0, 0), (2, 2.0, 0),
+(2, 2.0, NULL), (2, 2.0, NULL), (2, 2.0, NULL), (2, 2.0, NULL), (2, 2.0, NULL),
+(2, 2.0, NULL), (2, 2.0, NULL), (2, 2.0, NULL), (2, 2.0, NULL), (2, 2.0, NULL),
+(2, 2.0, NULL), (2, 2.0, NULL), (2, 2.0, NULL), (2, 2.0, NULL), (2, 2.0, NULL),
+(2, 2.0, NULL), (2, 2.0, NULL), (2, 2.0, NULL), (2, 2.0, NULL), (2, 2.0, NULL),
+(2, 2.0, NULL), (2, 2.0, NULL), (2, 2.0, NULL), (2, 2.0, NULL), (2, 2.0, NULL),
 -- Additional silicone from order 2007 (200 units) - 50 used, 150 remaining
-(2, 5.0, 0), (2, 5.0, 0), (2, 5.0, 0), (2, 5.0, 0), (2, 5.0, 0),
-(2, 5.0, 0), (2, 5.0, 0), (2, 5.0, 0), (2, 5.0, 0), (2, 5.0, 0),
-(2, 5.0, 0), (2, 5.0, 0), (2, 5.0, 0), (2, 5.0, 0), (2, 5.0, 0);
+(2, 5.0, NULL), (2, 5.0, NULL), (2, 5.0, NULL), (2, 5.0, NULL), (2, 5.0, NULL),
+(2, 5.0, NULL), (2, 5.0, NULL), (2, 5.0, NULL), (2, 5.0, NULL), (2, 5.0, NULL),
+(2, 5.0, NULL), (2, 5.0, NULL), (2, 5.0, NULL), (2, 5.0, NULL), (2, 5.0, NULL);
 
 -- Used materials (processed_at > 0)
 INSERT INTO material_supplies (material_id, received_at, processed_at) VALUES
