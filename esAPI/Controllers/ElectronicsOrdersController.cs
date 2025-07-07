@@ -48,7 +48,7 @@ namespace esAPI.Controllers
                 ManufacturerId = manufacturer.CompanyId,
                 RemainingAmount = dto.Quantity,
                 OrderedAt = sim.DayNumber,
-                OrderStatusId = 1
+                OrderStatusId = 1 //  1 is the ID for "Pending" status
             };
             _context.ElectronicsOrders.Add(order);
 
@@ -80,16 +80,22 @@ namespace esAPI.Controllers
         [HttpGet]
         public async Task<ActionResult<List<ElectronicsOrderReadDto>>> GetAllOrders()
         {
-            var orders = await _context.ElectronicsOrders.ToListAsync();
-
-            var dtoList = orders.Select(order => new ElectronicsOrderReadDto
-            {
-                OrderId = order.OrderId,
-                ManufacturerId = order.ManufacturerId,
-                RemainingAmount = order.RemainingAmount,
-                OrderedAt = order.OrderedAt,
-                ProcessedAt = order.ProcessedAt
-            }).ToList();
+            var dtoList = await _context.ElectronicsOrders
+                .AsNoTracking()
+                .Join(
+                    _context.OrderStatuses,
+                    order => order.OrderStatusId,
+                    status => status.StatusId,
+                    (order, status) => new ElectronicsOrderReadDto
+                    {
+                        OrderId = order.OrderId,
+                        RemainingAmount = order.RemainingAmount,
+                        OrderedAt = order.OrderedAt,
+                        ProcessedAt = order.ProcessedAt,
+                        OrderStatus = status.Status
+                    }
+                )
+                .ToListAsync();
 
             return Ok(dtoList);
         }
@@ -97,19 +103,26 @@ namespace esAPI.Controllers
         [HttpGet("{orderId}")]
         public async Task<ActionResult<ElectronicsOrderReadDto>> GetOrderById(int orderId)
         {
-            var order = await _context.ElectronicsOrders.FindAsync(orderId);
+            var dto = await _context.ElectronicsOrders
+                .AsNoTracking()
+                .Where(order => order.OrderId == orderId)
+                .Join(
+                    _context.OrderStatuses,
+                    order => order.OrderStatusId,
+                    status => status.StatusId,
+                    (order, status) => new ElectronicsOrderReadDto
+                    {
+                        OrderId = order.OrderId,
+                        RemainingAmount = order.RemainingAmount,
+                        OrderedAt = order.OrderedAt,
+                        ProcessedAt = order.ProcessedAt,
+                        OrderStatus = status.Status
+                    }
+                )
+                .FirstOrDefaultAsync();
 
-            if (order == null)
+            if (dto == null)
                 return NotFound();
-
-            var dto = new ElectronicsOrderReadDto
-            {
-                OrderId = order.OrderId,
-                ManufacturerId = order.ManufacturerId,
-                RemainingAmount = order.RemainingAmount,
-                OrderedAt = order.OrderedAt,
-                ProcessedAt = order.ProcessedAt
-            };
 
             return Ok(dto);
         }
@@ -117,21 +130,29 @@ namespace esAPI.Controllers
         [HttpPut("{orderId}")]
         public async Task<IActionResult> UpdateOrder(int orderId, [FromBody] ElectronicsOrderUpdateDto dto)
         {
-            if (dto == null || dto.ManufacturerId <= 0 || dto.RemainingAmount <= 0)
+            if (dto == null)
                 return BadRequest("Invalid order data.");
 
             var existingOrder = await _context.ElectronicsOrders.FindAsync(orderId);
             if (existingOrder == null)
                 return NotFound();
 
-            // Get current simulation day
-            var sim = _context.Simulations.FirstOrDefault(s => s.IsRunning);
-            if (sim == null)
-                return BadRequest("Simulation not running.");
+            if (dto.RemainingAmount.HasValue)
+                existingOrder.RemainingAmount = dto.RemainingAmount.Value;
 
-            existingOrder.ManufacturerId = (int)dto.ManufacturerId;
-            existingOrder.RemainingAmount = (int)dto.RemainingAmount;
-            existingOrder.ProcessedAt = sim.DayNumber;
+            if (dto.ProcessedAt.HasValue)
+                existingOrder.ProcessedAt = dto.ProcessedAt.Value;
+
+            if (!string.IsNullOrWhiteSpace(dto.OrderStatus))
+            {
+                var statusId = await _context.OrderStatuses
+                    .Where(s => s.Status == dto.OrderStatus)
+                    .Select(s => s.StatusId)
+                    .FirstOrDefaultAsync();
+                if (statusId == 0)
+                    return BadRequest($"Order status '{dto.OrderStatus}' not found.");
+                existingOrder.OrderStatusId = statusId;
+            }
 
             try
             {
@@ -140,27 +161,6 @@ namespace esAPI.Controllers
             catch (DbUpdateException)
             {
                 return StatusCode(500, "An error occurred while updating the order.");
-            }
-
-            return NoContent();
-        }
-
-        [HttpDelete("{orderId}")]
-        public async Task<IActionResult> DeleteOrder(int orderId)
-        {
-            var order = await _context.ElectronicsOrders.FindAsync(orderId);
-            if (order == null)
-                return NotFound();
-
-            _context.ElectronicsOrders.Remove(order);
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateException)
-            {
-                return StatusCode(500, "An error occurred while deleting the order.");
             }
 
             return NoContent();

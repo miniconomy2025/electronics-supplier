@@ -17,6 +17,7 @@ namespace esAPI.Data
         public DbSet<Simulation> Simulations { get; set; }
 
         public DbSet<Company> Companies { get; set; }
+        public DbSet<OrderStatus> OrderStatuses { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
