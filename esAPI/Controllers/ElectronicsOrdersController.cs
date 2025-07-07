@@ -1,5 +1,6 @@
 using esAPI.Data;
 using esAPI.DTOs.Electronics;
+using esAPI.DTOs.Orders;
 using esAPI.Models;
 using esAPI.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace esAPI.Controllers
 {
     [ApiController]
-    [Route("electronics/orders")]
+    [Route("orders")]
     public class ElectronicsOrdersController : BaseController
     {
         private readonly IElectronicsService _electronicsService;
@@ -19,7 +20,7 @@ namespace esAPI.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateOrder([FromBody] ElectronicsOrderCreateDto dto)
+        public async Task<IActionResult> CreateOrder([FromBody] ElectronicsOrderRequest dto)
         {
             // Get current simulation day
             var sim = _context.Simulations.FirstOrDefault(s => s.IsRunning);
@@ -43,13 +44,15 @@ namespace esAPI.Controllers
             
 
 
-            var order = new ElectronicsOrder
+            var order = new Models.ElectronicsOrder
             {
                 ManufacturerId = manufacturer.CompanyId,
                 RemainingAmount = dto.Quantity,
                 OrderedAt = sim.DayNumber,
-                OrderStatusId = 1 //  1 is the ID for "Pending" status
+                OrderStatusId = 1, //  1 is the ID for "Pending" status
+                TotalAmount = dto.Quantity
             };
+            
             _context.ElectronicsOrders.Add(order);
 
             try
@@ -92,7 +95,8 @@ namespace esAPI.Controllers
                         RemainingAmount = order.RemainingAmount,
                         OrderedAt = order.OrderedAt,
                         ProcessedAt = order.ProcessedAt,
-                        OrderStatus = status.Status
+                        OrderStatus = status.Status,
+                        TotalAmount = order.TotalAmount
                     }
                 )
                 .ToListAsync();
@@ -101,7 +105,7 @@ namespace esAPI.Controllers
         }
 
         [HttpGet("{orderId}")]
-        public async Task<ActionResult<ElectronicsOrderReadDto>> GetOrderById(int orderId)
+        public async Task<ActionResult<DTOs.Orders.ElectronicsOrder>> GetOrderById(int orderId)
         {
             var dto = await _context.ElectronicsOrders
                 .AsNoTracking()
@@ -116,7 +120,8 @@ namespace esAPI.Controllers
                         RemainingAmount = order.RemainingAmount,
                         OrderedAt = order.OrderedAt,
                         ProcessedAt = order.ProcessedAt,
-                        OrderStatus = status.Status
+                        OrderStatus = status.Status,
+                        TotalAmount = order.TotalAmount
                     }
                 )
                 .FirstOrDefaultAsync();

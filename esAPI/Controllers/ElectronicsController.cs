@@ -26,9 +26,9 @@ namespace esAPI.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<ProducedElectronicsResultDto>> ProduceElectronics([FromBody] ProduceElectronicsRequestDto request)
+        public async Task<ActionResult<ProducedElectronicsResultDto>> ProduceElectronics()
         {
-            var result = await _service.ProduceElectronicsAsync(request?.MachineId, request?.Notes);
+            var result = await _service.ProduceElectronicsAsync();
             return Created(string.Empty, result);
         }
     }

@@ -49,13 +49,13 @@ INSERT INTO lookup_values (electronics_price_per_unit, changed_at) VALUES
 -- MACHINE ORDERS - Historical machine purchases
 -- ============================================================================
 
-INSERT INTO machine_orders (supplier_id, external_order_id, order_status, placed_at, received_at) VALUES
+INSERT INTO machine_orders (supplier_id, external_order_id, remaining_amount, order_status, placed_at, received_at) VALUES
 -- Orders from THoH (supplier_id = 10)
-(10, 1001, 5, 1.0, 3.0),   -- COMPLETED order
-(10, 1002, 5, 2.0, 4.0),   -- COMPLETED order
-(10, 1003, 5, 5.0, 7.0),   -- COMPLETED order
-(10, 1004, 4, 10.0, NULL), -- IN_PROGRESS order
-(10, 1005, 1, 12.0, NULL); -- PENDING order
+(10, 1001, 2, 5, 1.0, 3.0),   -- COMPLETED order
+(10, 1002, 1, 5, 2.0, 4.0),   -- COMPLETED order
+(10, 1003, 3, 5, 5.0, 7.0),   -- COMPLETED order
+(10, 1004, 2, 4, 10.0, NULL), -- IN_PROGRESS order
+(10, 1005, 1, 1, 12.0, NULL); -- PENDING order
 
 -- ============================================================================
 -- MACHINES - Manufacturing equipment inventory
@@ -96,28 +96,28 @@ INSERT INTO material_orders (supplier_id, external_order_id, material_id, remain
 -- Copper supplies (available for production)
 INSERT INTO material_supplies (material_id, received_at, processed_at) VALUES
 -- From order 2001 (500 units) - 200 used, 300 remaining
-(1, 2.0, 0), (1, 2.0, 0), (1, 2.0, 0), (1, 2.0, 0), (1, 2.0, 0),
-(1, 2.0, 0), (1, 2.0, 0), (1, 2.0, 0), (1, 2.0, 0), (1, 2.0, 0),
-(1, 2.0, 0), (1, 2.0, 0), (1, 2.0, 0), (1, 2.0, 0), (1, 2.0, 0),
-(1, 2.0, 0), (1, 2.0, 0), (1, 2.0, 0), (1, 2.0, 0), (1, 2.0, 0),
+(1, 2.0, NULL), (1, 2.0, NULL), (1, 2.0, NULL), (1, 2.0, NULL), (1, 2.0, NULL),
+(1, 2.0, NULL), (1, 2.0, NULL), (1, 2.0, NULL), (1, 2.0, NULL), (1, 2.0, NULL),
+(1, 2.0, NULL), (1, 2.0, NULL), (1, 2.0, NULL), (1, 2.0, NULL), (1, 2.0, NULL),
+(1, 2.0, NULL), (1, 2.0, NULL), (1, 2.0, NULL), (1, 2.0, NULL), (1, 2.0, NULL),
 -- Additional copper from order 2002 (300 units) - 100 used, 200 remaining
-(1, 4.0, 0), (1, 4.0, 0), (1, 4.0, 0), (1, 4.0, 0), (1, 4.0, 0),
-(1, 4.0, 0), (1, 4.0, 0), (1, 4.0, 0), (1, 4.0, 0), (1, 4.0, 0),
-(1, 4.0, 0), (1, 4.0, 0), (1, 4.0, 0), (1, 4.0, 0), (1, 4.0, 0),
-(1, 4.0, 0), (1, 4.0, 0), (1, 4.0, 0), (1, 4.0, 0), (1, 4.0, 0);
+(1, 4.0, NULL), (1, 4.0, NULL), (1, 4.0, NULL), (1, 4.0, NULL), (1, 4.0, NULL),
+(1, 4.0, NULL), (1, 4.0, NULL), (1, 4.0, NULL), (1, 4.0, NULL), (1, 4.0, NULL),
+(1, 4.0, NULL), (1, 4.0, NULL), (1, 4.0, NULL), (1, 4.0, NULL), (1, 4.0, NULL),
+(1, 4.0, NULL), (1, 4.0, NULL), (1, 4.0, NULL), (1, 4.0, NULL), (1, 4.0, NULL);
 
 -- Silicone supplies (available for production)
 INSERT INTO material_supplies (material_id, received_at, processed_at) VALUES
 -- From order 2006 (400 units) - 150 used, 250 remaining
-(2, 2.0, 0), (2, 2.0, 0), (2, 2.0, 0), (2, 2.0, 0), (2, 2.0, 0),
-(2, 2.0, 0), (2, 2.0, 0), (2, 2.0, 0), (2, 2.0, 0), (2, 2.0, 0),
-(2, 2.0, 0), (2, 2.0, 0), (2, 2.0, 0), (2, 2.0, 0), (2, 2.0, 0),
-(2, 2.0, 0), (2, 2.0, 0), (2, 2.0, 0), (2, 2.0, 0), (2, 2.0, 0),
-(2, 2.0, 0), (2, 2.0, 0), (2, 2.0, 0), (2, 2.0, 0), (2, 2.0, 0),
+(2, 2.0, NULL), (2, 2.0, NULL), (2, 2.0, NULL), (2, 2.0, NULL), (2, 2.0, NULL),
+(2, 2.0, NULL), (2, 2.0, NULL), (2, 2.0, NULL), (2, 2.0, NULL), (2, 2.0, NULL),
+(2, 2.0, NULL), (2, 2.0, NULL), (2, 2.0, NULL), (2, 2.0, NULL), (2, 2.0, NULL),
+(2, 2.0, NULL), (2, 2.0, NULL), (2, 2.0, NULL), (2, 2.0, NULL), (2, 2.0, NULL),
+(2, 2.0, NULL), (2, 2.0, NULL), (2, 2.0, NULL), (2, 2.0, NULL), (2, 2.0, NULL),
 -- Additional silicone from order 2007 (200 units) - 50 used, 150 remaining
-(2, 5.0, 0), (2, 5.0, 0), (2, 5.0, 0), (2, 5.0, 0), (2, 5.0, 0),
-(2, 5.0, 0), (2, 5.0, 0), (2, 5.0, 0), (2, 5.0, 0), (2, 5.0, 0),
-(2, 5.0, 0), (2, 5.0, 0), (2, 5.0, 0), (2, 5.0, 0), (2, 5.0, 0);
+(2, 5.0, NULL), (2, 5.0, NULL), (2, 5.0, NULL), (2, 5.0, NULL), (2, 5.0, NULL),
+(2, 5.0, NULL), (2, 5.0, NULL), (2, 5.0, NULL), (2, 5.0, NULL), (2, 5.0, NULL),
+(2, 5.0, NULL), (2, 5.0, NULL), (2, 5.0, NULL), (2, 5.0, NULL), (2, 5.0, NULL);
 
 -- Used materials (processed_at > 0)
 INSERT INTO material_supplies (material_id, received_at, processed_at) VALUES
@@ -179,17 +179,17 @@ INSERT INTO electronics (produced_at, electronics_status, sold_at) VALUES
 -- ELECTRONICS ORDERS - Customer orders from phone manufacturers
 -- ============================================================================
 
-INSERT INTO electronics_orders (order_status, manufacturer_id, remaining_amount, ordered_at, processed_at) VALUES
+INSERT INTO electronics_orders (order_status, manufacturer_id, total_amount, remaining_amount, ordered_at, processed_at) VALUES
 -- Completed orders
-(5, 6, 0, 8.0, 9.0),    -- Pear - 25 units (COMPLETED)
-(5, 7, 0, 9.0, 10.0),   -- SumSang - 25 units (COMPLETED)
-(5, 6, 0, 5.0, 6.0),    -- Pear - 50 units (COMPLETED)
+(5, 6, 25, 0, 8.0, 9.0),    -- Pear - 25 units (COMPLETED)
+(5, 7, 25, 0, 9.0, 10.0),   -- SumSang - 25 units (COMPLETED)
+(5, 6, 50, 0, 5.0, 6.0),    -- Pear - 50 units (COMPLETED)
 
 -- Active orders
-(1, 6, 75, 13.0, NULL), -- Pear - 75 units (PENDING)
-(1, 7, 100, 14.0, NULL), -- SumSang - 100 units (PENDING)
-(4, 6, 30, 11.0, NULL), -- Pear - 30 units (IN_PROGRESS)
+(1, 6, 75, 75, 13.0, NULL), -- Pear - 75 units (PENDING)
+(1, 7, 100, 100, 14.0, NULL), -- SumSang - 100 units (PENDING)
+(4, 6, 30, 30, 11.0, NULL), -- Pear - 30 units (IN_PROGRESS)
 
 -- Future orders
-(1, 7, 50, 15.0, NULL), -- SumSang - 50 units (PENDING)
-(1, 6, 40, 15.0, NULL); -- Pear - 40 units (PENDING)
+(1, 7, 50, 50, 15.0, NULL), -- SumSang - 50 units (PENDING)
+(1, 6, 40, 40, 15.0, NULL); -- Pear - 40 units (PENDING)
