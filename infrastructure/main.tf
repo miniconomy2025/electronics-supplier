@@ -30,7 +30,7 @@ module "rds" {
   db_password            = var.db_password
   db_username            = var.db_username
   db_name                = var.db_name
-  publicly_accessible    = false
+  publicly_accessible    = true
 }
 
 module "budget" {
