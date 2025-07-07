@@ -30,3 +30,9 @@ variable "key_name" {
   type        = string
   default     = null
 }
+
+variable "iam_instance_profile" {
+  description = "The IAM instance profile to associate with the EC2 instance."
+  type        = string
+  default     = null
+}

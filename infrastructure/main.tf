@@ -1,5 +1,6 @@
 provider "aws" {
-  region = var.aws_region
+  alias  = "af-south-1"
+  region = "af-south-1"
 }
 
 module "vpc" {
@@ -13,7 +14,7 @@ module "vpc" {
 module "ec2" {
   source         = "./modules/ec2"
   project_name   = var.project_name
-  subnet_id      = module.vpc.public_subnet_id
+  subnet_ids     = module.vpc.public_subnet_ids
   instance_count = var.ec2_instance_count
   aws_region     = var.aws_region
   security_group_id = module.vpc.default_security_group_id
@@ -37,20 +38,4 @@ module "budget" {
   source       = "./modules/budget"
   project_name = var.project_name
   budget_emails = var.budget_emails
-}
-
-module "frontend" {
-  source       = "./modules/frontend"
-  project_name = var.project_name
-  domain_name  = var.frontend_domain
-  aws_region   = var.aws_region
-}
-
-module "dns" {
-  source          = "./modules/dns"
-  zone_id         = var.route53_zone_id
-  frontend_domain = var.frontend_domain
-  frontend_target = module.frontend.cloudfront_domain_name
-  api_domain      = var.api_domain
-  api_target      = module.ec2.public_dns
 }

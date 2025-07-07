@@ -52,7 +52,7 @@ data "aws_ami" "ubuntu" {
 }
 
 resource "aws_eip" "this" {
-  count = var.instance_count > 0 ? 1 : 0
-  instance = aws_instance.this[0].id
+  count = var.instance_count
+  instance = aws_instance.this[count.index].id
   domain   = "vpc"
 }
