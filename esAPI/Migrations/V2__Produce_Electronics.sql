@@ -52,7 +52,7 @@ BEGIN
     units_possible := LEAST(units_by_copper, units_by_silicone);
     units_remaining := units_possible;
     FOR machine_rec IN 
-        SELECT m.machine_id, md.machine_output
+        SELECT m.machine_id, md.maximum_output
         FROM machines m
         JOIN machine_statuses ms ON m.machine_status = ms.status_id
         JOIN machine_details md ON md.detail_id = m.machine_id
@@ -63,9 +63,9 @@ BEGIN
             EXIT;
         END IF;
         machine_ids := array_append(machine_ids, machine_rec.machine_id);
-        IF machine_rec.machine_output <= units_remaining THEN
-            total_machine_output := total_machine_output + machine_rec.machine_output;
-            units_remaining := units_remaining - machine_rec.machine_output;
+        IF machine_rec.maximum_output <= units_remaining THEN
+            total_machine_output := total_machine_output + machine_rec.maximum_output;
+            units_remaining := units_remaining - machine_rec.maximum_output;
         ELSE
             total_machine_output := total_machine_output + units_remaining;
             units_remaining := 0;

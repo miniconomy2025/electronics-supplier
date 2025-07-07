@@ -3,11 +3,16 @@ using Microsoft.EntityFrameworkCore;
 using esAPI.Data;
 using esAPI.Dtos;
 using esAPI.Models;
+using esAPI.Models.Enums;
+
+using Machine = esAPI.Models.Machine;
+using MS = esAPI.Models.Enums.Machine;
+using Electronics = esAPI.Models.Enums.Electronics;
 
 namespace esAPI.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("logistics")]
     public class LogisticsController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -31,14 +36,17 @@ namespace esAPI.Controllers
             if (request.Type == "PICKUP")
                 return await HandlePickupAsync(request);
 
+            if (request.Type == "MACHINE")
+                return await HandleMachineDeliveryAsync(request);
+
             return Ok(new { Message = "PICKUP logic not yet implemented." });
         }
 
         private static bool IsValidRequest(LogisticsRequestDto request, out string error)
         {
-            if (request.Type != "PICKUP" && request.Type != "DELIVERY")
+            if (request.Type != "PICKUP" && request.Type != "DELIVERY" && request.Type != "MACHINE")
             {
-                error = "Type must be either 'PICKUP' or 'DELIVERY'";
+                error = "Type must be either 'PICKUP', 'DELIVERY' or 'MACHINE'";
                 return false;
             }
 
@@ -63,7 +71,7 @@ namespace esAPI.Controllers
             if (order == null)
                 return NotFound($"No material order found with ID {request.Id}");
 
-            if (order.RemainingAmount <= 0)
+            if (order.OrderStatusId == (int) Order.Status.Completed)
                 return BadRequest($"Order {request.Id} is already fully delivered.");
 
             int deliverAmount = Math.Min(order.RemainingAmount, request.Quantity);
@@ -89,7 +97,15 @@ namespace esAPI.Controllers
             order.RemainingAmount -= deliverAmount;
 
             if (order.RemainingAmount == 0)
-                // order.ReceivedAt = now; TODO: Fix
+            {
+                order.ReceivedAt = sim.DayNumber;
+                order.OrderStatusId = (int) Order.Status.Completed; // COMPLETED
+            }
+            else if (order.OrderStatusId == (int) Order.Status.Pending || order.OrderStatusId == (int) Order.Status.Accepted) // PENDING or ACCEPTED
+            {
+                order.OrderStatusId = (int) Order.Status.InProgress; // IN_PROGRESS
+            }
+
 
             await _context.SaveChangesAsync();
 
@@ -99,6 +115,66 @@ namespace esAPI.Controllers
                 Remaining = order.RemainingAmount
             });
         }
+        
+        private async Task<IActionResult> HandleMachineDeliveryAsync(LogisticsRequestDto request)
+        {
+            if (!int.TryParse(request.Id, out var externalOrderId))
+                return BadRequest("Invalid external order ID format.");
+                
+            var order = await _context.MachineOrders
+                .FirstOrDefaultAsync(o => o.ExternalOrderId == externalOrderId);
+
+            if (order == null)
+                return NotFound($"No machine order found with ID {request.Id}");
+
+            if (order.OrderStatusId == (int) Order.Status.Completed)
+                return BadRequest($"Order {request.Id} is already marked as completed.");
+
+            int deliverAmount = Math.Min(order.RemainingAmount, request.Quantity);
+
+            if (deliverAmount <= 0)
+                return BadRequest("Nothing to deliver based on the remaining amount.");
+
+            // Get current simulation day
+            var sim = _context.Simulations.FirstOrDefault(s => s.IsRunning);
+            if (sim == null)
+                return BadRequest("Simulation not running.");
+
+            var machinesToAdd = Enumerable.Range(0, deliverAmount)
+                .Select(_ => new Machine
+                {
+                    OrderId = order.OrderId,
+                    MachineStatusId = (int) MS.Status.Standby,
+                    ReceivedAt = sim.DayNumber,
+                    PurchasedAt = sim.DayNumber,
+                    PurchasePrice = 0
+                })
+                .ToList();
+
+
+            _context.Machines.AddRange(machinesToAdd);
+
+            order.RemainingAmount -= deliverAmount;
+
+            if (order.RemainingAmount == 0)
+            {
+                order.ReceivedAt = sim.DayNumber;
+                order.OrderStatusId = (int) Order.Status.Completed; // COMPLETED
+            }
+            else if (order.OrderStatusId == (int) Order.Status.Pending || order.OrderStatusId == (int) Order.Status.Accepted) // PENDING or ACCEPTED
+            {
+                order.OrderStatusId = (int) Order.Status.InProgress; // IN_PROGRESS
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                Message = $"Delivered machine for supplier ID {order.SupplierId} from order {request.Id}",
+                ReceivedAt = order.ReceivedAt
+            });
+        }
+
 
         private async Task<IActionResult> HandlePickupAsync(LogisticsRequestDto request)
         {
@@ -125,18 +201,29 @@ namespace esAPI.Controllers
             if (electronicsToRemove.Count < pickupAmount)
                 return BadRequest("Not enough electronics stock available to fulfill the pickup.");
 
-            var now = DateTime.UtcNow;
+            var sim = _context.Simulations.FirstOrDefault(s => s.IsRunning);
+            if (sim == null)
+                return BadRequest("Simulation not running.");
+
             foreach (var e in electronicsToRemove)
             {
-                // e.SoldAt = now; TODO: Fix
+                e.SoldAt = sim.DayNumber;
+                e.ElectronicsStatusId = (int) Electronics.Status.Reserved;
             }
 
             order.RemainingAmount -= pickupAmount;
 
             if (order.RemainingAmount == 0)
-                // order.ProcessedAt = DateTime.UtcNow; TODO: Fix
+            {
+                order.ProcessedAt = sim.DayNumber;
+                order.OrderStatusId = (int) Order.Status.Completed; // COMPLETED
+            }
+            else if (order.OrderStatusId == (int) Order.Status.Pending || order.OrderStatusId == (int) Order.Status.Accepted) // PENDING or ACCEPTED
+            {
+                order.OrderStatusId = (int) Order.Status.InProgress; // IN_PROGRESS
+            }
 
-            await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync();
 
             return Ok(new
             {

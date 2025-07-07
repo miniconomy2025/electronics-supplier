@@ -32,6 +32,17 @@ builder.Services.AddScoped<SupplierApiClientFactory>();
 
 builder.Services.AddHostedService<InventoryManagementService>();
 
+// Add CORS services
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowSwagger", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -43,8 +54,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.MapControllers();
+// Use CORS
+app.UseCors("AllowSwagger");
 
 app.MapControllers();
 
 app.Run();
+
+public partial class Program { }

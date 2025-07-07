@@ -10,14 +10,8 @@ namespace esAPI.Models
         [Column("machine_id")]
         public int MachineId { get; set; }
 
-        [Column("status_id")]
-        public int StatusId { get; set; }
-
         [Column("purchase_price")]
         public float PurchasePrice { get; set; }
-
-        [Column("output_amount")]
-        public int OutputAmount { get; set; }
 
         [Column("machine_status")]
         public int MachineStatusId { get; set; }
@@ -25,13 +19,13 @@ namespace esAPI.Models
         [Column("order_id")]
         public int OrderId { get; set; }
 
-        [Column("purchased_at")]
+        [Column("purchased_at", TypeName = "numeric(1000,2)")]
         public decimal PurchasedAt { get; set; }
 
-        [Column("received_at")]
+        [Column("received_at", TypeName = "numeric(1000,2)")]
         public decimal? ReceivedAt { get; set; }
 
-        [Column("removed_at")]
+        [Column("removed_at", TypeName = "numeric(1000,2)")]
         public decimal? RemovedAt { get; set; }
 
         [ForeignKey("MachineStatusId")]

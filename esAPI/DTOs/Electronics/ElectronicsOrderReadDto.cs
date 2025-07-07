@@ -4,6 +4,7 @@ namespace esAPI.DTOs.Electronics
     {
         public int OrderId { get; set; }
         public int ManufacturerId { get; set; }
+        public int TotalAmount { get; set; }
         public int RemainingAmount { get; set; }
         public decimal OrderedAt { get; set; }
         public decimal? ProcessedAt { get; set; }

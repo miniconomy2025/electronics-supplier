@@ -16,6 +16,9 @@ namespace esAPI.Models
         [Column("manufacturer_id")]
         public int ManufacturerId { get; set; }
 
+        [Column("total_amount")]
+        public int TotalAmount { get; set; }
+
         [Column("remaining_amount")]
         public int RemainingAmount { get; set; }
 
@@ -26,7 +29,7 @@ namespace esAPI.Models
         public decimal? ProcessedAt { get; set; }
 
         [ForeignKey("ManufacturerId")]
-        public int Manufacturer { get; set; }
+        public Company? Manufacturer  { get; set; }
 
         [ForeignKey("OrderStatusId")]
         public OrderStatus? OrderStatus { get; set; }
