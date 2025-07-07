@@ -24,7 +24,6 @@ namespace esAPI.Data
         public DbSet<LookupValue> LookupValues { get; set; }
         public DbSet<Simulation> Simulations { get; set; }
 
-
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
 

@@ -1,7 +1,8 @@
 using esAPI.Data;
+using esAPI.DTOs.Electronics;
 using esAPI.DTOs.Orders;
 using esAPI.Models;
-using esAPI.Models.Enums;
+using esAPI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,53 +10,47 @@ namespace esAPI.Controllers
 {
     [ApiController]
     [Route("orders")]
-    public class ElectronicsOrdersController : ControllerBase
+    public class ElectronicsOrdersController : BaseController
     {
-        private readonly AppDbContext _context;
+        private readonly IElectronicsService _electronicsService;
 
-        public ElectronicsOrdersController(AppDbContext context)
+        public ElectronicsOrdersController(AppDbContext context, IElectronicsService electronicsService) : base(context)
         {
-            _context = context;
+            _electronicsService = electronicsService;
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateOrder([FromBody] ElectronicsOrderRequest request)
+        public async Task<IActionResult> CreateOrder([FromBody] ElectronicsOrderRequest dto)
         {
-            if (request == null || request.Quantity <= 0)
-                return BadRequest("Invalid order data. Quantity must be greater than 0.");
-
             // Get current simulation day
             var sim = _context.Simulations.FirstOrDefault(s => s.IsRunning);
             if (sim == null)
                 return BadRequest("Simulation not running.");
 
-            // Get current electronics price using a different approach
-            var lookupValue = await _context.LookupValues
-                .OrderByDescending(lv => lv.ChangedAt)
+            // --- for testing disabled
+            // var manufacturer = await GetOrganizationalUnitFromCertificateAsync();
+            // if (manufacturer == null)
+            //     return Unauthorized("You must be authenticated to place an order.");
+            var manufacturer = await _context.Companies
+                .Where(c => c.CompanyId == 6) // 6 is pear-company
                 .FirstOrDefaultAsync();
-            
-            if (lookupValue == null)
-                return StatusCode(500, "Unable to retrieve current pricing.");
-            
-            decimal pricePerUnit = lookupValue.ElectronicsPricePerUnit;
 
-            // Get our company's bank account number (electronics-supplier is company_id = 1)
-            var ourCompany = await _context.Companies
-                .FirstOrDefaultAsync(c => c.CompanyId == 1);
-            
-            if (ourCompany == null)
-                return StatusCode(500, "Unable to retrieve company information.");
+            if (dto == null || dto.Quantity <= 0)
+                return BadRequest("Invalid order data.");
 
-            // For now, use a default manufacturer ID of 6
-            var defaultManufacturerId = 6; // Pear Company
+            var currentStock = await _electronicsService.GetElectronicsDetailsAsync();
+            if (currentStock == null || currentStock.AvailableStock < dto.Quantity)
+                return BadRequest("Insufficient stock available.");
+            
+
 
             var order = new Models.ElectronicsOrder
             {
-                ManufacturerId = defaultManufacturerId,
-                TotalAmount = request.Quantity,
-                RemainingAmount = request.Quantity,
+                ManufacturerId = manufacturer.CompanyId,
+                RemainingAmount = dto.Quantity,
                 OrderedAt = sim.DayNumber,
-                OrderStatusId = (int) Order.Status.Pending // Default to pending
+                OrderStatusId = 1, //  1 is the ID for "Pending" status
+                TotalAmount = dto.Quantity
             };
             
             _context.ElectronicsOrders.Add(order);
@@ -64,44 +59,116 @@ namespace esAPI.Controllers
             {
                 await _context.SaveChangesAsync();
             }
-            catch (DbUpdateException)
+            catch (DbUpdateException ex)
             {
-                return StatusCode(500, "An error occurred while saving the order.");
+                return StatusCode(500, "An error occurred while saving the order." + ex);
             }
 
-            var response = new ElectronicsOrderResponse
+            var bankNumber = await _context.Companies.
+                Where(c => c.CompanyId == 1) // 1 is us
+                .Select(c => c.BankAccountNumber)
+                .FirstOrDefaultAsync();
+
+            var readDto = new ElectronicsOrderResponseDto
             {
                 OrderId = order.OrderId,
-                Quantity = request.Quantity,
-                AmountDue = pricePerUnit * request.Quantity,
-                BankNumber = ourCompany.BankAccountNumber ?? "000000000000" // Use company's bank number or default
+                Quantity = order.RemainingAmount,
+                AmountDue = currentStock.PricePerUnit * (decimal)order.RemainingAmount,
+                BankNumber = bankNumber,
             };
 
-            return CreatedAtAction(nameof(GetOrderById), new { orderId = order.OrderId }, response);
+            return CreatedAtAction(nameof(GetOrderById), new { orderId = order.OrderId }, readDto);
         }
 
+        [HttpGet]
+        public async Task<ActionResult<List<ElectronicsOrderReadDto>>> GetAllOrders()
+        {
+            var dtoList = await _context.ElectronicsOrders
+                .AsNoTracking()
+                .Join(
+                    _context.OrderStatuses,
+                    order => order.OrderStatusId,
+                    status => status.StatusId,
+                    (order, status) => new ElectronicsOrderReadDto
+                    {
+                        OrderId = order.OrderId,
+                        RemainingAmount = order.RemainingAmount,
+                        OrderedAt = order.OrderedAt,
+                        ProcessedAt = order.ProcessedAt,
+                        OrderStatus = status.Status,
+                        TotalAmount = order.TotalAmount
+                    }
+                )
+                .ToListAsync();
 
+            return Ok(dtoList);
+        }
 
         [HttpGet("{orderId}")]
         public async Task<ActionResult<DTOs.Orders.ElectronicsOrder>> GetOrderById(int orderId)
         {
-            var order = await _context.ElectronicsOrders
-                .Include(o => o.OrderStatus)
-                .FirstOrDefaultAsync(o => o.OrderId == orderId);
+            var dto = await _context.ElectronicsOrders
+                .AsNoTracking()
+                .Where(order => order.OrderId == orderId)
+                .Join(
+                    _context.OrderStatuses,
+                    order => order.OrderStatusId,
+                    status => status.StatusId,
+                    (order, status) => new ElectronicsOrderReadDto
+                    {
+                        OrderId = order.OrderId,
+                        RemainingAmount = order.RemainingAmount,
+                        OrderedAt = order.OrderedAt,
+                        ProcessedAt = order.ProcessedAt,
+                        OrderStatus = status.Status,
+                        TotalAmount = order.TotalAmount
+                    }
+                )
+                .FirstOrDefaultAsync();
 
-            if (order == null)
+            if (dto == null)
                 return NotFound();
 
-            var dto = new DTOs.Orders.ElectronicsOrder
-            {
-                OrderId = order.OrderId,
-                Status = order.OrderStatus?.Status ?? "Unknown",
-                OrderedAt = order.OrderedAt,
-                TotalAmount = order.TotalAmount,
-                RemainingAmount = order.RemainingAmount
-            };
-
             return Ok(dto);
+        }
+
+        [HttpPut("{orderId}")]
+        public async Task<IActionResult> UpdateOrder(int orderId, [FromBody] ElectronicsOrderUpdateDto dto)
+        {
+            if (dto == null)
+                return BadRequest("Invalid order data.");
+
+            var existingOrder = await _context.ElectronicsOrders.FindAsync(orderId);
+            if (existingOrder == null)
+                return NotFound();
+
+            if (dto.RemainingAmount.HasValue)
+                existingOrder.RemainingAmount = dto.RemainingAmount.Value;
+
+            if (dto.ProcessedAt.HasValue)
+                existingOrder.ProcessedAt = dto.ProcessedAt.Value;
+
+            if (!string.IsNullOrWhiteSpace(dto.OrderStatus))
+            {
+                var statusId = await _context.OrderStatuses
+                    .Where(s => s.Status == dto.OrderStatus)
+                    .Select(s => s.StatusId)
+                    .FirstOrDefaultAsync();
+                if (statusId == 0)
+                    return BadRequest($"Order status '{dto.OrderStatus}' not found.");
+                existingOrder.OrderStatusId = statusId;
+            }
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                return StatusCode(500, "An error occurred while updating the order.");
+            }
+
+            return NoContent();
         }
     }
 }
