@@ -8,3 +8,4 @@ obj/
 *.tfvars
 *.config
 .terraform/
+*.hcl
