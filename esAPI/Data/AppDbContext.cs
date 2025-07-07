@@ -27,7 +27,6 @@ namespace esAPI.Data
 
         public DbSet<EffectiveMaterialStock> EffectiveMaterialStock { get; set; }
 
-
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
 

@@ -8,3 +8,5 @@ obj/
 *.tfvars
 *.config
 .terraform/
+
+certs/
