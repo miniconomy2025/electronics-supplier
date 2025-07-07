@@ -39,7 +39,7 @@ namespace esAPI.Controllers
                 return BadRequest("Invalid order data.");
 
             var currentStock = await _electronicsService.GetElectronicsDetailsAsync();
-            if (currentStock == null || currentStock.availableStock < dto.Quantity)
+            if (currentStock == null || currentStock.AvailableStock < dto.Quantity)
                 return BadRequest("Insufficient stock available.");
             
 
@@ -73,7 +73,7 @@ namespace esAPI.Controllers
             {
                 OrderId = order.OrderId,
                 Quantity = order.RemainingAmount,
-                AmountDue = currentStock.pricePerUnit * (decimal)order.RemainingAmount,
+                AmountDue = currentStock.PricePerUnit * (decimal)order.RemainingAmount,
                 BankNumber = bankNumber,
             };
 
