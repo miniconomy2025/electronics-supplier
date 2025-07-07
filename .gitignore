@@ -6,7 +6,7 @@ obj/
 *.conf
 
 *.tfvars
-*.config
+# *.config
 .terraform/
 *.hcl
 
