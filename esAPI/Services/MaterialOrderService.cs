@@ -20,27 +20,24 @@ namespace esAPI.Services
         public async Task<IEnumerable<MaterialOrderResponse>> GetAllMaterialOrdersAsync()
         {
             return await _context.MaterialOrders
-                .Include(o => o.Supplier)
-                .Include(o => o.Material)
-                .OrderByDescending(o => o.OrderedAt)
-                .Select(o => new MaterialOrderResponse
-                {
-                    OrderId = o.OrderId,
-                    SupplierId = o.SupplierId,
-                    SupplierName = o.Supplier != null ? o.Supplier.CompanyName : null,
-                    OrderedAt = o.OrderedAt,
-                    ReceivedAt = o.ReceivedAt,
-                    Status = o.ReceivedAt == null ? "PENDING" : "COMPLETED",
-                    OrderStatusId = o.OrderStatusId,
-                    Items = new List<MaterialOrderItemResponse> {
-                        new MaterialOrderItemResponse {
-                            MaterialId = o.MaterialId,
-                            MaterialName = o.Material != null ? o.Material.MaterialName : string.Empty,
-                            Amount = o.RemainingAmount
-                        }
-                    }
-                })
-                .ToListAsync();
+            .Include(o => o.Supplier)
+            .Include(o => o.Material)
+            .Include(o => o.OrderStatus)
+            .OrderByDescending(o => o.OrderedAt)
+            .Select(o => new MaterialOrderResponse
+            {
+                OrderId = o.OrderId,
+                SupplierId = o.SupplierId,
+                SupplierName = o.Supplier!.CompanyName,
+                ExternalOrderId = o.ExternalOrderId,
+                MaterialId = o.MaterialId,
+                MaterialName = o.Material!.MaterialName,
+                RemainingAmount = o.RemainingAmount,
+                Status = o.OrderStatus!.Status,
+                OrderedAt = o.OrderedAt,
+                ReceivedAt = o.ReceivedAt
+            })
+            .ToListAsync();
         }
 
         public async Task<MaterialOrderResponse?> GetMaterialOrderByIdAsync(int orderId)
@@ -48,23 +45,21 @@ namespace esAPI.Services
             return await _context.MaterialOrders
                 .Include(o => o.Supplier)
                 .Include(o => o.Material)
+                .Include(o => o.OrderStatus)
                 .Where(o => o.OrderId == orderId)
+                .OrderByDescending(o => o.OrderedAt)
                 .Select(o => new MaterialOrderResponse
                 {
                     OrderId = o.OrderId,
                     SupplierId = o.SupplierId,
-                    SupplierName = o.Supplier != null ? o.Supplier.CompanyName : null,
+                    SupplierName = o.Supplier!.CompanyName,
+                    ExternalOrderId = o.ExternalOrderId,
+                    MaterialId = o.MaterialId,
+                    MaterialName = o.Material!.MaterialName,
+                    RemainingAmount = o.RemainingAmount,
+                    Status = o.OrderStatus!.Status,
                     OrderedAt = o.OrderedAt,
-                    ReceivedAt = o.ReceivedAt,
-                    Status = o.ReceivedAt == null ? "PENDING" : "COMPLETED",
-                    OrderStatusId = o.OrderStatusId,
-                    Items = new List<MaterialOrderItemResponse> {
-                        new MaterialOrderItemResponse {
-                            MaterialId = o.MaterialId,
-                            MaterialName = o.Material != null ? o.Material.MaterialName : string.Empty,
-                            Amount = o.RemainingAmount
-                        }
-                    }
+                    ReceivedAt = o.ReceivedAt
                 })
                 .SingleOrDefaultAsync();
         }
@@ -84,16 +79,16 @@ namespace esAPI.Services
             };
 
             await _context.Database.ExecuteSqlRawAsync(
-                "CALL create_material_order(@p_supplier_id, @p_material_id, @p_remaining_amount, @p_created_order_id)",
+                "CALL create_material_order(@p_supplier_id, @p_material_id, @p_amount, @p_current_day, @p_created_order_id)",
                 new NpgsqlParameter("p_supplier_id", request.SupplierId),
-                new NpgsqlParameter("p_material_id", request.Items[0].MaterialId),
-                new NpgsqlParameter("p_remaining_amount", request.Items[0].Amount),
+                new NpgsqlParameter("p_material_id", request.MaterialId),
+                new NpgsqlParameter("p_amount", request.Amount),
+                new NpgsqlParameter("p_current_day", sim.DayNumber),
                 createdOrderIdParam
             );
 
             if (createdOrderIdParam.Value != DBNull.Value && createdOrderIdParam.Value is int newOrderId)
             {
-                // Set OrderedAt to the current simulation day
                 var newOrder = await _context.MaterialOrders.FindAsync(newOrderId);
                 if (newOrder != null)
                 {
@@ -114,4 +109,4 @@ namespace esAPI.Services
             return affected > 0;
         }
     }
-} 
+}

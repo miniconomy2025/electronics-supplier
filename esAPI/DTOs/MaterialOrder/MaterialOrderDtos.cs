@@ -14,13 +14,15 @@ namespace esAPI.DTOs.MaterialOrder
     public class MaterialOrderResponse
     {
         public int OrderId { get; set; }
-        public int? SupplierId { get; set; }
-        public string? SupplierName { get; set; }
+        public int SupplierId { get; set; }
+        public required string SupplierName { get; set; }
+        public int? ExternalOrderId { get; set; }
+        public int MaterialId { get; set; }
+        public required string MaterialName { get; set; }
+        public int RemainingAmount { get; set; }
+        public required string Status { get; set; }
         public decimal OrderedAt { get; set; }
         public decimal? ReceivedAt { get; set; }
-        public required string Status { get; set; }
-        public int OrderStatusId { get; set; }
-        public List<MaterialOrderItemResponse> Items { get; set; } = new();
     }
 
 
@@ -40,13 +42,16 @@ namespace esAPI.DTOs.MaterialOrder
     {
         [Required]
         [JsonPropertyName("supplier_id")]
-        public int? SupplierId { get; set; }
+        public int SupplierId { get; set; }
 
-        [MinLength(1, ErrorMessage = "Order must contain at least one item.")]
-        [JsonPropertyName("items")]
-        public List<CreateMaterialOrderItemRequest> Items { get; set; } = new();
+        [Required]
+        [JsonPropertyName("material_id")]
+        public int MaterialId { get; set; }
 
-        public decimal? OrderedAt { get; set; }
+        [Required]
+        [Range(1, int.MaxValue, ErrorMessage = "Amount must be a positive integer.")]
+        [JsonPropertyName("amount")]
+        public int Amount { get; set; }
     }
 
     public class UpdateMaterialOrderRequest
