@@ -164,7 +164,6 @@ public class InventoryManagementService : BackgroundService
                 new NpgsqlParameter("p_current_day", 1),
                 createdOrderIdParam
             );
-            _logger.LogInformation("Successfully placed automatic reorder. New Order ID: {OrderId}", createdOrderIdParam.Value);
         }
         catch (Exception ex)
         {

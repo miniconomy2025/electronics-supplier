@@ -46,6 +46,7 @@ namespace esAPI.Services
                 .Include(o => o.Supplier)
                 .Include(o => o.Material)
                 .Include(o => o.OrderStatus)
+                .Where(o => o.OrderId == orderId)
                 .OrderByDescending(o => o.OrderedAt)
                 .Select(o => new MaterialOrderResponse
                 {
@@ -88,7 +89,6 @@ namespace esAPI.Services
 
             if (createdOrderIdParam.Value != DBNull.Value && createdOrderIdParam.Value is int newOrderId)
             {
-                // Set OrderedAt to the current simulation day
                 var newOrder = await _context.MaterialOrders.FindAsync(newOrderId);
                 if (newOrder != null)
                 {
