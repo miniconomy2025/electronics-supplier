@@ -1,0 +1,12 @@
+bin/
+obj/
+
+*.Development.*
+
+*.conf
+
+*.tfvars
+*.config
+.terraform/
+
+certs/

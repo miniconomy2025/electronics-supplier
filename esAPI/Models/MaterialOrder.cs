@@ -1,0 +1,43 @@
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace esAPI.Models
+{
+    [Table("material_orders")]
+    public class MaterialOrder
+    {
+        [Key]
+        [Column("order_id")]
+        public int OrderId { get; set; }
+
+        [Column("supplier_id")]
+        public int? SupplierId { get; set; }
+
+        [Column("external_order_id")]
+        public int? ExternalOrderId { get; set; }
+
+        [Column("order_status")]
+        public int OrderStatusId { get; set; }
+
+        [Column("material_id")]
+        public int MaterialId { get; set; }
+
+        [Column("remaining_amount")]
+        public int RemainingAmount { get; set; }
+
+        [Column("ordered_at")]
+        public decimal OrderedAt { get; set; }
+
+        [Column("received_at")]
+        public decimal? ReceivedAt { get; set; }
+
+        [ForeignKey("SupplierId")]
+        public Company? Supplier { get; set; }
+
+        [ForeignKey("MaterialId")]
+        public Material? Material { get; set; }
+        
+        [ForeignKey("OrderStatusId")]
+        public OrderStatus? OrderStatus { get; set; }
+    }
+}
