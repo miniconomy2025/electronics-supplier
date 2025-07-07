@@ -88,3 +88,12 @@ variable "budget_emails" {
   description = "List of email addresses to receive AWS budget alerts"
   type        = list(string)
 }
+
+variable "common_tags" {
+  description = "Common tags to apply to all resources."
+  type        = map(string)
+  default = {
+    Project   = "Electronics Supplier API"
+    ManagedBy = "Terraform"
+  }
+}
