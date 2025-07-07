@@ -56,8 +56,5 @@ jobs:
       - name: Validate
         run: terraform validate
 
-      - name: Plan
-        run: terraform plan
-
       - name: Terraform Apply
         run: terraform apply -auto-approve
