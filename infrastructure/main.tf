@@ -38,3 +38,19 @@ module "budget" {
   project_name = var.project_name
   budget_emails = var.budget_emails
 }
+
+module "frontend" {
+  source       = "./modules/frontend"
+  project_name = var.project_name
+  domain_name  = var.frontend_domain
+  aws_region   = var.aws_region
+}
+
+module "dns" {
+  source          = "./modules/dns"
+  zone_id         = var.route53_zone_id
+  frontend_domain = var.frontend_domain
+  frontend_target = module.frontend.cloudfront_domain_name
+  api_domain      = var.api_domain
+  api_target      = module.ec2.public_dns
+}

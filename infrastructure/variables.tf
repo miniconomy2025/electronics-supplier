@@ -88,3 +88,20 @@ variable "budget_emails" {
   description = "List of email addresses to receive AWS budget alerts"
   type        = list(string)
 }
+
+variable "route53_zone_id" {
+  description = "Route53 Hosted Zone ID for projects.bbdgrad.com"
+  type        = string
+}
+
+variable "frontend_domain" {
+  description = "Frontend domain name"
+  type        = string
+  default     = "electronics-supplier.projects.bbdgrad.com"
+}
+
+variable "api_domain" {
+  description = "API domain name"
+  type        = string
+  default     = "electronics-supplier-api.projects.bbdgrad.com"
+}
