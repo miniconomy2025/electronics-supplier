@@ -3,6 +3,8 @@ using esAPI.Data;
 using esAPI.Models;
 using System.Threading.Tasks;
 using System.Linq;
+using esAPI.Simulation;
+using SimulationModel = esAPI.Models.Simulation;
 
 namespace esAPI.Controllers
 {
@@ -23,7 +25,7 @@ namespace esAPI.Controllers
             var sim = _context.Simulations.FirstOrDefault();
             if (sim == null)
             {
-                sim = new Simulation { DayNumber = 1, StartedAt = DateTime.UtcNow, IsRunning = true };
+                sim = new SimulationModel { DayNumber = 1, StartedAt = DateTime.UtcNow, IsRunning = true };
                 _context.Simulations.Add(sim);
             }
             else
@@ -40,7 +42,7 @@ namespace esAPI.Controllers
 
         // GET /simulation - get current simulation state
         [HttpGet]
-        public ActionResult<Simulation> GetSimulation()
+        public ActionResult<SimulationModel> GetSimulation()
         {
             var sim = _context.Simulations.FirstOrDefault();
             if (sim == null)
@@ -57,6 +59,9 @@ namespace esAPI.Controllers
                 return BadRequest("Simulation not running.");
             if (sim.DayNumber >= 365)
                 return BadRequest("Simulation has reached the maximum number of days (1 year).");
+
+            var engine = new SimulationEngine(_context);
+            await engine.RunDayAsync(sim.DayNumber);
             sim.DayNumber += 1;
             await _context.SaveChangesAsync();
             return Ok(new { sim.DayNumber });
