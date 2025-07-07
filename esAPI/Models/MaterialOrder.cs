@@ -12,7 +12,7 @@ namespace esAPI.Models
         public int OrderId { get; set; }
 
         [Column("supplier_id")]
-        public int? SupplierId { get; set; }
+        public int SupplierId { get; set; }
 
         [Column("external_order_id")]
         public int? ExternalOrderId { get; set; }

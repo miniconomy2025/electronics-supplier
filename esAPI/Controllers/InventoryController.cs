@@ -28,7 +28,6 @@ public class InventoryController : ControllerBase
         {
             await using (var connection = _context.Database.GetDbConnection() as NpgsqlConnection)
             {
-                // We still need to manually open it because we are using raw ADO.NET commands.
                 await connection!.OpenAsync();
 
                 await using (var command = new NpgsqlCommand("SELECT get_inventory_summary()", connection))
@@ -43,7 +42,6 @@ public class InventoryController : ControllerBase
                 }
             }
 
-            // This case would be hit if something unexpected happened, like the connection being null.
             return NotFound("Could not retrieve inventory summary.");
         }
         catch (Exception ex)

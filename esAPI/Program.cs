@@ -1,6 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using esAPI.Data;
 using Npgsql;
+using esAPI.Clients;
+using FactoryApi.Clients;
+using esAPI.Services;
+using esAPI.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,6 +23,14 @@ builder.Services.AddControllers();
 builder.Services.AddScoped<esAPI.Services.IElectronicsService, esAPI.Services.ElectronicsService>();
 builder.Services.AddScoped<esAPI.Services.IMaterialOrderService, esAPI.Services.MaterialOrderService>();
 builder.Services.AddScoped<esAPI.Services.ISupplyService, esAPI.Services.SupplyService>();
+builder.Services.Configure<InventoryConfig>(
+    builder.Configuration.GetSection(InventoryConfig.SectionName)
+);
+builder.Services.AddScoped<SimulatedRecyclerApiClient>();
+builder.Services.AddScoped<SimulatedThohApiClient>();
+builder.Services.AddScoped<SupplierApiClientFactory>();
+
+builder.Services.AddHostedService<InventoryManagementService>();
 
 var app = builder.Build();
 
