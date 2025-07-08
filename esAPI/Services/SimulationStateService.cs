@@ -55,6 +55,20 @@ namespace esAPI.Services
             get { lock (_lock) { return _currentDay; } }
         }
 
+        // Returns the current simulation time as a decimal (e.g., 1.500 for halfway through Day 1)
+        public decimal GetCurrentSimulationTime(int precision = 3)
+        {
+            lock (_lock)
+            {
+                if (!_isRunning || !_startTimeUtc.HasValue)
+                    return 0m;
+                var elapsed = DateTime.UtcNow - _startTimeUtc.Value;
+                var totalSimDays = (decimal)(elapsed.TotalMinutes / 2.0);
+                var simTime = 1m + totalSimDays; // Day 1 starts at 1.000
+                return Math.Round(simTime, precision);
+            }
+        }
+
         // Restore state from a Simulation entity (e.g., on startup)
         public void RestoreFromBackup(SimulationModel sim)
         {

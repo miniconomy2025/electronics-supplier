@@ -5,6 +5,6 @@ namespace esAPI.Models
         public int MachineId { get; set; }
         public required string Status { get; set; } // status name, e.g. "WORKING"
         public float PurchasePrice { get; set; }
-        public DateTime PurchasedAt { get; set; }
+        public decimal PurchasedAt { get; set; }
     }
 }

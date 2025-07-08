@@ -10,9 +10,10 @@ namespace esAPI.Controllers
 {
     [ApiController]
     [Route("orders")]
-    public class ElectronicsOrdersController(AppDbContext context, IElectronicsService electronicsService) : BaseController(context)
+    public class ElectronicsOrdersController(AppDbContext context, IElectronicsService electronicsService, SimulationStateService stateService) : BaseController(context)
     {
         private readonly IElectronicsService _electronicsService = electronicsService;
+        private readonly SimulationStateService _stateService = stateService;
 
         [HttpPost]
         public async Task<IActionResult> CreateOrder([FromBody] ElectronicsOrderRequest dto)
@@ -43,7 +44,7 @@ namespace esAPI.Controllers
             {
                 ManufacturerId = manufacturer.CompanyId,
                 RemainingAmount = dto.Quantity,
-                OrderedAt = sim.DayNumber,
+                OrderedAt = _stateService.GetCurrentSimulationTime(3),
                 OrderStatusId = 1, //  1 is the ID for "Pending" status
                 TotalAmount = dto.Quantity
             };

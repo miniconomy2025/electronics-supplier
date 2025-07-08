@@ -2,12 +2,14 @@ using System.Threading.Tasks;
 using esAPI.DTOs.Electronics;
 using esAPI.Data;
 using Microsoft.EntityFrameworkCore;
+using esAPI.Services;
 
 namespace esAPI.Services
 {
-    public class ElectronicsService(AppDbContext context) : IElectronicsService
+    public class ElectronicsService(AppDbContext context, SimulationStateService stateService) : IElectronicsService
     {
         private readonly AppDbContext _context = context;
+        private readonly SimulationStateService _stateService = stateService;
 
         public async Task<ElectronicsDetailsDto?> GetElectronicsDetailsAsync()
         {
@@ -42,7 +44,7 @@ namespace esAPI.Services
                     .ToList();
                 foreach (var e in newElectronics)
                 {
-                    e.ProducedAt = sim.DayNumber;
+                    e.ProducedAt = _stateService.GetCurrentSimulationTime(3);
                 }
                 await _context.SaveChangesAsync();
             }

@@ -3,14 +3,9 @@ using esAPI.DTOs;
 
 namespace esAPI.Clients;
 
-public class SimulatedRecyclerApiClient : ISupplierApiClient
+public class SimulatedRecyclerApiClient(ILogger<SimulatedRecyclerApiClient> logger) : ISupplierApiClient
 {
-    private readonly ILogger<SimulatedRecyclerApiClient> _logger;
-
-    public SimulatedRecyclerApiClient(ILogger<SimulatedRecyclerApiClient> logger)
-    {
-        _logger = logger;
-    }
+    private readonly ILogger<SimulatedRecyclerApiClient> _logger = logger;
 
     public Task<List<SupplierMaterialInfo>> GetAvailableMaterialsAsync()
     {

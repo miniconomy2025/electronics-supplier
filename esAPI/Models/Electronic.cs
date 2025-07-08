@@ -10,13 +10,13 @@ namespace esAPI.Models
         [Column("electronic_id")]
         public int ElectronicId { get; set; }
 
-        [Column("produced_at")]
+        [Column("produced_at", TypeName = "numeric(1000,3)")]
         public decimal ProducedAt { get; set; }
 
         [Column("electronics_status")]
         public int ElectronicsStatusId { get; set; }
 
-        [Column("sold_at")]
+        [Column("sold_at", TypeName = "numeric(1000,3)")]
         public decimal? SoldAt { get; set; }
 
         [ForeignKey("ElectronicsStatusId")]

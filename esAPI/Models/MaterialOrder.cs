@@ -26,10 +26,10 @@ namespace esAPI.Models
         [Column("remaining_amount")]
         public int RemainingAmount { get; set; }
 
-        [Column("ordered_at")]
+        [Column("ordered_at", TypeName = "numeric(1000,3)")]
         public decimal OrderedAt { get; set; }
 
-        [Column("received_at")]
+        [Column("received_at", TypeName = "numeric(1000,3)")]
         public decimal? ReceivedAt { get; set; }
 
         [ForeignKey("SupplierId")]

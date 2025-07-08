@@ -2,17 +2,14 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using esAPI.Data;
 using esAPI.Models;
+using esAPI.Services;
 
 [ApiController]
 [Route("machines")]
-public class MachinesController : ControllerBase
+public class MachinesController(AppDbContext context, SimulationStateService stateService) : ControllerBase
 {
-    private readonly AppDbContext _context;
-
-    public MachinesController(AppDbContext context)
-    {
-        _context = context;
-    }
+    private readonly AppDbContext _context = context;
+    private readonly SimulationStateService _stateService = stateService;
 
     [HttpPost]
     public async Task<ActionResult<MachineDto>> CreateMachine([FromBody] MachineDto dto)
@@ -30,7 +27,7 @@ public class MachinesController : ControllerBase
         {
             MachineStatusId = status.StatusId,
             PurchasePrice = dto.PurchasePrice,
-            // PurchasedAt = dto.PurchasedAt // TODO: Fix
+            PurchasedAt = _stateService.GetCurrentSimulationTime(3)
         };
 
         _context.Machines.Add(machine);
@@ -52,7 +49,7 @@ public class MachinesController : ControllerBase
                       MachineId = m.MachineId,
                       Status = s.Status,
                       PurchasePrice = m.PurchasePrice,
-                    //   PurchasedAt = m.PurchasedAt // TODO: Fix
+                      PurchasedAt = m.PurchasedAt
                   })
             .ToListAsync();
     }
@@ -70,7 +67,7 @@ public class MachinesController : ControllerBase
                       MachineId = m.MachineId,
                       Status = s.Status,
                       PurchasePrice = m.PurchasePrice,
-                    //   PurchasedAt = m.PurchasedAt // TODO: Fix
+                      PurchasedAt = m.PurchasedAt
                   })
             .FirstOrDefaultAsync();
 
@@ -98,7 +95,7 @@ public class MachinesController : ControllerBase
 
         machine.MachineStatusId = status.StatusId;
         machine.PurchasePrice = dto.PurchasePrice;
-        // machine.PurchasedAt = dto.PurchasedAt; // TODO: Fix
+        machine.PurchasedAt = _stateService.GetCurrentSimulationTime(3);
 
         await _context.SaveChangesAsync();
         return NoContent();

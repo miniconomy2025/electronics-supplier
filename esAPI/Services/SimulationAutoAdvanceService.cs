@@ -11,18 +11,12 @@ using System.Linq;
 
 namespace esAPI.Services
 {
-    public class SimulationAutoAdvanceService : BackgroundService
+    public class SimulationAutoAdvanceService(IServiceProvider serviceProvider, SimulationStateService stateService) : BackgroundService
     {
-        private readonly IServiceProvider _serviceProvider;
-        private readonly SimulationStateService _stateService;
+        private readonly IServiceProvider _serviceProvider = serviceProvider;
+        private readonly SimulationStateService _stateService = stateService;
         private const int MinutesPerSimDay = 2;
         private const int MaxSimDays = 365;
-
-        public SimulationAutoAdvanceService(IServiceProvider serviceProvider, SimulationStateService stateService)
-        {
-            _serviceProvider = serviceProvider;
-            _stateService = stateService;
-        }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {

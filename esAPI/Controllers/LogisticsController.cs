@@ -13,14 +13,9 @@ namespace esAPI.Controllers
 {
     [ApiController]
     [Route("logistics")]
-    public class LogisticsController : ControllerBase
+    public class LogisticsController(AppDbContext context) : ControllerBase
     {
-        private readonly AppDbContext _context;
-
-        public LogisticsController(AppDbContext context)
-        {
-            _context = context;
-        }
+        private readonly AppDbContext _context = context;
 
         [HttpPost]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
