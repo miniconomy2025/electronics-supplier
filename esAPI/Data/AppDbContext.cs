@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using esAPI.Models;
+using SimulationModel = esAPI.Models.Simulation;
 
 namespace esAPI.Data
 {
@@ -22,7 +23,7 @@ namespace esAPI.Data
 
         public DbSet<OrderStatus> OrderStatuses { get; set; }
         public DbSet<LookupValue> LookupValues { get; set; }
-        public DbSet<Simulation> Simulations { get; set; }
+        public DbSet<SimulationModel> Simulations { get; set; }
         public DbSet<CurrentSupply> CurrentSupplies { get; set; }
 
         public DbSet<EffectiveMaterialStock> EffectiveMaterialStock { get; set; }

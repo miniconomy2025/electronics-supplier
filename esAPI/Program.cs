@@ -13,44 +13,44 @@ using System.Security.Authentication;
 var builder = WebApplication.CreateBuilder(args);
 
 //---------------------------- TLS Configuration ----------------------------
-var sharedRootCA = new X509Certificate2("../certs/miniconomy-root-ca.crt");
+// var sharedRootCA = new X509Certificate2("../certs/miniconomy-root-ca.crt");
 // var commercialBankClientCert = X509Certificate2.CreateFromPemFile("../certs/commercial-bank-client.pfx", "");
 
 // Load other client certificates
 
-bool ValidateCertificateWithRoot(X509Certificate2 cert, X509Chain chain, SslPolicyErrors errors, X509Certificate2 rootCA)
-{
-    if (errors != SslPolicyErrors.None)
-        return false;
+// bool ValidateCertificateWithRoot(X509Certificate2 cert, X509Chain chain, SslPolicyErrors errors, X509Certificate2 rootCA)
+// {
+//     if (errors != SslPolicyErrors.None)
+//         return false;
 
-    chain.ChainPolicy.ExtraStore.Add(rootCA);
-    chain.ChainPolicy.VerificationFlags = X509VerificationFlags.AllowUnknownCertificateAuthority;
-    chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
+//     chain.ChainPolicy.ExtraStore.Add(rootCA);
+//     chain.ChainPolicy.VerificationFlags = X509VerificationFlags.AllowUnknownCertificateAuthority;
+//     chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
 
-    var isValid = chain.Build(cert);
-    var actualRoot = chain.ChainElements[^1].Certificate;
+//     var isValid = chain.Build(cert);
+//     var actualRoot = chain.ChainElements[^1].Certificate;
 
-    return isValid && actualRoot.Thumbprint == rootCA.Thumbprint;
-}
+//     return isValid && actualRoot.Thumbprint == rootCA.Thumbprint;
+// }
 
 // Shared validation logic using the root CA
-Func<HttpRequestMessage, X509Certificate2, X509Chain, SslPolicyErrors, bool> CreateServerCertValidator = (message, serverCert, chain, sslPolicyErrors) =>
-    ValidateCertificateWithRoot(serverCert, chain, sslPolicyErrors, sharedRootCA);
+// Func<HttpRequestMessage, X509Certificate2, X509Chain, SslPolicyErrors, bool> CreateServerCertValidator = (message, serverCert, chain, sslPolicyErrors) =>
+//     ValidateCertificateWithRoot(serverCert, chain, sslPolicyErrors, sharedRootCA);
 
-builder.WebHost.ConfigureKestrel(options =>
-{
-    options.ConfigureHttpsDefaults(httpsOptions =>
-    {
-        httpsOptions.SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13;
+// builder.WebHost.ConfigureKestrel(options =>
+// {
+//     options.ConfigureHttpsDefaults(httpsOptions =>
+//     {
+//         httpsOptions.SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13;
 
-        // Require client certificates
-        httpsOptions.ClientCertificateMode = ClientCertificateMode.RequireCertificate;
+//         // Require client certificates
+//         httpsOptions.ClientCertificateMode = ClientCertificateMode.RequireCertificate;
 
-        // Validate client cert using shared root
-        httpsOptions.ClientCertificateValidation = (cert, chain, errors) =>
-            ValidateCertificateWithRoot(cert, chain, errors, sharedRootCA);
-    });
-});
+//         // Validate client cert using shared root
+//         httpsOptions.ClientCertificateValidation = (cert, chain, errors) =>
+//             ValidateCertificateWithRoot(cert, chain, errors, sharedRootCA);
+//     });
+// });
 
 // Example: Commercial Bank HTTP Client Configuration
 // builder.Services.AddHttpClient("commercial-bank", client =>
