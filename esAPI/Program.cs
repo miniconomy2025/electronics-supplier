@@ -18,7 +18,7 @@ var sharedRootCA = new X509Certificate2("../certs/miniconomy-root-ca.crt");
 
 // Load other client certificates
 
-bool ValidateCertificateWithRoot(X509Certificate2 cert, X509Chain chain, SslPolicyErrors errors, X509Certificate2 rootCA)
+static bool ValidateCertificateWithRoot(X509Certificate2 cert, X509Chain chain, SslPolicyErrors errors, X509Certificate2 rootCA)
 {
     if (errors != SslPolicyErrors.None)
         return false;
@@ -80,9 +80,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
-builder.Services.AddScoped<esAPI.Services.IElectronicsService, esAPI.Services.ElectronicsService>();
-builder.Services.AddScoped<esAPI.Services.IMaterialOrderService, esAPI.Services.MaterialOrderService>();
-builder.Services.AddScoped<esAPI.Services.ISupplyService, esAPI.Services.SupplyService>();
+builder.Services.AddScoped<IElectronicsService, ElectronicsService>();
+builder.Services.AddScoped<IMaterialOrderService, MaterialOrderService>();
+builder.Services.AddScoped<ISupplyService, SupplyService>();
 builder.Services.Configure<InventoryConfig>(
     builder.Configuration.GetSection(InventoryConfig.SectionName)
 );

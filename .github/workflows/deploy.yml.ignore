@@ -1,0 +1,46 @@
+name: Deploy API to EC2
+
+on:
+  push:
+    branches:
+        - main
+        - dev
+        - tevlen/deploy
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Publish API
+        run: dotnet publish esAPI/esAPI.csproj -c Release -o publish
+
+      - name: Copy files to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_API }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "publish/*"
+          target: "~/esapi"
+
+      - name: Restart API service
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.EC2_API }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # If using systemd:
+            sudo systemctl restart esapi
+            # If not using systemd, kill and restart manually:
+            # pkill -f 'dotnet esAPI.dll' || true
+            # nohup dotnet ~/esapi/esAPI.dll > ~/esapi/log.txt 2>&1 &
