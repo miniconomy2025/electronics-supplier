@@ -79,7 +79,7 @@ namespace esAPI.Controllers
             {
                 // Machine delivery
                 var machineOrder = await _context.MachineOrders
-                    .FirstOrDefaultAsync(o => o.ExternalOrderId == externalOrderId);
+                    .FirstOrDefaultAsync(o => o.ExternalOrderId == externalOrderId); 
 
                 if (machineOrder == null)
                     return NotFound($"No machine order found with ID {request.Id}");

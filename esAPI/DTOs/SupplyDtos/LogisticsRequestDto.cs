@@ -4,7 +4,7 @@ namespace esAPI.Dtos
     {
         public string Name { get; set; } = string.Empty;
         public int Quantity { get; set; }
-    }
+    } 
 
     public class LogisticsRequestDto
     {
