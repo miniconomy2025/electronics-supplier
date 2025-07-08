@@ -1,3 +1,6 @@
+using System;
+using esAPI.Services;
+
 namespace esAPI.DTOs.Electronics
 {
         public class ElectronicsOrderReadDto
@@ -11,5 +14,9 @@ namespace esAPI.DTOs.Electronics
                 public string? OrderStatus { get; set; }
                 // public string? ManufacturerName { get; set; }
                 public int TotalAmount { get; set; }
+                
+                // Simulation timestamp conversions
+                public DateTime OrderedAtSimTimestamp => OrderedAt.ToCanonicalTime();
+                public DateTime? ProcessedAtSimTimestamp => ProcessedAt?.ToCanonicalTime();
     }
 }

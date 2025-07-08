@@ -1,3 +1,6 @@
+using System;
+using esAPI.Services;
+
 namespace esAPI.Models
 {
     public class MachineDto
@@ -6,5 +9,8 @@ namespace esAPI.Models
         public required string Status { get; set; } // status name, e.g. "WORKING"
         public float PurchasePrice { get; set; }
         public decimal PurchasedAt { get; set; }
+        
+        // Simulation timestamp conversions
+        public DateTime PurchasedAtSimTimestamp => PurchasedAt.ToCanonicalTime();
     }
 }
