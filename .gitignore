@@ -11,3 +11,6 @@ obj/
 *.hcl
 
 *.pem
+*.config
+
+certs/
