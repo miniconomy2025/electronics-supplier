@@ -14,6 +14,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 //---------------------------- TLS Configuration ----------------------------
 // var sharedRootCA = new X509Certificate2("../certs/miniconomy-root-ca.crt");
+var sharedRootCA = X509CertificateLoader.LoadCertificateFromFile("../certs/miniconomy-root-ca.crt");
 // var commercialBankClientCert = X509Certificate2.CreateFromPemFile("../certs/commercial-bank-client.pfx", "");
 
 // Load other client certificates

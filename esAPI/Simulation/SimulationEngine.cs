@@ -3,14 +3,9 @@ using esAPI.Simulation.Tasks;
 
 namespace esAPI.Simulation
 {
-    public class SimulationEngine
+    public class SimulationEngine(AppDbContext context)
     {
-        private readonly AppDbContext _context;
-
-        public SimulationEngine(AppDbContext context)
-        {
-            _context = context;
-        }
+        private readonly AppDbContext _context = context;
 
         public static event Func<int, Task>? OnDayAdvanced;
 

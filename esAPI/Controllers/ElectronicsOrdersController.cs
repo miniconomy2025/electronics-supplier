@@ -10,14 +10,9 @@ namespace esAPI.Controllers
 {
     [ApiController]
     [Route("orders")]
-    public class ElectronicsOrdersController : BaseController
+    public class ElectronicsOrdersController(AppDbContext context, IElectronicsService electronicsService) : BaseController(context)
     {
-        private readonly IElectronicsService _electronicsService;
-
-        public ElectronicsOrdersController(AppDbContext context, IElectronicsService electronicsService) : base(context)
-        {
-            _electronicsService = electronicsService;
-        }
+        private readonly IElectronicsService _electronicsService = electronicsService;
 
         [HttpPost]
         public async Task<IActionResult> CreateOrder([FromBody] ElectronicsOrderRequest dto)
@@ -73,7 +68,7 @@ namespace esAPI.Controllers
             {
                 OrderId = order.OrderId,
                 Quantity = order.RemainingAmount,
-                AmountDue = currentStock.PricePerUnit * (decimal)order.RemainingAmount,
+                AmountDue = currentStock.PricePerUnit * order.RemainingAmount,
                 BankNumber = bankNumber,
             };
 

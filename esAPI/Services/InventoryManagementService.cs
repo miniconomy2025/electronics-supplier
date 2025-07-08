@@ -18,20 +18,11 @@ file class SupplierQuote
 }
 
 
-public class InventoryManagementService : BackgroundService
+public class InventoryManagementService(IServiceProvider serviceProvider, ILogger<InventoryManagementService> logger, IOptions<InventoryConfig> config) : BackgroundService
 {
-    private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<InventoryManagementService> _logger;
-    private readonly InventoryConfig _config;
-
-
-
-    public InventoryManagementService(IServiceProvider serviceProvider, ILogger<InventoryManagementService> logger, IOptions<InventoryConfig> config)
-    {
-        _serviceProvider = serviceProvider;
-        _logger = logger;
-        _config = config.Value;
-    }
+    private readonly IServiceProvider _serviceProvider = serviceProvider;
+    private readonly ILogger<InventoryManagementService> _logger = logger;
+    private readonly InventoryConfig _config = config.Value;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {

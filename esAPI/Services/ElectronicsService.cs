@@ -5,14 +5,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace esAPI.Services
 {
-    public class ElectronicsService : IElectronicsService
+    public class ElectronicsService(AppDbContext context) : IElectronicsService
     {
-        private readonly AppDbContext _context;
-
-        public ElectronicsService(AppDbContext context)
-        {
-            _context = context;
-        }
+        private readonly AppDbContext _context = context;
 
         public async Task<ElectronicsDetailsDto?> GetElectronicsDetailsAsync()
         {
