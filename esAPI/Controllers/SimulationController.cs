@@ -95,7 +95,8 @@ namespace esAPI.Controllers
             }
 
             // Truncate all tables except views and migration history
-            await _context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE \"Companies\", \"Materials\", \"MaterialSupplies\", \"MaterialOrders\", \"Machines\", \"MachineOrders\", \"MachineRatios\", \"MachineStatuses\", \"MachineDetails\", \"Electronics\", \"ElectronicsOrders\", \"ElectronicsStatuses\", \"OrderStatuses\", \"LookupValues\", \"Simulations\" RESTART IDENTITY CASCADE;");
+            // Use lowercase table names as they appear in the database
+            await _context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE companies, materials, material_supplies, material_orders, machines, machine_orders, machine_ratios, machine_statuses, machine_details, electronics, electronics_orders, electronics_statuses, order_statuses, lookup_values, simulation RESTART IDENTITY CASCADE;");
 
             return Ok(new { message = "Simulation stopped and all data deleted." });
         }
