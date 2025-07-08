@@ -13,7 +13,9 @@ using System.Security.Authentication;
 var builder = WebApplication.CreateBuilder(args);
 
 //---------------------------- TLS Configuration ----------------------------
-var sharedRootCA = new X509Certificate2("../certs/miniconomy-root-ca.crt");
+// var sharedRootCA = new X509Certificate2("../certs/miniconomy-root-ca.crt");
+var sharedRootCA = X509CertificateLoader.LoadCertificateFromFile("../certs/miniconomy-root-ca.crt");
+
 // var commercialBankClientCert = X509Certificate2.CreateFromPemFile("../certs/commercial-bank-client.pfx", "");
 
 // Load other client certificates
@@ -89,6 +91,8 @@ builder.Services.Configure<InventoryConfig>(
 builder.Services.AddScoped<SimulatedRecyclerApiClient>();
 builder.Services.AddScoped<SimulatedThohApiClient>();
 builder.Services.AddScoped<SupplierApiClientFactory>();
+
+builder.Services.AddSingleton<SimulationTimerService>();
 
 builder.Services.AddHostedService<InventoryManagementService>();
 

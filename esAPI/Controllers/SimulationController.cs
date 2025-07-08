@@ -3,6 +3,8 @@ using esAPI.Data;
 using esAPI.Models;
 using System.Threading.Tasks;
 using System.Linq;
+using esAPI.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace esAPI.Controllers
 {
@@ -11,31 +13,35 @@ namespace esAPI.Controllers
     public class SimulationController : ControllerBase
     {
         private readonly AppDbContext _context;
-        public SimulationController(AppDbContext context)
+        private readonly SimulationTimerService _timerService;
+        public SimulationController(AppDbContext context, SimulationTimerService timerService)
         {
             _context = context;
+            _timerService = timerService;
         }
 
         // POST /simulation - start the simulation
         [HttpPost]
-        public async Task<IActionResult> StartSimulation()
+        public IActionResult StartSimulation()
         {
-            var sim = _context.Simulations.FirstOrDefault();
-            if (sim == null)
-            {
-                sim = new Simulation { DayNumber = 1, StartedAt = DateTime.UtcNow, IsRunning = true };
-                _context.Simulations.Add(sim);
-            }
-            else
-            {
-                if (sim.IsRunning)
-                    return BadRequest("Simulation already running.");
-                sim.DayNumber = 1;
-                sim.StartedAt = DateTime.UtcNow;
-                sim.IsRunning = true;
-            }
-            await _context.SaveChangesAsync();
-            return Ok(sim);
+            if (_timerService.IsRunning)
+                return BadRequest("Simulation already running.");
+            _timerService.Start();
+            return Ok(new { message = "Simulation started." });
+        }
+
+        // DELETE /simulation - stop the simulation and delete all data
+        [HttpDelete]
+        public async Task<IActionResult> StopAndDeleteSimulation()
+        {
+            if (!_timerService.IsRunning)
+                return BadRequest("Simulation is not running.");
+            _timerService.Stop();
+
+            // Truncate all tables except views
+            await _context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE \"Companies\", \"Materials\", \"MaterialSupplies\", \"MaterialOrders\", \"Machines\", \"MachineOrders\", \"MachineRatios\", \"MachineStatuses\", \"MachineDetails\", \"Electronics\", \"ElectronicsOrders\", \"ElectronicsStatuses\", \"OrderStatuses\", \"LookupValues\", \"Simulations\" RESTART IDENTITY CASCADE;");
+
+            return Ok(new { message = "Simulation stopped and all data deleted." });
         }
 
         // GET /simulation - get current simulation state
@@ -46,6 +52,15 @@ namespace esAPI.Controllers
             if (sim == null)
                 return NotFound();
             return Ok(sim);
+        }
+
+        // GET /simulation/time - get current simulation day and running status
+        [HttpGet("time")]
+        public IActionResult GetSimulationTime()
+        {
+            var isRunning = _timerService.IsRunning;
+            var day = _timerService.GetCurrentSimDay();
+            return Ok(new { isRunning, currentDay = day });
         }
 
         // PATCH /simulation/advance - advance the simulation by one day
