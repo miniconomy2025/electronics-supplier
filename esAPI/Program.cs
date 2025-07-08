@@ -89,8 +89,10 @@ builder.Services.Configure<InventoryConfig>(
 builder.Services.AddScoped<SimulatedRecyclerApiClient>();
 builder.Services.AddScoped<SimulatedThohApiClient>();
 builder.Services.AddScoped<SupplierApiClientFactory>();
+builder.Services.AddSingleton<SimulationStateService>();
 
 builder.Services.AddHostedService<InventoryManagementService>();
+builder.Services.AddHostedService<SimulationAutoAdvanceService>();
 
 // Add CORS services
 builder.Services.AddCors(options =>

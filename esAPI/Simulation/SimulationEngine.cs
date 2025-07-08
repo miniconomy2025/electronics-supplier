@@ -12,6 +12,8 @@ namespace esAPI.Simulation
             _context = context;
         }
 
+        public static event Func<int, Task>? OnDayAdvanced;
+
         public async Task RunDayAsync(int dayNumber)
         {
             Console.WriteLine($"Running simulation logic for Day {dayNumber}");
@@ -26,6 +28,8 @@ namespace esAPI.Simulation
             // - MaterialTask
             // - ProductionTask
             // - OrderTask
+            if (OnDayAdvanced != null)
+                await OnDayAdvanced(dayNumber);
         }
     }
 }
