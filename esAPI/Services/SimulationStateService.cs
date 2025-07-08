@@ -1,5 +1,6 @@
 using System;
 using esAPI.Models;
+using SimulationModel = esAPI.Models.Simulation;
 
 namespace esAPI.Services
 {
@@ -55,7 +56,7 @@ namespace esAPI.Services
         }
 
         // Restore state from a Simulation entity (e.g., on startup)
-        public void RestoreFromBackup(Simulation sim)
+        public void RestoreFromBackup(SimulationModel sim)
         {
             lock (_lock)
             {
@@ -66,11 +67,11 @@ namespace esAPI.Services
         }
 
         // Create a Simulation entity for backup
-        public Simulation ToBackupEntity()
+        public SimulationModel ToBackupEntity()
         {
             lock (_lock)
             {
-                return new Simulation
+                return new SimulationModel
                 {
                     IsRunning = _isRunning,
                     StartedAt = _startTimeUtc,
