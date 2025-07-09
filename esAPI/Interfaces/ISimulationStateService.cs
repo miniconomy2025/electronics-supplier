@@ -1,15 +1,13 @@
-using System;
-using esAPI.Models;
 using SimulationModel = esAPI.Models.Simulation;
 
-namespace esAPI.Services
+namespace esAPI.Interfaces
 {
     public interface ISimulationStateService
     {
         bool IsRunning { get; }
         DateTime? StartTimeUtc { get; }
         int CurrentDay { get; }
-        
+
         void Start();
         void Stop();
         void AdvanceDay();
@@ -17,4 +15,4 @@ namespace esAPI.Services
         void RestoreFromBackup(SimulationModel sim);
         SimulationModel ToBackupEntity();
     }
-} 
+}

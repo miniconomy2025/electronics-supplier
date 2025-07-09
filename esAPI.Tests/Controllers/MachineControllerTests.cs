@@ -1,10 +1,9 @@
-using Xunit;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 using esAPI.Controllers;
-using esAPI.Services;
+using esAPI.Interfaces;
 using esAPI.DTOs;
 using esAPI.Models;
 using esAPI.Data;
@@ -29,7 +28,7 @@ namespace esAPI.Tests.Controllers
         private AppDbContext CreateContext()
         {
             var context = new AppDbContext(_options);
-            
+
             // Seed machine statuses
             if (!context.Set<MachineStatus>().Any())
             {
@@ -54,7 +53,7 @@ namespace esAPI.Tests.Controllers
             // Add some working machines
             var standbyStatus = context.Set<MachineStatus>().First(s => s.Status == "STANDBY");
             var inUseStatus = context.Set<MachineStatus>().First(s => s.Status == "IN_USE");
-            
+
             var machines = new List<Machine>
             {
                 new Machine { MachineStatusId = standbyStatus.StatusId, PurchasePrice = 1000f, PurchasedAt = 1.0m },
@@ -62,7 +61,7 @@ namespace esAPI.Tests.Controllers
                 new Machine { MachineStatusId = standbyStatus.StatusId, PurchasePrice = 2000f, PurchasedAt = 1.2m },
                 new Machine { MachineStatusId = inUseStatus.StatusId, PurchasePrice = 2500f, PurchasedAt = 1.3m }
             };
-            
+
             context.Machines.AddRange(machines);
             await context.SaveChangesAsync();
 
@@ -80,7 +79,7 @@ namespace esAPI.Tests.Controllers
             // Assert
             var createdResult = result.Result.Should().BeOfType<CreatedAtActionResult>().Subject;
             var disasterDto = createdResult.Value.Should().BeOfType<DisasterDto>().Subject;
-            
+
             disasterDto.MachinesAffected.Should().Be(3);
             disasterDto.BrokenAt.Should().Be(1.500m);
 
@@ -111,7 +110,7 @@ namespace esAPI.Tests.Controllers
                 new Machine { MachineStatusId = standbyStatus.StatusId, PurchasePrice = 1000f, PurchasedAt = 1.0m },
                 new Machine { MachineStatusId = standbyStatus.StatusId, PurchasePrice = 1500f, PurchasedAt = 1.1m }
             };
-            
+
             context.Machines.AddRange(machines);
             await context.SaveChangesAsync();
 
@@ -129,7 +128,7 @@ namespace esAPI.Tests.Controllers
             // Assert
             var createdResult = result.Result.Should().BeOfType<CreatedAtActionResult>().Subject;
             var disasterDto = createdResult.Value.Should().BeOfType<DisasterDto>().Subject;
-            
+
             disasterDto.MachinesAffected.Should().Be(2); // Only 2 machines were available
 
             // Verify all machines were broken
@@ -153,7 +152,7 @@ namespace esAPI.Tests.Controllers
                 new Machine { MachineStatusId = brokenStatus.StatusId, PurchasePrice = 1000f, PurchasedAt = 1.0m },
                 new Machine { MachineStatusId = brokenStatus.StatusId, PurchasePrice = 1500f, PurchasedAt = 1.1m }
             };
-            
+
             context.Machines.AddRange(machines);
             await context.SaveChangesAsync();
 
@@ -205,7 +204,7 @@ namespace esAPI.Tests.Controllers
 
             var standbyStatus = context.Set<MachineStatus>().First(s => s.Status == "STANDBY");
             var inUseStatus = context.Set<MachineStatus>().First(s => s.Status == "IN_USE");
-            
+
             // Add machines in specific order
             var machines = new List<Machine>
             {
@@ -213,7 +212,7 @@ namespace esAPI.Tests.Controllers
                 new Machine { MachineId = 2, MachineStatusId = inUseStatus.StatusId, PurchasePrice = 1500f, PurchasedAt = 1.1m },
                 new Machine { MachineId = 3, MachineStatusId = standbyStatus.StatusId, PurchasePrice = 2000f, PurchasedAt = 1.2m }
             };
-            
+
             context.Machines.AddRange(machines);
             await context.SaveChangesAsync();
 
@@ -231,7 +230,7 @@ namespace esAPI.Tests.Controllers
             // Assert
             var createdResult = result.Result.Should().BeOfType<CreatedAtActionResult>().Subject;
             var disasterDto = createdResult.Value.Should().BeOfType<DisasterDto>().Subject;
-            
+
             disasterDto.MachinesAffected.Should().Be(2);
 
             // Verify the first two machines (by ID) were broken
@@ -239,10 +238,10 @@ namespace esAPI.Tests.Controllers
                 .Where(m => m.MachineStatusId == 3) // BROKEN status
                 .OrderBy(m => m.MachineId)
                 .ToListAsync();
-            
+
             brokenMachines.Should().HaveCount(2);
             brokenMachines[0].MachineId.Should().Be(1);
             brokenMachines[1].MachineId.Should().Be(2);
         }
     }
-} 
+}

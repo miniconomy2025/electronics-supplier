@@ -5,4 +5,4 @@ namespace esAPI.DTOs.Electronics
         public int? MachineId { get; set; }
         public string? Notes { get; set; }
     }
-} 
+}

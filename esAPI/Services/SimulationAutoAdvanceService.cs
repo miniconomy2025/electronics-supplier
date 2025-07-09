@@ -1,30 +1,16 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.DependencyInjection;
 using esAPI.Data;
-using esAPI.Models;
 using esAPI.Simulation;
-using Microsoft.EntityFrameworkCore;
-using System.Linq;
-using esAPI.Services;
-using Microsoft.Extensions.Configuration;
+using esAPI.Interfaces;
 
 namespace esAPI.Services
 {
-    public class SimulationAutoAdvanceService : IHostedService
+    public class SimulationAutoAdvanceService(IServiceProvider serviceProvider) : IHostedService
     {
-        private readonly IServiceProvider _serviceProvider;
+        private readonly IServiceProvider _serviceProvider = serviceProvider;
         private CancellationTokenSource? _cts;
         private Task? _backgroundTask;
         private const int MinutesPerSimDay = 2;
         private const int MaxSimDays = 365;
-
-        public SimulationAutoAdvanceService(IServiceProvider serviceProvider)
-        {
-            _serviceProvider = serviceProvider;
-        }
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
@@ -76,17 +62,15 @@ namespace esAPI.Services
                             stateService.Stop();
                             break;
                         }
-                        using (var dbScope = _serviceProvider.CreateScope())
-                        {
-                            var db = dbScope.ServiceProvider.GetRequiredService<AppDbContext>();
-                            var engine = new SimulationEngine(db, bankAccountService, dayOrchestrator);
-                            await engine.RunDayAsync(stateService.CurrentDay);
-                            stateService.AdvanceDay();
-                        }
+                        using var dbScope = _serviceProvider.CreateScope();
+                        var db = dbScope.ServiceProvider.GetRequiredService<AppDbContext>();
+                        var engine = new SimulationEngine(db, bankAccountService, dayOrchestrator);
+                        await engine.RunDayAsync(stateService.CurrentDay);
+                        stateService.AdvanceDay();
                     }
                 }
                 await Task.Delay(TimeSpan.FromMinutes(MinutesPerSimDay), stoppingToken);
             }
         }
     }
-} 
+}

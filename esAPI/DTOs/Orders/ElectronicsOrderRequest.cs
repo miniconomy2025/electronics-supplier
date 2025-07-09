@@ -4,4 +4,4 @@ namespace esAPI.DTOs.Orders
     {
         public int Quantity { get; set; }
     }
-} 
+}

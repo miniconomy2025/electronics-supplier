@@ -1,5 +1,3 @@
-using System;
-
 namespace esAPI.DTOs
 {
     public class SimulationStateDto
@@ -10,4 +8,4 @@ namespace esAPI.DTOs
         public long SimulationUnixEpoch { get; set; }
         public DateTime CanonicalSimulationDate { get; set; }
     }
-} 
+}

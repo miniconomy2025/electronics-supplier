@@ -37,7 +37,7 @@ namespace esAPI.Models
 
         [ForeignKey("MaterialId")]
         public Material? Material { get; set; }
-        
+
         [ForeignKey("OrderStatusId")]
         public OrderStatus? OrderStatus { get; set; }
     }

@@ -1,6 +1,6 @@
-using System;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+
 using esAPI.Services;
 
 namespace esAPI.DTOs.MaterialOrder
@@ -25,7 +25,7 @@ namespace esAPI.DTOs.MaterialOrder
         public required string Status { get; set; }
         public decimal OrderedAt { get; set; }
         public decimal? ReceivedAt { get; set; }
-        
+
         // Simulation timestamp conversions
         public DateTime OrderedAtSimTimestamp => OrderedAt.ToCanonicalTime();
         public DateTime? ReceivedAtSimTimestamp => ReceivedAt?.ToCanonicalTime();
@@ -65,7 +65,7 @@ namespace esAPI.DTOs.MaterialOrder
         public int? SupplierId { get; set; }
         public decimal? OrderedAt { get; set; }
         public decimal? ReceivedAt { get; set; }
-        
+
         // Simulation timestamp conversions
         public DateTime? OrderedAtSimTimestamp => OrderedAt?.ToCanonicalTime();
         public DateTime? ReceivedAtSimTimestamp => ReceivedAt?.ToCanonicalTime();

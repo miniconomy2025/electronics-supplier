@@ -4,18 +4,11 @@ using esAPI.Services;
 
 namespace esAPI.Simulation
 {
-    public class SimulationEngine
+    public class SimulationEngine(AppDbContext context, BankAccountService bankAccountService, SimulationDayOrchestrator dayOrchestrator)
     {
-        private readonly AppDbContext _context;
-        private readonly BankAccountService _bankAccountService;
-        private readonly SimulationDayOrchestrator _dayOrchestrator;
-
-        public SimulationEngine(AppDbContext context, BankAccountService bankAccountService, SimulationDayOrchestrator dayOrchestrator)
-        {
-            _context = context;
-            _bankAccountService = bankAccountService;
-            _dayOrchestrator = dayOrchestrator;
-        }
+        private readonly AppDbContext _context = context;
+        private readonly BankAccountService _bankAccountService = bankAccountService;
+        private readonly SimulationDayOrchestrator _dayOrchestrator = dayOrchestrator;
 
         public static event Func<int, Task>? OnDayAdvanced;
 

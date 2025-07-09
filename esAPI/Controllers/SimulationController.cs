@@ -1,31 +1,21 @@
 using Microsoft.AspNetCore.Mvc;
-using esAPI.Data;
-using esAPI.Models;
-using System.Threading.Tasks;
-using System.Linq;
-using esAPI.Simulation;
-using SimulationModel = esAPI.Models.Simulation;
-using esAPI.Services;
 using Microsoft.EntityFrameworkCore;
+
+using esAPI.Data;
+using esAPI.Services;
+using esAPI.Simulation;
+using esAPI.Interfaces;
 
 namespace esAPI.Controllers
 {
     [ApiController]
     [Route("simulation")]
-    public class SimulationController : ControllerBase
+    public class SimulationController(AppDbContext context, BankAccountService bankAccountService, SimulationDayOrchestrator dayOrchestrator, ISimulationStateService stateService) : ControllerBase
     {
-        private readonly AppDbContext _context;
-        private readonly BankAccountService _bankAccountService;
-        private readonly SimulationDayOrchestrator _dayOrchestrator;
-        private readonly ISimulationStateService _stateService;
-
-        public SimulationController(AppDbContext context, BankAccountService bankAccountService, SimulationDayOrchestrator dayOrchestrator, ISimulationStateService stateService)
-        {
-            _context = context;
-            _bankAccountService = bankAccountService;
-            _dayOrchestrator = dayOrchestrator;
-            _stateService = stateService;
-        }
+        private readonly AppDbContext _context = context;
+        private readonly BankAccountService _bankAccountService = bankAccountService;
+        private readonly SimulationDayOrchestrator _dayOrchestrator = dayOrchestrator;
+        private readonly ISimulationStateService _stateService = stateService;
 
         // POST /simulation - start the simulation
         [HttpPost]
@@ -104,4 +94,4 @@ namespace esAPI.Controllers
             return Ok(new { message = "Simulation stopped and all data deleted." });
         }
     }
-} 
+}

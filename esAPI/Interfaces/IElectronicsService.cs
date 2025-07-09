@@ -1,11 +1,10 @@
-using System.Threading.Tasks;
 using esAPI.DTOs.Electronics;
 
-namespace esAPI.Services
+namespace esAPI.Interfaces
 {
     public interface IElectronicsService
     {
         Task<ElectronicsDetailsDto?> GetElectronicsDetailsAsync();
         Task<ProducedElectronicsResultDto> ProduceElectronicsAsync();
     }
-} 
+}

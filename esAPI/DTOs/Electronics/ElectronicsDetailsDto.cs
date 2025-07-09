@@ -5,4 +5,4 @@ namespace esAPI.DTOs.Electronics
         public int AvailableStock { get; set; }
         public decimal PricePerUnit { get; set; }
     }
-} 
+}

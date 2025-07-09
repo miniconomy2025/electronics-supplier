@@ -7,4 +7,4 @@ namespace esAPI.DTOs.Orders
         public decimal AmountDue { get; set; }
         public string BankNumber { get; set; } = string.Empty;
     }
-} 
+}

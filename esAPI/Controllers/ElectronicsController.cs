@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 
+using esAPI.Interfaces;
 using esAPI.DTOs.Electronics;
-using esAPI.Services;
 
 namespace esAPI.Controllers
 {
@@ -27,4 +27,4 @@ namespace esAPI.Controllers
             return Created(string.Empty, result);
         }
     }
-} 
+}

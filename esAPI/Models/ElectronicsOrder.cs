@@ -33,4 +33,4 @@ namespace esAPI.Models
         public OrderStatus? OrderStatus { get; set; }
 
     }
-} 
+}

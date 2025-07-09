@@ -9,7 +9,7 @@ namespace esAPI.Models
         [Key]
         [Column("status_id")]
         public int StatusId { get; set; }
-        
+
         [Column("status")]
         [Required]
         public required string Status { get; set; }

@@ -1,8 +1,9 @@
 using esAPI.Data;
 using esAPI.DTOs.Electronics;
 using esAPI.DTOs.Orders;
-using esAPI.Models;
 using esAPI.Services;
+using esAPI.Interfaces;
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -51,13 +52,13 @@ namespace esAPI.Controllers
                 OrderStatusId = 1, //  1 is the ID for "Pending" status
                 TotalAmount = dto.Quantity
             };
-            
+
             _context.ElectronicsOrders.Add(order);
 
             try
             {
                 await _context.SaveChangesAsync();
-                
+
                 // Reserve electronics for this order
                 var reservationSuccess = await _orderExpirationService.ReserveElectronicsForOrderAsync(order.OrderId, dto.Quantity);
                 if (!reservationSuccess)

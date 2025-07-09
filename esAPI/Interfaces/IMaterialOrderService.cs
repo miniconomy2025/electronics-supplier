@@ -1,8 +1,6 @@
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using esAPI.DTOs.MaterialOrder;
 
-namespace esAPI.Services
+namespace esAPI.Interfaces
 {
     public interface IMaterialOrderService
     {
@@ -11,4 +9,4 @@ namespace esAPI.Services
         Task<MaterialOrderResponse> CreateMaterialOrderAsync(CreateMaterialOrderRequest request);
         Task<bool> UpdateMaterialOrderAsync(int orderId, UpdateMaterialOrderRequest request);
     }
-} 
+}

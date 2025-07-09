@@ -22,4 +22,4 @@ namespace esAPI.Models
         [ForeignKey("ElectronicsStatusId")]
         public ElectronicsStatus? ElectronicsStatus { get; set; }
     }
-} 
+}
