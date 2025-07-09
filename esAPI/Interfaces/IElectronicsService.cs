@@ -1,6 +1,6 @@
 using esAPI.DTOs.Electronics;
 
-namespace esAPI.Services
+namespace esAPI.Interfaces
 {
     public interface IElectronicsService
     {

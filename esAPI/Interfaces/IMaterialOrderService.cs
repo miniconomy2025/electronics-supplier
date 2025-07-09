@@ -1,6 +1,6 @@
 using esAPI.DTOs.MaterialOrder;
 
-namespace esAPI.Services
+namespace esAPI.Interfaces
 {
     public interface IMaterialOrderService
     {

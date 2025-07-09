@@ -1,9 +1,4 @@
-using System;
-using System.Linq;
-using System.Net.Http;
 using System.Text.Json;
-using System.Threading.Tasks;
-using esAPI.Services;
 using esAPI.Clients;
 
 namespace esAPI.Services

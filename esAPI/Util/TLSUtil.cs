@@ -51,7 +51,7 @@ public class TLSUtil
         });
     }
 
-    private bool ValidateCertificateWithRoot(X509Certificate2 cert, X509Chain chain, SslPolicyErrors errors, X509Certificate2 rootCA)
+    private static bool ValidateCertificateWithRoot(X509Certificate2 cert, X509Chain chain, SslPolicyErrors errors, X509Certificate2 rootCA)
     {
         if (errors != SslPolicyErrors.None)
             return false;

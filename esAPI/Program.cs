@@ -6,6 +6,7 @@ using Npgsql;
 using esAPI.Data;
 using esAPI.Clients;
 using esAPI.Services;
+using esAPI.Interfaces;
 using esAPI.Configuration;
 
 using FactoryApi.Clients;
@@ -15,8 +16,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Configure TLS settings
 var tlsUtil = new TLSUtil(builder);
 
-tlsUtil.AddSecureHttpClient(builder.Services, "commercial-bank", "https://commercial-bank.com");
-tlsUtil.AddSecureHttpClient(builder.Services, "bulk-logistics", "https://bulk-logistics.com");
+tlsUtil.AddSecureHttpClient(builder.Services, "commercial-bank", "https://commercial-bank-api.projects.bbdgrad.com");
+tlsUtil.AddSecureHttpClient(builder.Services, "bulk-logistics", "https://bulk-logistics-api.projects.bbdgrad.com");
 
 //--------------------------------------------------------------------------
 

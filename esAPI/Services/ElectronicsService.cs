@@ -1,5 +1,6 @@
 using esAPI.DTOs.Electronics;
 using esAPI.Data;
+using esAPI.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace esAPI.Services

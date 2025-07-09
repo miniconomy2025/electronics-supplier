@@ -1,6 +1,7 @@
 using esAPI.Data;
 using esAPI.DTOs.Supply;
 using esAPI.Models;
+using esAPI.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace esAPI.Services

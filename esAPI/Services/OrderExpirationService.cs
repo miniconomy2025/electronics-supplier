@@ -1,11 +1,7 @@
 using esAPI.Data;
 using esAPI.Models.Enums;
+using esAPI.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Hosting;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
-using System.Linq;
 
 namespace esAPI.Services
 {

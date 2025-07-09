@@ -1,6 +1,6 @@
 using SimulationModel = esAPI.Models.Simulation;
 
-namespace esAPI.Services
+namespace esAPI.Interfaces
 {
     public interface ISimulationStateService
     {

@@ -1,5 +1,6 @@
 using esAPI.Data;
 using esAPI.Models;
+using esAPI.Interfaces;
 using esAPI.Clients;
 
 namespace esAPI.Services

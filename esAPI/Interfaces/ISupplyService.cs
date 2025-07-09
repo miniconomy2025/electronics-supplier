@@ -1,6 +1,6 @@
 using esAPI.DTOs.Supply;
 
-namespace esAPI.Services
+namespace esAPI.Interfaces
 {
     public interface ISupplyService
     {
