@@ -10,14 +10,9 @@ namespace esAPI.Services
         Task<InventorySummaryDto> GetAndStoreInventory();
     }
 
-    public class InventoryService : IInventoryService
+    public class InventoryService(IHttpClientFactory httpClientFactory) : IInventoryService
     {
-        private readonly IHttpClientFactory _httpClientFactory;
-
-        public InventoryService(IHttpClientFactory httpClientFactory)
-        {
-            _httpClientFactory = httpClientFactory;
-        }
+        private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
 
         public Task<InventorySummaryDto> GetAndStoreInventory()
         {

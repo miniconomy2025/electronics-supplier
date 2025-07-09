@@ -1,22 +1,12 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-
 namespace esAPI.Services
 {
-    public class OrderExpirationBackgroundService : BackgroundService
+    public class OrderExpirationBackgroundService(
+        IServiceProvider serviceProvider,
+        ILogger<OrderExpirationBackgroundService> logger) : BackgroundService
     {
-        private readonly IServiceProvider _serviceProvider;
-        private readonly ILogger<OrderExpirationBackgroundService> _logger;
+        private readonly IServiceProvider _serviceProvider = serviceProvider;
+        private readonly ILogger<OrderExpirationBackgroundService> _logger = logger;
         private readonly TimeSpan _checkInterval = TimeSpan.FromMinutes(1); // Check every minute
-
-        public OrderExpirationBackgroundService(
-            IServiceProvider serviceProvider,
-            ILogger<OrderExpirationBackgroundService> logger)
-        {
-            _serviceProvider = serviceProvider;
-            _logger = logger;
-        }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {

@@ -1,12 +1,8 @@
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using esAPI.Data;
 using esAPI.DTOs.MaterialOrder;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using System.Data;
-using esAPI.Services;
 
 namespace esAPI.Services
 {

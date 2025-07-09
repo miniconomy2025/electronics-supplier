@@ -6,9 +6,6 @@ using FactoryApi.Clients;
 using esAPI.Services;
 using esAPI.Configuration;
 using System.Security.Cryptography.X509Certificates;
-using System.Net.Security;
-using Microsoft.AspNetCore.Server.Kestrel.Https;
-using System.Security.Authentication;
 
 var builder = WebApplication.CreateBuilder(args);
 

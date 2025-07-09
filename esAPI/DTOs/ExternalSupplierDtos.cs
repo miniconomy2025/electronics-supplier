@@ -20,7 +20,7 @@ public class RecyclerMaterialDto
 public class RecyclerApiResponseDto
 {
     [JsonPropertyName("materials")]
-    public List<RecyclerMaterialDto> Materials { get; set; } = new();
+    public List<RecyclerMaterialDto> Materials { get; set; } = [];
 }
 
 

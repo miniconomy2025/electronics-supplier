@@ -11,15 +11,10 @@ namespace esAPI.Controllers
 {
     [ApiController]
     [Route("payments")]
-    public class PaymentsController : ControllerBase
+    public class PaymentsController(AppDbContext context, ISimulationStateService simulationStateService) : ControllerBase
     {
-        private readonly AppDbContext _context;
-        private readonly ISimulationStateService _simulationStateService;
-        public PaymentsController(AppDbContext context, ISimulationStateService simulationStateService)
-        {
-            _context = context;
-            _simulationStateService = simulationStateService;
-        }
+        private readonly AppDbContext _context = context;
+        private readonly ISimulationStateService _simulationStateService = simulationStateService;
 
         public class PaymentNotificationDto
         {

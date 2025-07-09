@@ -14,18 +14,11 @@ namespace esAPI.Services
         Task PlaceBulkLogisticsPickup(int orderId, string itemName, int quantity, string supplier);
     }
 
-    public class MaterialAcquisitionService : IMaterialAcquisitionService
+    public class MaterialAcquisitionService(IHttpClientFactory httpClientFactory, BankService bankService, ICommercialBankClient bankClient) : IMaterialAcquisitionService
     {
-        private readonly IHttpClientFactory _httpClientFactory;
-        private readonly BankService _bankService;
-        private readonly ICommercialBankClient _bankClient;
-
-        public MaterialAcquisitionService(IHttpClientFactory httpClientFactory, BankService bankService, ICommercialBankClient bankClient)
-        {
-            _httpClientFactory = httpClientFactory;
-            _bankService = bankService;
-            _bankClient = bankClient;
-        }
+        private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
+        private readonly BankService _bankService = bankService;
+        private readonly ICommercialBankClient _bankClient = bankClient;
 
         public async Task PurchaseMaterialsViaBank()
         {

@@ -1,7 +1,6 @@
 using esAPI.Data;
 using esAPI.DTOs.Electronics;
 using esAPI.DTOs.Orders;
-using esAPI.Models;
 using esAPI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;

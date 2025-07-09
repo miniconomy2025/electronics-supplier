@@ -37,7 +37,7 @@ public class SimulatedRecyclerApiClient(ILogger<SimulatedRecyclerApiClient> logg
                 AvailableStock = m.AvailableQuantityInKg,
                 Price = m.Price
             })
-            .ToList() ?? new List<SupplierMaterialInfo>();
+            .ToList() ?? [];
 
         return Task.FromResult(standardizedInfo);
     }

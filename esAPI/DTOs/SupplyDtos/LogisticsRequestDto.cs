@@ -10,6 +10,6 @@ namespace esAPI.Dtos
     {
         public string Id { get; set; } = string.Empty; // Order ID or Pickup Request ID
         public string Type { get; set; } = string.Empty; // "PICKUP", "DELIVERY", or "MACHINE"
-        public List<LogisticsItemDto> Items { get; set; } = new();
+        public List<LogisticsItemDto> Items { get; set; } = [];
     }
 }

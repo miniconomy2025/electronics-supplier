@@ -12,20 +12,12 @@ namespace esAPI.Controllers
 {
     [ApiController]
     [Route("simulation")]
-    public class SimulationController : ControllerBase
+    public class SimulationController(AppDbContext context, BankAccountService bankAccountService, SimulationDayOrchestrator dayOrchestrator, ISimulationStateService stateService) : ControllerBase
     {
-        private readonly AppDbContext _context;
-        private readonly BankAccountService _bankAccountService;
-        private readonly SimulationDayOrchestrator _dayOrchestrator;
-        private readonly ISimulationStateService _stateService;
-
-        public SimulationController(AppDbContext context, BankAccountService bankAccountService, SimulationDayOrchestrator dayOrchestrator, ISimulationStateService stateService)
-        {
-            _context = context;
-            _bankAccountService = bankAccountService;
-            _dayOrchestrator = dayOrchestrator;
-            _stateService = stateService;
-        }
+        private readonly AppDbContext _context = context;
+        private readonly BankAccountService _bankAccountService = bankAccountService;
+        private readonly SimulationDayOrchestrator _dayOrchestrator = dayOrchestrator;
+        private readonly ISimulationStateService _stateService = stateService;
 
         // POST /simulation - start the simulation
         [HttpPost]

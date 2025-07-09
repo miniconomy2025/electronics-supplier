@@ -1,8 +1,4 @@
-using System;
-using System.Net.Http;
 using System.Text.Json;
-using System.Threading.Tasks;
-using esAPI.Services;
 using esAPI.Clients;
 
 namespace esAPI.Services
@@ -15,18 +11,11 @@ namespace esAPI.Services
         Task PlaceBulkLogisticsPickup(int thohOrderId, int quantity);
     }
 
-    public class MachineAcquisitionService : IMachineAcquisitionService
+    public class MachineAcquisitionService(IHttpClientFactory httpClientFactory, BankService bankService, ICommercialBankClient bankClient) : IMachineAcquisitionService
     {
-        private readonly IHttpClientFactory _httpClientFactory;
-        private readonly BankService _bankService;
-        private readonly ICommercialBankClient _bankClient;
-
-        public MachineAcquisitionService(IHttpClientFactory httpClientFactory, BankService bankService, ICommercialBankClient bankClient)
-        {
-            _httpClientFactory = httpClientFactory;
-            _bankService = bankService;
-            _bankClient = bankClient;
-        }
+        private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
+        private readonly BankService _bankService = bankService;
+        private readonly ICommercialBankClient _bankClient = bankClient;
 
         // Returns true if 'electronics_machine' is available
         public async Task<bool> CheckTHOHForMachines()

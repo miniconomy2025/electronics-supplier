@@ -1,5 +1,3 @@
-using System;
-
 namespace esAPI.Services
 {
     public static class SimulationTimeExtensions

@@ -1,8 +1,6 @@
-using System.Threading.Tasks;
 using esAPI.DTOs.Electronics;
 using esAPI.Data;
 using Microsoft.EntityFrameworkCore;
-using esAPI.Services;
 
 namespace esAPI.Services
 {

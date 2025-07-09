@@ -1,25 +1,13 @@
 using esAPI.Data;
-using esAPI.Models;
 using esAPI.Models.Enums;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Hosting;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
-using System.Linq;
 
 namespace esAPI.Services
 {
-    public class OrderExpirationService : IHostedService
+    public class OrderExpirationService(IServiceProvider serviceProvider, ISimulationStateService stateService) : IHostedService
     {
-        private readonly IServiceProvider _serviceProvider;
-        private readonly ISimulationStateService _stateService;
-
-        public OrderExpirationService(IServiceProvider serviceProvider, ISimulationStateService stateService)
-        {
-            _serviceProvider = serviceProvider;
-            _stateService = stateService;
-        }
+        private readonly IServiceProvider _serviceProvider = serviceProvider;
+        private readonly ISimulationStateService _stateService = stateService;
 
         /// <summary>
         /// Reserves electronics for a pending order

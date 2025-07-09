@@ -4,30 +4,20 @@ using System.Linq;
 
 namespace esAPI.Services
 {
-    public class SimulationDayOrchestrator
+    public class SimulationDayOrchestrator(
+        BankService bankService,
+        IInventoryService inventoryService,
+        IMachineAcquisitionService machineAcquisitionService,
+        IMaterialAcquisitionService materialAcquisitionService,
+        IProductionService productionService,
+        ILogger<SimulationDayOrchestrator> logger)
     {
-        private readonly BankService _bankService;
-        private readonly IInventoryService _inventoryService;
-        private readonly IMachineAcquisitionService _machineAcquisitionService;
-        private readonly IMaterialAcquisitionService _materialAcquisitionService;
-        private readonly IProductionService _productionService;
-        private readonly ILogger<SimulationDayOrchestrator> _logger;
-
-        public SimulationDayOrchestrator(
-            BankService bankService,
-            IInventoryService inventoryService,
-            IMachineAcquisitionService machineAcquisitionService,
-            IMaterialAcquisitionService materialAcquisitionService,
-            IProductionService productionService,
-            ILogger<SimulationDayOrchestrator> logger)
-        {
-            _bankService = bankService;
-            _inventoryService = inventoryService;
-            _machineAcquisitionService = machineAcquisitionService;
-            _materialAcquisitionService = materialAcquisitionService;
-            _productionService = productionService;
-            _logger = logger;
-        }
+        private readonly BankService _bankService = bankService;
+        private readonly IInventoryService _inventoryService = inventoryService;
+        private readonly IMachineAcquisitionService _machineAcquisitionService = machineAcquisitionService;
+        private readonly IMaterialAcquisitionService _materialAcquisitionService = materialAcquisitionService;
+        private readonly IProductionService _productionService = productionService;
+        private readonly ILogger<SimulationDayOrchestrator> _logger = logger;
 
         public async Task RunDayAsync(int dayNumber)
         {
@@ -56,8 +46,8 @@ namespace esAPI.Services
             }
 
             // 4. Check raw materials
-            bool hasCopper = inventory.MaterialsInStock.Any(m => m.MaterialName.ToLower() == "copper" && m.Quantity > 0);
-            bool hasSilicon = inventory.MaterialsInStock.Any(m => m.MaterialName.ToLower() == "silicon" && m.Quantity > 0);
+            bool hasCopper = inventory.MaterialsInStock.Any(m => m.MaterialName.Equals("copper", StringComparison.CurrentCultureIgnoreCase) && m.Quantity > 0);
+            bool hasSilicon = inventory.MaterialsInStock.Any(m => m.MaterialName.Equals("silicon", StringComparison.CurrentCultureIgnoreCase) && m.Quantity > 0);
             if (!hasCopper || !hasSilicon)
             {
                 await _materialAcquisitionService.PurchaseMaterialsViaBank();

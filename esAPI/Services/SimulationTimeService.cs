@@ -1,11 +1,9 @@
-using System;
-
 namespace esAPI.Services
 {
     public static class SimulationTimeService
     {
         // Simulation epoch: 2050-01-01 00:00:00 UTC
-        private static readonly DateTime SimulationEpoch = new DateTime(2050, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        private static readonly DateTime SimulationEpoch = new(2050, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         
         // 2 minutes real-time = 1 simulation day
         private const double MinutesPerSimulationDay = 2.0;
