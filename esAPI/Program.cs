@@ -1,11 +1,14 @@
+using System.Security.Cryptography.X509Certificates;
+
 using Microsoft.EntityFrameworkCore;
-using esAPI.Data;
 using Npgsql;
+
+using esAPI.Data;
 using esAPI.Clients;
-using FactoryApi.Clients;
 using esAPI.Services;
 using esAPI.Configuration;
-using System.Security.Cryptography.X509Certificates;
+
+using FactoryApi.Clients;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +17,7 @@ var tlsUtil = new TLSUtil(builder);
 
 tlsUtil.AddSecureHttpClient(builder.Services, "commercial-bank", "https://commercial-bank.com");
 tlsUtil.AddSecureHttpClient(builder.Services, "bulk-logistics", "https://bulk-logistics.com");
+
 //--------------------------------------------------------------------------
 
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(
@@ -28,9 +32,10 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
-builder.Services.AddScoped<esAPI.Services.IElectronicsService, esAPI.Services.ElectronicsService>();
-builder.Services.AddScoped<esAPI.Services.IMaterialOrderService, esAPI.Services.MaterialOrderService>();
-builder.Services.AddScoped<esAPI.Services.ISupplyService, esAPI.Services.SupplyService>();
+
+builder.Services.AddScoped<IElectronicsService, ElectronicsService>();
+builder.Services.AddScoped<IMaterialOrderService, MaterialOrderService>();
+builder.Services.AddScoped<ISupplyService, SupplyService>();
 builder.Services.AddScoped<ICommercialBankClient, CommercialBankClient>();
 builder.Services.AddScoped<BankAccountService>();
 builder.Services.AddScoped<BankService>();
@@ -41,12 +46,15 @@ builder.Services.AddScoped<IProductionService, ProductionService>();
 builder.Services.AddScoped<IMaterialAcquisitionService, MaterialAcquisitionService>();
 builder.Services.AddScoped<SimulationDayOrchestrator>();
 builder.Services.AddScoped<OrderExpirationService>();
-builder.Services.Configure<InventoryConfig>(
-    builder.Configuration.GetSection(InventoryConfig.SectionName)
-);
 builder.Services.AddScoped<SimulatedRecyclerApiClient>();
 builder.Services.AddScoped<SimulatedThohApiClient>();
 builder.Services.AddScoped<SupplierApiClientFactory>();
+
+builder.Services.Configure<InventoryConfig>(
+    builder.Configuration.GetSection(InventoryConfig.SectionName)
+);
+
+// Singleton Design Pattern!!
 builder.Services.AddSingleton<ISimulationStateService, SimulationStateService>();
 
 builder.Services.AddHostedService<InventoryManagementService>();
