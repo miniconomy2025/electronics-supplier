@@ -1,6 +1,4 @@
-using System;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 
 namespace esAPI.Models
 {
@@ -12,4 +10,4 @@ namespace esAPI.Models
         public decimal Balance { get; set; }
         public DateTime Timestamp { get; set; }
     }
-} 
+}

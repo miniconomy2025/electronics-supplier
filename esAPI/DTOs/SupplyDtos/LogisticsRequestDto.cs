@@ -1,10 +1,10 @@
-namespace esAPI.Dtos
+namespace esAPI.DTOs.SupplyDtos
 {
     public class LogisticsItemDto
     {
         public string Name { get; set; } = string.Empty;
         public int Quantity { get; set; }
-    } 
+    }
 
     public class LogisticsRequestDto
     {

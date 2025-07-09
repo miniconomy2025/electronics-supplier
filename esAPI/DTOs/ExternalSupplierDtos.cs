@@ -23,7 +23,6 @@ public class RecyclerApiResponseDto
     public List<RecyclerMaterialDto> Materials { get; set; } = [];
 }
 
-
 public class SupplierMaterialInfo
 {
     public int MaterialId { get; set; }

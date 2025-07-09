@@ -12,8 +12,8 @@ namespace esAPI.Models
 
         [Column("electronics_price_per_unit")]
         public decimal ElectronicsPricePerUnit { get; set; }
-        
+
         [Column("changed_at")]
         public decimal ChangedAt { get; set; }
     }
-} 
+}

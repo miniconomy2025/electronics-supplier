@@ -7,4 +7,4 @@ namespace esAPI.Interfaces
         Task<ElectronicsDetailsDto?> GetElectronicsDetailsAsync();
         Task<ProducedElectronicsResultDto> ProduceElectronicsAsync();
     }
-} 
+}

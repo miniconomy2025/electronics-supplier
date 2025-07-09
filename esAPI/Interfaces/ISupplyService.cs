@@ -9,4 +9,4 @@ namespace esAPI.Interfaces
         Task<SupplyDto> CreateSupplyAsync(CreateSupplyDto dto);
         Task<bool> DeleteSupplyByIdAsync(int id);
     }
-} 
+}

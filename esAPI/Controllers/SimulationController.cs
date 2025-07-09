@@ -1,13 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
-using esAPI.Data;
-using esAPI.Models;
-using System.Threading.Tasks;
-using System.Linq;
-using esAPI.Simulation;
-using SimulationModel = esAPI.Models.Simulation;
-using esAPI.Services;
-using esAPI.Interfaces;
 using Microsoft.EntityFrameworkCore;
+
+using esAPI.Data;
+using esAPI.Services;
+using esAPI.Simulation;
+using esAPI.Interfaces;
 
 namespace esAPI.Controllers
 {
@@ -97,4 +94,4 @@ namespace esAPI.Controllers
             return Ok(new { message = "Simulation stopped and all data deleted." });
         }
     }
-} 
+}

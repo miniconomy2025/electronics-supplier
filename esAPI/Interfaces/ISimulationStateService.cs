@@ -7,7 +7,7 @@ namespace esAPI.Interfaces
         bool IsRunning { get; }
         DateTime? StartTimeUtc { get; }
         int CurrentDay { get; }
-        
+
         void Start();
         void Stop();
         void AdvanceDay();
@@ -15,4 +15,4 @@ namespace esAPI.Interfaces
         void RestoreFromBackup(SimulationModel sim);
         SimulationModel ToBackupEntity();
     }
-} 
+}

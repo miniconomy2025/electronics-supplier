@@ -19,4 +19,4 @@ namespace esAPI.Models
         [ForeignKey("RatioId")]
         public MachineRatio? MachineRatio { get; set; }
     }
-} 
+}

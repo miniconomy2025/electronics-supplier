@@ -12,8 +12,8 @@ namespace esAPI.Models
 
         [Column("company_name")]
         public string CompanyName { get; set; } = string.Empty;
-        
+
         [Column("bank_account_number")]
         public string? BankAccountNumber { get; set; }
     }
-} 
+}

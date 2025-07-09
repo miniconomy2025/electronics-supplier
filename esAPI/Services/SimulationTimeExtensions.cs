@@ -11,7 +11,7 @@ namespace esAPI.Services
         {
             return SimulationTimeService.ToCanonicalTime(simulationTime);
         }
-        
+
         /// <summary>
         /// Converts a canonical DateTime to decimal simulation time for storage
         /// </summary>
@@ -21,7 +21,7 @@ namespace esAPI.Services
         {
             return SimulationTimeService.FromCanonicalTime(canonicalTime);
         }
-        
+
         /// <summary>
         /// Converts a nullable decimal simulation time to a nullable canonical DateTime
         /// </summary>
@@ -31,7 +31,7 @@ namespace esAPI.Services
         {
             return simulationTime?.ToCanonicalTime();
         }
-        
+
         /// <summary>
         /// Converts a nullable canonical DateTime to nullable decimal simulation time
         /// </summary>
@@ -42,4 +42,4 @@ namespace esAPI.Services
             return canonicalTime?.ToSimulationTime();
         }
     }
-} 
+}

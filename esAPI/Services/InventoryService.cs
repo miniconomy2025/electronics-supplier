@@ -1,6 +1,4 @@
-using System.Net.Http;
 using System.Text.Json;
-using System.Threading.Tasks;
 using esAPI.DTOs;
 
 namespace esAPI.Services
@@ -29,4 +27,4 @@ namespace esAPI.Services
             return summary!;
         }
     }
-} 
+}

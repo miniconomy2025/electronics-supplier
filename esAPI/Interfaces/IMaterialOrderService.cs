@@ -9,4 +9,4 @@ namespace esAPI.Interfaces
         Task<MaterialOrderResponse> CreateMaterialOrderAsync(CreateMaterialOrderRequest request);
         Task<bool> UpdateMaterialOrderAsync(int orderId, UpdateMaterialOrderRequest request);
     }
-} 
+}

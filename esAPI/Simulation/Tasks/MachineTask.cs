@@ -1,6 +1,4 @@
 using esAPI.Data;
-using esAPI.Models;
-using esAPI.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace esAPI.Simulation.Tasks

@@ -1,11 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
-using esAPI.Data;
-using esAPI.Models;
 using Microsoft.EntityFrameworkCore;
-using System.Threading.Tasks;
-using System.Linq;
-using esAPI.Services;
-using System;
+
+using esAPI.Data;
+using esAPI.DTOs;
+using esAPI.Models;
 using esAPI.Interfaces;
 
 namespace esAPI.Controllers
@@ -17,26 +15,15 @@ namespace esAPI.Controllers
         private readonly AppDbContext _context = context;
         private readonly ISimulationStateService _simulationStateService = simulationStateService;
 
-        public class PaymentNotificationDto
-        {
-            public string? transaction_number { get; set; }
-            public string? status { get; set; }
-            public decimal amount { get; set; }
-            public double timestamp { get; set; }
-            public string? description { get; set; }
-            public string? from { get; set; }
-            public string? to { get; set; }
-        }
-
         [HttpPost]
         public async Task<IActionResult> ReceivePayment([FromBody] PaymentNotificationDto dto)
         {
             // Try to find a matching order (stretch: based on description or from account)
             int? matchedOrderId = null;
-            if (!string.IsNullOrEmpty(dto.description))
+            if (!string.IsNullOrEmpty(dto.Description))
             {
                 // Try to parse order id from description (e.g., "Order #123")
-                var orderIdStr = new string(dto.description.Where(char.IsDigit).ToArray());
+                var orderIdStr = new string(dto.Description.Where(char.IsDigit).ToArray());
                 if (int.TryParse(orderIdStr, out int orderId))
                 {
                     var order = await _context.ElectronicsOrders.FindAsync(orderId);
@@ -44,7 +31,7 @@ namespace esAPI.Controllers
                     {
                         matchedOrderId = orderId;
                         // If payment is sufficient, set order to ACCEPTED
-                        if (dto.amount >= order.TotalAmount)
+                        if (dto.Amount >= order.TotalAmount)
                         {
                             var acceptedStatus = await _context.OrderStatuses.FirstOrDefaultAsync(s => s.Status == "ACCEPTED");
                             if (acceptedStatus != null)
@@ -53,9 +40,12 @@ namespace esAPI.Controllers
                                 _context.ElectronicsOrders.Update(order);
                                 // Update sold_at for reserved electronics
                                 decimal soldAtTime;
-                                try {
+                                try
+                                {
                                     soldAtTime = (decimal)_simulationStateService.GetCurrentSimulationTime(3);
-                                } catch {
+                                }
+                                catch
+                                {
                                     soldAtTime = (decimal)DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                                 }
                                 var reservedElectronics = await _context.Electronics
@@ -76,13 +66,13 @@ namespace esAPI.Controllers
 
             var payment = new Payment
             {
-                TransactionNumber = dto.transaction_number,
-                Status = dto.status,
-                Amount = dto.amount,
-                Timestamp = dto.timestamp,
-                Description = dto.description,
-                FromAccount = dto.from,
-                ToAccount = dto.to,
+                TransactionNumber = dto.TransactionNumber,
+                Status = dto.Status,
+                Amount = dto.Amount,
+                Timestamp = dto.Timestamp,
+                Description = dto.Description,
+                FromAccount = dto.From,
+                ToAccount = dto.To,
                 OrderId = matchedOrderId
             };
             _context.Payments.Add(payment);
@@ -90,4 +80,4 @@ namespace esAPI.Controllers
             return Ok(new { success = true });
         }
     }
-} 
+}

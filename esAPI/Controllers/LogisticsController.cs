@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+
 using esAPI.Data;
-using esAPI.Dtos;
+using esAPI.DTOs.SupplyDtos;
 using esAPI.Models;
 using esAPI.Models.Enums;
 
@@ -69,12 +70,12 @@ namespace esAPI.Controllers
             var sim = _context.Simulations.FirstOrDefault(s => s.IsRunning);
             if (sim == null)
                 return BadRequest("Simulation not running.");
-                
+
             if (isMachineDelivery)
             {
                 // Machine delivery
                 var machineOrder = await _context.MachineOrders
-                    .FirstOrDefaultAsync(o => o.ExternalOrderId == externalOrderId); 
+                    .FirstOrDefaultAsync(o => o.ExternalOrderId == externalOrderId);
 
                 if (machineOrder == null)
                     return NotFound($"No machine order found with ID {request.Id}");
@@ -203,7 +204,7 @@ namespace esAPI.Controllers
             foreach (var e in electronicsToRemove)
             {
                 e.SoldAt = sim.DayNumber;
-                e.ElectronicsStatusId = (int) Electronics.Status.Reserved;
+                e.ElectronicsStatusId = (int)Electronics.Status.Reserved;
             }
 
             order.RemainingAmount -= pickupAmount;
@@ -211,14 +212,14 @@ namespace esAPI.Controllers
             if (order.RemainingAmount == 0)
             {
                 order.ProcessedAt = sim.DayNumber;
-                order.OrderStatusId = (int) Order.Status.Completed; // COMPLETED
+                order.OrderStatusId = (int)Order.Status.Completed; // COMPLETED
             }
-            else if (order.OrderStatusId == (int) Order.Status.Pending || order.OrderStatusId == (int) Order.Status.Accepted) // PENDING or ACCEPTED
+            else if (order.OrderStatusId == (int)Order.Status.Pending || order.OrderStatusId == (int)Order.Status.Accepted) // PENDING or ACCEPTED
             {
-                order.OrderStatusId = (int) Order.Status.InProgress; // IN_PROGRESS
+                order.OrderStatusId = (int)Order.Status.InProgress; // IN_PROGRESS
             }
 
-                await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
 
             return Ok(new
             {

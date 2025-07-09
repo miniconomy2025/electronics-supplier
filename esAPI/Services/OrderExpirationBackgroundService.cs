@@ -18,9 +18,9 @@ namespace esAPI.Services
                 {
                     using var scope = _serviceProvider.CreateScope();
                     var orderExpirationService = scope.ServiceProvider.GetRequiredService<OrderExpirationService>();
-                    
+
                     var expiredCount = await orderExpirationService.CheckAndExpireOrdersAsync();
-                    
+
                     if (expiredCount > 0)
                     {
                         _logger.LogInformation("Expired {ExpiredCount} orders and freed reserved electronics", expiredCount);
@@ -37,4 +37,4 @@ namespace esAPI.Services
             _logger.LogInformation("Order Expiration Background Service is stopping.");
         }
     }
-} 
+}
