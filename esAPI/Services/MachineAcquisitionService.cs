@@ -1,4 +1,8 @@
 using System.Text.Json;
+using System;
+using System.Net.Http;
+using System.Threading.Tasks;
+using esAPI.Services;
 using esAPI.Clients;
 
 namespace esAPI.Services
