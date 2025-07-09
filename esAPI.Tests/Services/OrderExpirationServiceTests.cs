@@ -6,6 +6,7 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 using Xunit;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace esAPI.Tests.Services
 {
@@ -26,7 +27,11 @@ namespace esAPI.Tests.Services
             // Arrange
             using var context = new AppDbContext(_options);
             var mockStateService = new Mock<ISimulationStateService>();
-            var service = new OrderExpirationService(context, mockStateService.Object);
+            var services = new ServiceCollection();
+            services.AddSingleton(context);
+            services.AddSingleton(mockStateService.Object);
+            var provider = services.BuildServiceProvider();
+            var service = new OrderExpirationService(provider, mockStateService.Object);
 
             // Add some available electronics
             var electronics = new List<Electronic>
@@ -55,7 +60,11 @@ namespace esAPI.Tests.Services
             // Arrange
             using var context = new AppDbContext(_options);
             var mockStateService = new Mock<ISimulationStateService>();
-            var service = new OrderExpirationService(context, mockStateService.Object);
+            var services = new ServiceCollection();
+            services.AddSingleton(context);
+            services.AddSingleton(mockStateService.Object);
+            var provider = services.BuildServiceProvider();
+            var service = new OrderExpirationService(provider, mockStateService.Object);
 
             // Add only 1 available electronics
             var electronics = new List<Electronic>
@@ -82,7 +91,11 @@ namespace esAPI.Tests.Services
             // Arrange
             using var context = new AppDbContext(_options);
             var mockStateService = new Mock<ISimulationStateService>();
-            var service = new OrderExpirationService(context, mockStateService.Object);
+            var services = new ServiceCollection();
+            services.AddSingleton(context);
+            services.AddSingleton(mockStateService.Object);
+            var provider = services.BuildServiceProvider();
+            var service = new OrderExpirationService(provider, mockStateService.Object);
 
             // Add electronics with different statuses
             var electronics = new List<Electronic>
@@ -108,7 +121,11 @@ namespace esAPI.Tests.Services
             // Arrange
             using var context = new AppDbContext(_options);
             var mockStateService = new Mock<ISimulationStateService>();
-            var service = new OrderExpirationService(context, mockStateService.Object);
+            var services = new ServiceCollection();
+            services.AddSingleton(context);
+            services.AddSingleton(mockStateService.Object);
+            var provider = services.BuildServiceProvider();
+            var service = new OrderExpirationService(provider, mockStateService.Object);
 
             // Add electronics with different statuses
             var electronics = new List<Electronic>
@@ -137,7 +154,11 @@ namespace esAPI.Tests.Services
             mockStateService.Setup(x => x.IsRunning).Returns(true);
             mockStateService.Setup(x => x.GetCurrentSimulationTime(3)).Returns(3.0m);
             
-            var service = new OrderExpirationService(context, mockStateService.Object);
+            var services = new ServiceCollection();
+            services.AddSingleton(context);
+            services.AddSingleton(mockStateService.Object);
+            var provider = services.BuildServiceProvider();
+            var service = new OrderExpirationService(provider, mockStateService.Object);
 
             // Add an expired order (ordered 2 days ago, current time is 3.0)
             var order = new ElectronicsOrder
