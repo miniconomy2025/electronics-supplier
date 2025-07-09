@@ -44,12 +44,17 @@ namespace esAPI.Controllers
 
         // GET /simulation - get current simulation state
         [HttpGet]
-        public ActionResult<SimulationModel> GetSimulation()
+        public ActionResult GetSimulation()
         {
+            var simTime = _stateService.GetCurrentSimulationTime(3);
+            var canonicalSimDate = simTime.ToCanonicalTime();
+            var unixEpoch = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds();
             return Ok(new {
                 isRunning = _stateService.IsRunning,
                 startTime = _stateService.StartTimeUtc,
-                currentDay = _stateService.CurrentDay
+                currentDay = _stateService.CurrentDay,
+                currentUnixEpoch = unixEpoch,
+                canonicalSimulationDate = canonicalSimDate
             });
         }
 
