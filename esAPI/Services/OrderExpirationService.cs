@@ -6,6 +6,7 @@ using Microsoft.Extensions.Hosting;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
+using System.Linq;
 
 namespace esAPI.Services
 {
@@ -108,6 +109,12 @@ namespace esAPI.Services
             using (var scope = _serviceProvider.CreateScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                // Get current electronics price per unit
+                var pricePerUnit = db.LookupValues
+                    .OrderByDescending(l => l.ChangedAt)
+                    .Select(l => l.ElectronicsPricePerUnit)
+                    .FirstOrDefault();
+
                 // Find pending orders that are older than 1 day
                 var expiredOrders = await db.ElectronicsOrders
                     .Where(o => o.OrderStatusId == (int)Order.Status.Pending && o.OrderedAt < oneDayAgo)
@@ -116,20 +123,26 @@ namespace esAPI.Services
                 int expiredCount = 0;
                 foreach (var order in expiredOrders)
                 {
-                    // Mark order as expired
-                    order.OrderStatusId = (int)Order.Status.Expired;
-                    
-                    // Free reserved electronics
-                    await FreeReservedElectronicsAsync(order.OrderId);
-                    
-                    expiredCount++;
+                    // Calculate total due for the order
+                    var totalDue = order.TotalAmount * pricePerUnit;
+                    // Sum all successful payments for this order
+                    var totalPaid = db.Payments
+                        .Where(p => p.OrderId == order.OrderId && p.Status == "SUCCESS")
+                        .Sum(p => (decimal?)p.Amount) ?? 0m;
+                    // Only expire if not fully paid
+                    if (totalPaid < totalDue)
+                    {
+                        // Mark order as expired
+                        order.OrderStatusId = (int)Order.Status.Expired;
+                        // Free reserved electronics
+                        await FreeReservedElectronicsAsync(order.OrderId);
+                        expiredCount++;
+                    }
                 }
-
                 if (expiredCount > 0)
                 {
                     await db.SaveChangesAsync();
                 }
-
                 return expiredCount;
             }
         }

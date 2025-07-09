@@ -99,7 +99,7 @@ builder.Services.AddScoped<IMachineAcquisitionService, MachineAcquisitionService
 builder.Services.AddScoped<IProductionService, ProductionService>();
 builder.Services.AddScoped<IMaterialAcquisitionService, MaterialAcquisitionService>();
 builder.Services.AddScoped<SimulationDayOrchestrator>();
-builder.Services.AddHostedService<OrderExpirationService>();
+builder.Services.AddScoped<OrderExpirationService>();
 builder.Services.Configure<InventoryConfig>(
     builder.Configuration.GetSection(InventoryConfig.SectionName)
 );

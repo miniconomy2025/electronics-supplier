@@ -171,6 +171,13 @@ namespace esAPI.Tests.Services
             };
             context.ElectronicsOrders.Add(order);
 
+            // Add a price per unit so the expiration logic works
+            context.LookupValues.Add(new LookupValue
+            {
+                ElectronicsPricePerUnit = 10m,
+                ChangedAt = 0m
+            });
+
             // Add some reserved electronics
             var electronics = new List<Electronic>
             {
