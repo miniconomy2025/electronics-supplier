@@ -5,36 +5,38 @@ using System.Threading.Tasks;
 using System.Linq;
 using esAPI.Simulation;
 using SimulationModel = esAPI.Models.Simulation;
+using esAPI.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace esAPI.Controllers
 {
     [ApiController]
     [Route("simulation")]
-    public class SimulationController : ControllerBase
+    public class SimulationController(AppDbContext context, ISimulationStateService stateService) : ControllerBase
     {
-        private readonly AppDbContext _context;
-        public SimulationController(AppDbContext context)
-        {
-            _context = context;
-        }
+        private readonly AppDbContext _context = context;
+        private readonly ISimulationStateService _stateService = stateService;
 
         // POST /simulation - start the simulation
         [HttpPost]
         public async Task<IActionResult> StartSimulation()
         {
+            if (_stateService.IsRunning)
+                return BadRequest("Simulation already running.");
+            _stateService.Start();
+
+            // Backup to DB
             var sim = _context.Simulations.FirstOrDefault();
             if (sim == null)
             {
-                sim = new SimulationModel { DayNumber = 1, StartedAt = DateTime.UtcNow, IsRunning = true };
+                sim = _stateService.ToBackupEntity();
                 _context.Simulations.Add(sim);
             }
             else
             {
-                if (sim.IsRunning)
-                    return BadRequest("Simulation already running.");
-                sim.DayNumber = 1;
-                sim.StartedAt = DateTime.UtcNow;
-                sim.IsRunning = true;
+                sim.IsRunning = _stateService.IsRunning;
+                sim.StartedAt = _stateService.StartTimeUtc;
+                sim.DayNumber = _stateService.CurrentDay;
             }
             await _context.SaveChangesAsync();
             return Ok(sim);
@@ -42,29 +44,71 @@ namespace esAPI.Controllers
 
         // GET /simulation - get current simulation state
         [HttpGet]
-        public ActionResult<SimulationModel> GetSimulation()
+        public ActionResult<DTOs.SimulationStateDto> GetSimulation()
         {
-            var sim = _context.Simulations.FirstOrDefault();
-            if (sim == null)
-                return NotFound();
-            return Ok(sim);
+            var simTime = _stateService.GetCurrentSimulationTime(3);
+            var canonicalSimDate = simTime.ToCanonicalTime();
+            var simulationEpoch = new DateTime(2050, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var simulationUnixEpoch = (long)(canonicalSimDate - simulationEpoch).TotalSeconds;
+
+            var dto = new DTOs.SimulationStateDto
+            {
+                IsRunning = _stateService.IsRunning,
+                StartTimeUtc = _stateService.StartTimeUtc,
+                CurrentDay = _stateService.CurrentDay,
+                SimulationUnixEpoch = simulationUnixEpoch,
+                CanonicalSimulationDate = canonicalSimDate
+            };
+
+            return Ok(dto);
         }
 
         // PATCH /simulation/advance - advance the simulation by one day
         [HttpPatch("advance")]
         public async Task<IActionResult> AdvanceDay()
         {
-            var sim = _context.Simulations.FirstOrDefault();
-            if (sim == null || !sim.IsRunning)
+            if (!_stateService.IsRunning)
                 return BadRequest("Simulation not running.");
-            if (sim.DayNumber >= 365)
+            if (_stateService.CurrentDay >= 365)
                 return BadRequest("Simulation has reached the maximum number of days (1 year).");
 
             var engine = new SimulationEngine(_context);
-            await engine.RunDayAsync(sim.DayNumber);
-            sim.DayNumber += 1;
-            await _context.SaveChangesAsync();
-            return Ok(new { sim.DayNumber });
+            await engine.RunDayAsync(_stateService.CurrentDay);
+            _stateService.AdvanceDay();
+
+            // Backup to DB
+            var sim = _context.Simulations.FirstOrDefault();
+            if (sim != null)
+            {
+                sim.DayNumber = _stateService.CurrentDay;
+                await _context.SaveChangesAsync();
+            }
+            return Ok(new { currentDay = _stateService.CurrentDay });
+        }
+
+        // DELETE /simulation - stop the simulation and delete all data
+        [HttpDelete]
+        public async Task<IActionResult> StopAndDeleteSimulation()
+        {
+            if (!_stateService.IsRunning)
+                return BadRequest("Simulation is not running.");
+            _stateService.Stop();
+
+            // Backup to DB
+            var sim = _context.Simulations.FirstOrDefault();
+            if (sim != null)
+            {
+                sim.IsRunning = false;
+                sim.StartedAt = null;
+                sim.DayNumber = 0;
+                await _context.SaveChangesAsync();
+            }
+
+            // Truncate all tables except views and migration history
+            // Use lowercase table names as they appear in the database
+            await _context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE companies, materials, material_supplies, material_orders, machines, machine_orders, machine_ratios, machine_statuses, machine_details, electronics, electronics_orders, electronics_statuses, order_statuses, lookup_values, simulation, disasters RESTART IDENTITY CASCADE;");
+
+            return Ok(new { message = "Simulation stopped and all data deleted." });
         }
     }
 } 

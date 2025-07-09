@@ -6,16 +6,14 @@ using esAPI.DTOs.MaterialOrder;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using System.Data;
+using esAPI.Services;
 
 namespace esAPI.Services
 {
-    public class MaterialOrderService : IMaterialOrderService
+    public class MaterialOrderService(AppDbContext context, ISimulationStateService stateService) : IMaterialOrderService
     {
-        private readonly AppDbContext _context;
-        public MaterialOrderService(AppDbContext context)
-        {
-            _context = context;
-        }
+        private readonly AppDbContext _context = context;
+        private readonly ISimulationStateService _stateService = stateService;
 
         public async Task<IEnumerable<MaterialOrderResponse>> GetAllMaterialOrdersAsync()
         {
@@ -83,7 +81,7 @@ namespace esAPI.Services
                 new NpgsqlParameter("p_supplier_id", request.SupplierId),
                 new NpgsqlParameter("p_material_id", request.MaterialId),
                 new NpgsqlParameter("p_amount", request.Amount),
-                new NpgsqlParameter("p_current_day", sim.DayNumber),
+                new NpgsqlParameter("p_current_day", _stateService.GetCurrentSimulationTime(3)),
                 createdOrderIdParam
             );
 
@@ -92,7 +90,7 @@ namespace esAPI.Services
                 var newOrder = await _context.MaterialOrders.FindAsync(newOrderId);
                 if (newOrder != null)
                 {
-                    newOrder.OrderedAt = sim.DayNumber;
+                    newOrder.OrderedAt = _stateService.GetCurrentSimulationTime(3);
                     await _context.SaveChangesAsync();
                 }
                 var response = await GetMaterialOrderByIdAsync(newOrderId);

@@ -10,14 +10,9 @@ namespace esAPI.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-public class InventoryController : ControllerBase
+public class InventoryController(AppDbContext context) : ControllerBase
 {
-    private readonly AppDbContext _context;
-
-    public InventoryController(AppDbContext context)
-    {
-        _context = context;
-    }
+    private readonly AppDbContext _context = context;
 
     [HttpGet]
     [ProducesResponseType(typeof(InventorySummaryDto), StatusCodes.Status200OK)]

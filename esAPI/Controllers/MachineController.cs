@@ -2,17 +2,15 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using esAPI.Data;
 using esAPI.Models;
+using esAPI.Services;
+using esAPI.DTOs;
 
 [ApiController]
 [Route("machines")]
-public class MachinesController : ControllerBase
+public class MachinesController(AppDbContext context, ISimulationStateService stateService) : ControllerBase
 {
-    private readonly AppDbContext _context;
-
-    public MachinesController(AppDbContext context)
-    {
-        _context = context;
-    }
+    private readonly AppDbContext _context = context;
+    private readonly ISimulationStateService _stateService = stateService;
 
     [HttpPost]
     public async Task<ActionResult<MachineDto>> CreateMachine([FromBody] MachineDto dto)
@@ -30,7 +28,7 @@ public class MachinesController : ControllerBase
         {
             MachineStatusId = status.StatusId,
             PurchasePrice = dto.PurchasePrice,
-            // PurchasedAt = dto.PurchasedAt // TODO: Fix
+            PurchasedAt = _stateService.GetCurrentSimulationTime(3)
         };
 
         _context.Machines.Add(machine);
@@ -52,7 +50,7 @@ public class MachinesController : ControllerBase
                       MachineId = m.MachineId,
                       Status = s.Status,
                       PurchasePrice = m.PurchasePrice,
-                    //   PurchasedAt = m.PurchasedAt // TODO: Fix
+                      PurchasedAt = m.PurchasedAt
                   })
             .ToListAsync();
     }
@@ -70,7 +68,7 @@ public class MachinesController : ControllerBase
                       MachineId = m.MachineId,
                       Status = s.Status,
                       PurchasePrice = m.PurchasePrice,
-                    //   PurchasedAt = m.PurchasedAt // TODO: Fix
+                      PurchasedAt = m.PurchasedAt
                   })
             .FirstOrDefaultAsync();
 
@@ -98,7 +96,7 @@ public class MachinesController : ControllerBase
 
         machine.MachineStatusId = status.StatusId;
         machine.PurchasePrice = dto.PurchasePrice;
-        // machine.PurchasedAt = dto.PurchasedAt; // TODO: Fix
+        machine.PurchasedAt = _stateService.GetCurrentSimulationTime(3);
 
         await _context.SaveChangesAsync();
         return NoContent();
@@ -115,5 +113,63 @@ public class MachinesController : ControllerBase
         await _context.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    [HttpPost("failure")]
+    public async Task<ActionResult<DisasterDto>> ReportMachineFailure([FromBody] MachineFailureDto dto)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        // Get the BROKEN status ID
+        var brokenStatus = await _context.Set<MachineStatus>()
+            .FirstOrDefaultAsync(s => s.Status == "BROKEN");
+        
+        if (brokenStatus == null)
+            return BadRequest("BROKEN status not found in database.");
+
+        // Get all machines that are currently working (STANDBY or IN_USE)
+        var workingMachines = await _context.Machines
+            .Join(_context.Set<MachineStatus>(),
+                  m => m.MachineStatusId,
+                  s => s.StatusId,
+                  (m, s) => new { Machine = m, Status = s })
+            .Where(x => x.Status.Status == "STANDBY" || x.Status.Status == "IN_USE")
+            .OrderBy(x => x.Machine.MachineId) // Consistent ordering for predictable selection
+            .Take(dto.FailureQuantity)
+            .ToListAsync();
+
+        var machinesToBreak = workingMachines.Count;
+        
+        if (machinesToBreak == 0)
+        {
+            return BadRequest("No working machines available to break.");
+        }
+
+        // Break the machines
+        foreach (var machineData in workingMachines)
+        {
+            machineData.Machine.MachineStatusId = brokenStatus.StatusId;
+        }
+
+        // Record the disaster
+        var disaster = new Disaster
+        {
+            BrokenAt = _stateService.GetCurrentSimulationTime(3),
+            MachinesAffected = machinesToBreak
+        };
+
+        _context.Disasters.Add(disaster);
+        await _context.SaveChangesAsync();
+
+        // Return the disaster information
+        var disasterDto = new DisasterDto
+        {
+            DisasterId = disaster.DisasterId,
+            BrokenAt = disaster.BrokenAt,
+            MachinesAffected = disaster.MachinesAffected
+        };
+
+        return CreatedAtAction(nameof(GetMachineById), new { machineId = 0 }, disasterDto);
     }
 }

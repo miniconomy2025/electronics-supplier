@@ -5,7 +5,7 @@ namespace esAPI.DTOs.Electronics
         public int OrderId { get; set; }
         public int Quantity { get; set; }
         public decimal AmountDue { get; set; }
-        public string BankNumber { get; set; }
+        public string? BankNumber { get; set; }
 
     }
 }

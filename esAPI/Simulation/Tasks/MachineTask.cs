@@ -5,14 +5,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace esAPI.Simulation.Tasks
 {
-    public class MachineTask
+    public class MachineTask(AppDbContext context)
     {
-        private readonly AppDbContext _context;
-
-        public MachineTask(AppDbContext context)
-        {
-            _context = context;
-        }
+        private readonly AppDbContext _context = context;
 
         public async Task EnsureMachineAvailabilityAsync(int currentDay)
         {
@@ -23,10 +18,10 @@ namespace esAPI.Simulation.Tasks
             Console.WriteLine($"Day {currentDay}: Machine exists? {machineExists}");
 
             // Call the reusable method to attempt machine purchase if needed
-            await TryBuyMachineIfAffordableAsync(machineExists, currentDay);
+            TryBuyMachineIfAffordable(machineExists, currentDay);
         }
 
-        private async Task TryBuyMachineIfAffordableAsync(bool machineExists, int currentDay)
+        private static void TryBuyMachineIfAffordable(bool machineExists, int currentDay)
         {
             Console.WriteLine($"Day {currentDay}: Starting machine purchase check...");
 

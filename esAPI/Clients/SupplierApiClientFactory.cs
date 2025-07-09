@@ -2,14 +2,9 @@ using esAPI.Clients;
 
 namespace FactoryApi.Clients;
 
-public class SupplierApiClientFactory
+public class SupplierApiClientFactory(IServiceProvider serviceProvider)
 {
-    private readonly IServiceProvider _serviceProvider;
-
-    public SupplierApiClientFactory(IServiceProvider serviceProvider)
-    {
-        _serviceProvider = serviceProvider;
-    }
+    private readonly IServiceProvider _serviceProvider = serviceProvider;
 
     public ISupplierApiClient GetClient(string supplierName)
     {

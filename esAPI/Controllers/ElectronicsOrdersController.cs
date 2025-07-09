@@ -10,14 +10,11 @@ namespace esAPI.Controllers
 {
     [ApiController]
     [Route("orders")]
-    public class ElectronicsOrdersController : BaseController
+    public class ElectronicsOrdersController(AppDbContext context, IElectronicsService electronicsService, ISimulationStateService stateService, OrderExpirationService orderExpirationService) : BaseController(context)
     {
-        private readonly IElectronicsService _electronicsService;
-
-        public ElectronicsOrdersController(AppDbContext context, IElectronicsService electronicsService) : base(context)
-        {
-            _electronicsService = electronicsService;
-        }
+        private readonly IElectronicsService _electronicsService = electronicsService;
+        private readonly ISimulationStateService _stateService = stateService;
+        private readonly OrderExpirationService _orderExpirationService = orderExpirationService;
 
         [HttpPost]
         public async Task<IActionResult> CreateOrder([FromBody] ElectronicsOrderRequest dto)
@@ -35,20 +32,22 @@ namespace esAPI.Controllers
                 .Where(c => c.CompanyId == 6) // 6 is pear-company
                 .FirstOrDefaultAsync();
 
+            if (manufacturer == null)
+                return BadRequest("Manufacturer not found.");
+
             if (dto == null || dto.Quantity <= 0)
                 return BadRequest("Invalid order data.");
 
-            var currentStock = await _electronicsService.GetElectronicsDetailsAsync();
-            if (currentStock == null || currentStock.AvailableStock < dto.Quantity)
-                return BadRequest("Insufficient stock available.");
-            
-
+            // Check available electronics (not reserved, not sold)
+            var availableStock = await _orderExpirationService.GetAvailableElectronicsCountAsync();
+            if (availableStock < dto.Quantity)
+                return BadRequest($"Insufficient stock available. Available: {availableStock}, Requested: {dto.Quantity}");
 
             var order = new Models.ElectronicsOrder
             {
                 ManufacturerId = manufacturer.CompanyId,
                 RemainingAmount = dto.Quantity,
-                OrderedAt = sim.DayNumber,
+                OrderedAt = _stateService.GetCurrentSimulationTime(3),
                 OrderStatusId = 1, //  1 is the ID for "Pending" status
                 TotalAmount = dto.Quantity
             };
@@ -58,6 +57,16 @@ namespace esAPI.Controllers
             try
             {
                 await _context.SaveChangesAsync();
+                
+                // Reserve electronics for this order
+                var reservationSuccess = await _orderExpirationService.ReserveElectronicsForOrderAsync(order.OrderId, dto.Quantity);
+                if (!reservationSuccess)
+                {
+                    // If reservation failed, delete the order
+                    _context.ElectronicsOrders.Remove(order);
+                    await _context.SaveChangesAsync();
+                    return BadRequest("Failed to reserve electronics for the order. Please try again.");
+                }
             }
             catch (DbUpdateException ex)
             {
@@ -69,11 +78,14 @@ namespace esAPI.Controllers
                 .Select(c => c.BankAccountNumber)
                 .FirstOrDefaultAsync();
 
+            // Get current electronics details for pricing
+            var currentStock = await _electronicsService.GetElectronicsDetailsAsync();
+
             var readDto = new ElectronicsOrderResponseDto
             {
                 OrderId = order.OrderId,
                 Quantity = order.RemainingAmount,
-                AmountDue = currentStock.PricePerUnit * (decimal)order.RemainingAmount,
+                AmountDue = currentStock?.PricePerUnit * order.RemainingAmount ?? 0,
                 BankNumber = bankNumber,
             };
 
@@ -169,6 +181,21 @@ namespace esAPI.Controllers
             }
 
             return NoContent();
+        }
+
+        [HttpGet("inventory")]
+        public async Task<ActionResult<object>> GetInventoryStatus()
+        {
+            var availableCount = await _orderExpirationService.GetAvailableElectronicsCountAsync();
+            var reservedCount = await _orderExpirationService.GetReservedElectronicsCountAsync();
+            var totalCount = availableCount + reservedCount;
+
+            return Ok(new
+            {
+                Available = availableCount,
+                Reserved = reservedCount,
+                Total = totalCount
+            });
         }
     }
 }

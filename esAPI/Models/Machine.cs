@@ -19,13 +19,13 @@ namespace esAPI.Models
         [Column("order_id")]
         public int OrderId { get; set; }
 
-        [Column("purchased_at", TypeName = "numeric(1000,2)")]
+        [Column("purchased_at", TypeName = "numeric(1000,3)")]
         public decimal PurchasedAt { get; set; }
 
-        [Column("received_at", TypeName = "numeric(1000,2)")]
+        [Column("received_at", TypeName = "numeric(1000,3)")]
         public decimal? ReceivedAt { get; set; }
 
-        [Column("removed_at", TypeName = "numeric(1000,2)")]
+        [Column("removed_at", TypeName = "numeric(1000,3)")]
         public decimal? RemovedAt { get; set; }
 
         [ForeignKey("MachineStatusId")]

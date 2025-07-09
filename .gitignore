@@ -10,3 +10,8 @@ obj/
 .terraform/
 
 certs/
+*.hcl
+
+publish/
+
+*.pem
