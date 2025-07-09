@@ -54,19 +54,25 @@ var sharedRootCA = X509CertificateLoader.LoadCertificateFromFile("../certs/minic
 // });
 
 // Example: Commercial Bank HTTP Client Configuration
-// builder.Services.AddHttpClient("commercial-bank", client =>
-// {
-//     client.BaseAddress = new Uri("https://commercial-bank.com");
-// })
-// .ConfigurePrimaryHttpMessageHandler(() =>
-// {
-//     var handler = new HttpClientHandler();
-//     handler.ClientCertificates.Add(commercialBankClientCert);
+var externalApis = builder.Configuration.GetSection("ExternalApis");
 
-//     handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
-//         ValidateCertificateWithRoot(cert, chain, errors, sharedRootCA);
-//     return handler;
-// });
+builder.Services.AddHttpClient("commercial-bank", client =>
+{
+    client.BaseAddress = new Uri(externalApis["CommercialBank"]!);
+});
+builder.Services.AddHttpClient("bulk-logistics", client =>
+{
+    client.BaseAddress = new Uri(externalApis["BulkLogistics"]!);
+});
+builder.Services.AddHttpClient("thoh", client =>
+{
+    client.BaseAddress = new Uri(externalApis["THOH"]!);
+});
+builder.Services.AddHttpClient("recycler", client =>
+{
+    client.BaseAddress = new Uri(externalApis["Recycler"]!);
+});
+
 //--------------------------------------------------------------------------
 
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(
@@ -84,7 +90,9 @@ builder.Services.AddControllers();
 builder.Services.AddScoped<esAPI.Services.IElectronicsService, esAPI.Services.ElectronicsService>();
 builder.Services.AddScoped<esAPI.Services.IMaterialOrderService, esAPI.Services.MaterialOrderService>();
 builder.Services.AddScoped<esAPI.Services.ISupplyService, esAPI.Services.SupplyService>();
-builder.Services.AddScoped<OrderExpirationService>();
+builder.Services.AddScoped<CommercialBankClient>();
+builder.Services.AddScoped<BankAccountService>();
+builder.Services.AddHostedService<OrderExpirationService>();
 builder.Services.Configure<InventoryConfig>(
     builder.Configuration.GetSection(InventoryConfig.SectionName)
 );
