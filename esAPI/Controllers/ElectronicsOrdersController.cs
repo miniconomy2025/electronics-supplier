@@ -10,10 +10,10 @@ namespace esAPI.Controllers
 {
     [ApiController]
     [Route("orders")]
-    public class ElectronicsOrdersController(AppDbContext context, IElectronicsService electronicsService, SimulationStateService stateService, OrderExpirationService orderExpirationService) : BaseController(context)
+    public class ElectronicsOrdersController(AppDbContext context, IElectronicsService electronicsService, ISimulationStateService stateService, OrderExpirationService orderExpirationService) : BaseController(context)
     {
         private readonly IElectronicsService _electronicsService = electronicsService;
-        private readonly SimulationStateService _stateService = stateService;
+        private readonly ISimulationStateService _stateService = stateService;
         private readonly OrderExpirationService _orderExpirationService = orderExpirationService;
 
         [HttpPost]

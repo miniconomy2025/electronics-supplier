@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using esAPI.Models;
 using SimulationModel = esAPI.Models.Simulation;
+using DisasterModel = esAPI.Models.Disaster;
 
 namespace esAPI.Data
 {
@@ -25,6 +26,7 @@ namespace esAPI.Data
         public DbSet<LookupValue> LookupValues { get; set; }
         public DbSet<SimulationModel> Simulations { get; set; }
         public DbSet<CurrentSupply> CurrentSupplies { get; set; }
+        public DbSet<DisasterModel> Disasters { get; set; }
 
         public DbSet<EffectiveMaterialStock> EffectiveMaterialStock { get; set; }
 

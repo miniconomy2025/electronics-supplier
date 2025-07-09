@@ -12,10 +12,10 @@ namespace esAPI.Controllers
 {
     [ApiController]
     [Route("simulation")]
-    public class SimulationController(AppDbContext context, SimulationStateService stateService) : ControllerBase
+    public class SimulationController(AppDbContext context, ISimulationStateService stateService) : ControllerBase
     {
         private readonly AppDbContext _context = context;
-        private readonly SimulationStateService _stateService = stateService;
+        private readonly ISimulationStateService _stateService = stateService;
 
         // POST /simulation - start the simulation
         [HttpPost]

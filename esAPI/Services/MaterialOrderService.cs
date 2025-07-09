@@ -10,10 +10,10 @@ using esAPI.Services;
 
 namespace esAPI.Services
 {
-    public class MaterialOrderService(AppDbContext context, SimulationStateService stateService) : IMaterialOrderService
+    public class MaterialOrderService(AppDbContext context, ISimulationStateService stateService) : IMaterialOrderService
     {
         private readonly AppDbContext _context = context;
-        private readonly SimulationStateService _stateService = stateService;
+        private readonly ISimulationStateService _stateService = stateService;
 
         public async Task<IEnumerable<MaterialOrderResponse>> GetAllMaterialOrdersAsync()
         {

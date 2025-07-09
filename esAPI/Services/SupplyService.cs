@@ -9,10 +9,10 @@ using esAPI.Services;
 
 namespace esAPI.Services
 {
-    public class SupplyService(AppDbContext context, SimulationStateService stateService) : ISupplyService
+    public class SupplyService(AppDbContext context, ISimulationStateService stateService) : ISupplyService
     {
         private readonly AppDbContext _context = context;
-        private readonly SimulationStateService _stateService = stateService;
+        private readonly ISimulationStateService _stateService = stateService;
 
         public async Task<IEnumerable<SupplyDto>> GetAllSuppliesAsync()
         {

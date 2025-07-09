@@ -6,10 +6,10 @@ using esAPI.Services;
 
 namespace esAPI.Services
 {
-    public class ElectronicsService(AppDbContext context, SimulationStateService stateService) : IElectronicsService
+    public class ElectronicsService(AppDbContext context, ISimulationStateService stateService) : IElectronicsService
     {
         private readonly AppDbContext _context = context;
-        private readonly SimulationStateService _stateService = stateService;
+        private readonly ISimulationStateService _stateService = stateService;
 
         public async Task<ElectronicsDetailsDto?> GetElectronicsDetailsAsync()
         {
