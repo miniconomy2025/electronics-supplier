@@ -2,10 +2,13 @@ using esAPI.Data;
 using esAPI.Models;
 using esAPI.Models.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace esAPI.Services
 {
-    public class OrderExpirationService
+    public class OrderExpirationService : IHostedService
     {
         private readonly AppDbContext _context;
         private readonly ISimulationStateService _stateService;
@@ -138,6 +141,18 @@ namespace esAPI.Services
             return await _context.Electronics
                 .Where(e => e.SoldAt == null && e.ElectronicsStatusId == (int)Electronics.Status.Reserved)
                 .CountAsync();
+        }
+
+        public Task StartAsync(CancellationToken cancellationToken)
+        {
+            // TODO: Add background logic here
+            return Task.CompletedTask;
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            // TODO: Add cleanup logic here
+            return Task.CompletedTask;
         }
     }
 } 

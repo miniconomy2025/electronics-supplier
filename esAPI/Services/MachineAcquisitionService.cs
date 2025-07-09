@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
 using esAPI.Services;
+using esAPI.Clients;
 
 namespace esAPI.Services
 {
@@ -39,7 +40,7 @@ namespace esAPI.Services
         }
 
         // Orders as many 'electronics_machine' as 20% of current bank balance allows, pays via Commercial Bank
-        public async Task PurchaseMachineViaBank()
+        public async Task<(int? orderId, int quantity)> PurchaseMachineViaBank()
         {
             // 1. Get current bank balance
             var balance = await _bankService.GetAndStoreBalance(0); // dayNumber not needed for logic
@@ -63,11 +64,11 @@ namespace esAPI.Services
                     break;
                 }
             }
-            if (available == 0 || price == 0) return;
+            if (available == 0 || price == 0) return (null, 0);
 
             // 3. Calculate how many to buy
             int toBuy = (int)Math.Floor(budget / price);
-            if (toBuy == 0) return;
+            if (toBuy == 0) return (null, 0);
             toBuy = Math.Min(toBuy, available);
 
             // 4. Place order with THOH
@@ -83,6 +84,7 @@ namespace esAPI.Services
             var order = orderDoc.RootElement;
             var totalPrice = order.GetProperty("totalPrice").GetDecimal();
             var thohBankAccount = order.GetProperty("bankAccount").GetString();
+            var orderId = order.TryGetProperty("orderId", out var idProp) ? idProp.GetInt32() : (int?)null;
 
             // 5. Pay THOH via Commercial Bank
             var txnNumber = await _bankClient.MakePaymentAsync(
@@ -91,6 +93,7 @@ namespace esAPI.Services
                 totalPrice,
                 $"Purchase {toBuy} electronics_machine from THOH"
             );
+            return (orderId, toBuy);
         }
 
         public async Task PlaceBulkLogisticsPickup(int thohOrderId, int quantity)

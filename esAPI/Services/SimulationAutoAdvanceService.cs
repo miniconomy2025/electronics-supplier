@@ -8,37 +8,56 @@ using esAPI.Models;
 using esAPI.Simulation;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
+using esAPI.Services;
 
 namespace esAPI.Services
 {
-    public class SimulationAutoAdvanceService(IServiceProvider serviceProvider, ISimulationStateService stateService) : BackgroundService
+    public class SimulationAutoAdvanceService : IHostedService
     {
-        private readonly IServiceProvider _serviceProvider = serviceProvider;
-        private readonly ISimulationStateService _stateService = stateService;
+        private readonly AppDbContext _context;
+        private readonly BankAccountService _bankAccountService;
+        private readonly SimulationDayOrchestrator _dayOrchestrator;
+        private readonly ISimulationStateService _stateService;
+        private CancellationTokenSource _cts;
+        private Task _backgroundTask;
         private const int MinutesPerSimDay = 2;
         private const int MaxSimDays = 365;
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        public SimulationAutoAdvanceService(AppDbContext context, BankAccountService bankAccountService, SimulationDayOrchestrator dayOrchestrator, ISimulationStateService stateService)
+        {
+            _context = context;
+            _bankAccountService = bankAccountService;
+            _dayOrchestrator = dayOrchestrator;
+            _stateService = stateService;
+        }
+
+        public Task StartAsync(CancellationToken cancellationToken)
+        {
+            _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            _backgroundTask = RunSimulationLoop(_cts.Token);
+            return Task.CompletedTask;
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            _cts?.Cancel();
+            return Task.CompletedTask;
+        }
+
+        private async Task RunSimulationLoop(CancellationToken stoppingToken)
         {
             while (!stoppingToken.IsCancellationRequested)
             {
-                if (_stateService.IsRunning && _stateService.CurrentDay < MaxSimDays)
+                if (_stateService.IsRunning)
                 {
-                    using (var scope = _serviceProvider.CreateScope())
+                    if (_stateService.CurrentDay > MaxSimDays)
                     {
-                        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                        var engine = new SimulationEngine(db);
-                        await engine.RunDayAsync(_stateService.CurrentDay);
-                        _stateService.AdvanceDay();
-
-                        // Backup to DB
-                        var sim = db.Simulations.FirstOrDefault();
-                        if (sim != null)
-                        {
-                            sim.DayNumber = _stateService.CurrentDay;
-                            await db.SaveChangesAsync();
-                        }
+                        _stateService.Stop();
+                        break;
                     }
+                    var engine = new SimulationEngine(_context, _bankAccountService, _dayOrchestrator);
+                    await engine.RunDayAsync(_stateService.CurrentDay);
+                    _stateService.AdvanceDay();
                 }
                 await Task.Delay(TimeSpan.FromMinutes(MinutesPerSimDay), stoppingToken);
             }

@@ -12,34 +12,27 @@ namespace esAPI.Controllers
 {
     [ApiController]
     [Route("simulation")]
-    public class SimulationController(AppDbContext context, ISimulationStateService stateService) : ControllerBase
+    public class SimulationController : ControllerBase
     {
-        private readonly AppDbContext _context = context;
-        private readonly ISimulationStateService _stateService = stateService;
+        private readonly AppDbContext _context;
+        private readonly BankAccountService _bankAccountService;
+        private readonly SimulationDayOrchestrator _dayOrchestrator;
+        private readonly ISimulationStateService _stateService;
+
+        public SimulationController(AppDbContext context, BankAccountService bankAccountService, SimulationDayOrchestrator dayOrchestrator, ISimulationStateService stateService)
+        {
+            _context = context;
+            _bankAccountService = bankAccountService;
+            _dayOrchestrator = dayOrchestrator;
+            _stateService = stateService;
+        }
 
         // POST /simulation - start the simulation
         [HttpPost]
-        public async Task<IActionResult> StartSimulation()
+        public IActionResult StartSimulation()
         {
-            if (_stateService.IsRunning)
-                return BadRequest("Simulation already running.");
             _stateService.Start();
-
-            // Backup to DB
-            var sim = _context.Simulations.FirstOrDefault();
-            if (sim == null)
-            {
-                sim = _stateService.ToBackupEntity();
-                _context.Simulations.Add(sim);
-            }
-            else
-            {
-                sim.IsRunning = _stateService.IsRunning;
-                sim.StartedAt = _stateService.StartTimeUtc;
-                sim.DayNumber = _stateService.CurrentDay;
-            }
-            await _context.SaveChangesAsync();
-            return Ok(sim);
+            return Ok("Simulation started.");
         }
 
         // GET /simulation - get current simulation state
@@ -72,7 +65,7 @@ namespace esAPI.Controllers
             if (_stateService.CurrentDay >= 365)
                 return BadRequest("Simulation has reached the maximum number of days (1 year).");
 
-            var engine = new SimulationEngine(_context);
+            var engine = new SimulationEngine(_context, _bankAccountService, _dayOrchestrator);
             await engine.RunDayAsync(_stateService.CurrentDay);
             _stateService.AdvanceDay();
 

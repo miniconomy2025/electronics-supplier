@@ -43,11 +43,14 @@ namespace esAPI.Services
             if (inventory.Machines.InUse == 0)
             {
                 var machineAvailable = await _machineAcquisitionService.CheckTHOHForMachines();
-                if (machineAvailable && await _bankService.HasSufficientBalanceForMachine())
+                if (machineAvailable)
                 {
-                    await _machineAcquisitionService.PurchaseMachineViaBank();
+                    var (orderId, quantity) = await _machineAcquisitionService.PurchaseMachineViaBank();
                     await _machineAcquisitionService.QueryOrderDetailsFromTHOH();
-                    await _machineAcquisitionService.PlaceBulkLogisticsPickup();
+                    if (orderId.HasValue && quantity > 0)
+                    {
+                        await _machineAcquisitionService.PlaceBulkLogisticsPickup(orderId.Value, quantity);
+                    }
                 }
             }
 
@@ -56,15 +59,15 @@ namespace esAPI.Services
             bool hasSilicon = inventory.MaterialsInStock.Any(m => m.MaterialName.ToLower() == "silicon" && m.Quantity > 0);
             if (!hasCopper || !hasSilicon)
             {
-                var cheapestSupplier = await _materialAcquisitionService.FindCheapestSupplier();
-                await _materialAcquisitionService.PurchaseMaterialsViaBank(cheapestSupplier);
-                await _materialAcquisitionService.PlaceBulkLogisticsPickup();
+                await _materialAcquisitionService.PurchaseMaterialsViaBank();
+                // await _materialAcquisitionService.PlaceBulkLogisticsPickup(); // No longer needed, handled inside service
             }
 
             // 5. Bulk logistics delivery is handled by /logistics endpoint
 
             // 6. Produce electronics
-            await _productionService.ProduceElectronics();
+            var (created, materialsUsed) = await _productionService.ProduceElectronics();
+            _logger.LogInformation($"Produced {created} electronics. Materials used: {string.Join(", ", materialsUsed.Select(kv => $"{kv.Key}: {kv.Value}"))}");
 
             _logger.LogInformation($"--- Simulation Day {dayNumber} End ---");
         }
