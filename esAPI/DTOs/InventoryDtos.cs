@@ -7,8 +7,11 @@ public class MachineSummaryDto
     [JsonPropertyName("total")]
     public int Total { get; set; }
 
-    [JsonPropertyName("working")]
-    public int Working { get; set; }
+    [JsonPropertyName("standby")]
+    public int Standby { get; set; }
+
+    [JsonPropertyName("inUse")]
+    public int InUse { get; set; }
 
     [JsonPropertyName("broken")]
     public int Broken { get; set; }

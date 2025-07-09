@@ -9,7 +9,7 @@ using Npgsql;
 namespace esAPI.Controllers;
 
 [ApiController]
-[Route("[controller]")]
+[Route("inventory")]
 public class InventoryController(AppDbContext context) : ControllerBase
 {
     private readonly AppDbContext _context = context;
