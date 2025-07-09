@@ -4,7 +4,7 @@ using SimulationModel = esAPI.Models.Simulation;
 
 namespace esAPI.Services
 {
-    public class SimulationStateService
+    public class SimulationStateService : ISimulationStateService
     {
         private readonly object _lock = new();
         private bool _isRunning;

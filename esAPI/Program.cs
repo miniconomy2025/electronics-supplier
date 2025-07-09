@@ -84,16 +84,18 @@ builder.Services.AddControllers();
 builder.Services.AddScoped<esAPI.Services.IElectronicsService, esAPI.Services.ElectronicsService>();
 builder.Services.AddScoped<esAPI.Services.IMaterialOrderService, esAPI.Services.MaterialOrderService>();
 builder.Services.AddScoped<esAPI.Services.ISupplyService, esAPI.Services.SupplyService>();
+builder.Services.AddScoped<OrderExpirationService>();
 builder.Services.Configure<InventoryConfig>(
     builder.Configuration.GetSection(InventoryConfig.SectionName)
 );
 builder.Services.AddScoped<SimulatedRecyclerApiClient>();
 builder.Services.AddScoped<SimulatedThohApiClient>();
 builder.Services.AddScoped<SupplierApiClientFactory>();
-builder.Services.AddSingleton<SimulationStateService>();
+builder.Services.AddSingleton<ISimulationStateService, SimulationStateService>();
 
 builder.Services.AddHostedService<InventoryManagementService>();
 builder.Services.AddHostedService<SimulationAutoAdvanceService>();
+builder.Services.AddHostedService<OrderExpirationBackgroundService>();
 
 // Add CORS services
 builder.Services.AddCors(options =>

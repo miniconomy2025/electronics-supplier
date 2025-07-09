@@ -11,10 +11,10 @@ using System.Linq;
 
 namespace esAPI.Services
 {
-    public class SimulationAutoAdvanceService(IServiceProvider serviceProvider, SimulationStateService stateService) : BackgroundService
+    public class SimulationAutoAdvanceService(IServiceProvider serviceProvider, ISimulationStateService stateService) : BackgroundService
     {
         private readonly IServiceProvider _serviceProvider = serviceProvider;
-        private readonly SimulationStateService _stateService = stateService;
+        private readonly ISimulationStateService _stateService = stateService;
         private const int MinutesPerSimDay = 2;
         private const int MaxSimDays = 365;
 
