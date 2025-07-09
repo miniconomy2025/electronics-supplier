@@ -40,7 +40,8 @@ namespace esAPI.Services
             var inventory = await _inventoryService.GetAndStoreInventory();
 
             // 3. If no working machines, try to buy one
-            if (inventory.Machines.InUse == 0)
+            // TODO: Limit total amount of machines we own
+            if (inventory.Machines.InUse == 0) // Total = Broken
             {
                 var machineAvailable = await _machineAcquisitionService.CheckTHOHForMachines();
                 if (machineAvailable)
@@ -60,7 +61,6 @@ namespace esAPI.Services
             if (!hasCopper || !hasSilicon)
             {
                 await _materialAcquisitionService.PurchaseMaterialsViaBank();
-                // await _materialAcquisitionService.PlaceBulkLogisticsPickup(); // No longer needed, handled inside service
             }
 
             // 5. Bulk logistics delivery is handled by /logistics endpoint

@@ -85,6 +85,7 @@ namespace esAPI.Services
                 machineName = "electronics_machine",
                 quantity = toBuy
             };
+            // TODO: Add to our own Machine orders table
             var orderResp = await thohClient.PostAsJsonAsync("/machines", orderReq);
             orderResp.EnsureSuccessStatusCode();
             var orderContent = await orderResp.Content.ReadAsStringAsync();
