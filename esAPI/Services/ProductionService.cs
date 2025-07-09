@@ -5,7 +5,12 @@ using System.Collections.Generic;
 
 namespace esAPI.Services
 {
-    public class ProductionService
+    public interface IProductionService
+    {
+        Task<(int electronicsCreated, Dictionary<string, int> materialsUsed)> ProduceElectronics();
+    }
+
+    public class ProductionService : IProductionService
     {
         private readonly IHttpClientFactory _httpClientFactory;
 

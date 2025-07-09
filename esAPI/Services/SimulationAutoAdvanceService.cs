@@ -9,6 +9,7 @@ using esAPI.Simulation;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using esAPI.Services;
+using Microsoft.Extensions.Configuration;
 
 namespace esAPI.Services
 {
@@ -18,21 +19,31 @@ namespace esAPI.Services
         private readonly BankAccountService _bankAccountService;
         private readonly SimulationDayOrchestrator _dayOrchestrator;
         private readonly ISimulationStateService _stateService;
-        private CancellationTokenSource _cts;
-        private Task _backgroundTask;
+        private readonly bool _autoAdvanceEnabled;
+        private CancellationTokenSource? _cts;
+        private Task? _backgroundTask;
         private const int MinutesPerSimDay = 2;
         private const int MaxSimDays = 365;
 
-        public SimulationAutoAdvanceService(AppDbContext context, BankAccountService bankAccountService, SimulationDayOrchestrator dayOrchestrator, ISimulationStateService stateService)
+        public SimulationAutoAdvanceService(
+            AppDbContext context,
+            BankAccountService bankAccountService,
+            SimulationDayOrchestrator dayOrchestrator,
+            ISimulationStateService stateService,
+            IConfiguration config)
         {
             _context = context;
             _bankAccountService = bankAccountService;
             _dayOrchestrator = dayOrchestrator;
             _stateService = stateService;
+            _autoAdvanceEnabled = config.GetValue<bool>("Simulation:AutoAdvanceEnabled");
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
+            if (!_autoAdvanceEnabled)
+                return Task.CompletedTask;
+
             _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             _backgroundTask = RunSimulationLoop(_cts.Token);
             return Task.CompletedTask;

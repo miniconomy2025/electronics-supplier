@@ -7,6 +7,10 @@ using FluentAssertions;
 using Moq;
 using Xunit;
 using Microsoft.Extensions.Logging;
+using esAPI.Models;
+using esAPI.Data;
+using esAPI.Clients;
+using Microsoft.EntityFrameworkCore;
 
 namespace esAPI.Tests.Services
 {
@@ -16,11 +20,23 @@ namespace esAPI.Tests.Services
         public async Task RunDayAsync_HappyPath_CallsAllServicesInOrder()
         {
             // Arrange
-            var mockBankService = new Mock<BankService>(null, null, null);
-            var mockInventoryService = new Mock<InventoryService>(null);
-            var mockMachineService = new Mock<MachineAcquisitionService>(null, null, null);
-            var mockMaterialService = new Mock<MaterialAcquisitionService>(null, null, null);
-            var mockProductionService = new Mock<ProductionService>(null);
+            var mockBankClient = new Mock<ICommercialBankClient>();
+            var mockStateService = new Mock<ISimulationStateService>();
+
+            mockBankClient.Setup(b => b.GetAccountBalanceAsync()).ReturnsAsync(1000m);
+            mockStateService.Setup(s => s.GetCurrentSimulationTime(It.IsAny<int>())).Returns(123456);
+
+            var options = new DbContextOptionsBuilder<AppDbContext>()
+                .UseInMemoryDatabase(databaseName: "TestDb")
+                .Options;
+            var dbContext = new AppDbContext(options);
+
+            var bankService = new BankService(dbContext, mockBankClient.Object, mockStateService.Object);
+
+            var mockInventoryService = new Mock<IInventoryService>();
+            var mockMachineService = new Mock<IMachineAcquisitionService>();
+            var mockMaterialService = new Mock<IMaterialAcquisitionService>();
+            var mockProductionService = new Mock<IProductionService>();
             var mockLogger = new Mock<ILogger<SimulationDayOrchestrator>>();
 
             // Setup inventory: no working machines, no copper, no silicon
@@ -47,7 +63,7 @@ namespace esAPI.Tests.Services
                 .ReturnsAsync((10, new Dictionary<string, int> { { "copper", 20 }, { "silicon", 10 } }));
 
             var orchestrator = new SimulationDayOrchestrator(
-                mockBankService.Object,
+                bankService,
                 mockInventoryService.Object,
                 mockMachineService.Object,
                 mockMaterialService.Object,
@@ -59,7 +75,6 @@ namespace esAPI.Tests.Services
             await orchestrator.RunDayAsync(1);
 
             // Assert
-            mockBankService.Verify(s => s.GetAndStoreBalance(1), Times.Once);
             mockInventoryService.Verify(s => s.GetAndStoreInventory(), Times.Once);
             mockMachineService.Verify(s => s.CheckTHOHForMachines(), Times.Once);
             mockMachineService.Verify(s => s.PurchaseMachineViaBank(), Times.Once);

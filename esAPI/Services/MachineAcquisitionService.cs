@@ -7,7 +7,15 @@ using esAPI.Clients;
 
 namespace esAPI.Services
 {
-    public class MachineAcquisitionService
+    public interface IMachineAcquisitionService
+    {
+        Task<bool> CheckTHOHForMachines();
+        Task<(int? orderId, int quantity)> PurchaseMachineViaBank();
+        Task QueryOrderDetailsFromTHOH();
+        Task PlaceBulkLogisticsPickup(int thohOrderId, int quantity);
+    }
+
+    public class MachineAcquisitionService : IMachineAcquisitionService
     {
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly BankService _bankService;
@@ -85,6 +93,9 @@ namespace esAPI.Services
             var totalPrice = order.GetProperty("totalPrice").GetDecimal();
             var thohBankAccount = order.GetProperty("bankAccount").GetString();
             var orderId = order.TryGetProperty("orderId", out var idProp) ? idProp.GetInt32() : (int?)null;
+
+            if (string.IsNullOrEmpty(thohBankAccount))
+                throw new InvalidOperationException("THOH bank account is missing from order response.");
 
             // 5. Pay THOH via Commercial Bank
             var txnNumber = await _bankClient.MakePaymentAsync(

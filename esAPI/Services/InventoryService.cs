@@ -5,7 +5,12 @@ using esAPI.DTOs;
 
 namespace esAPI.Services
 {
-    public class InventoryService
+    public interface IInventoryService
+    {
+        Task<InventorySummaryDto> GetAndStoreInventory();
+    }
+
+    public class InventoryService : IInventoryService
     {
         private readonly IHttpClientFactory _httpClientFactory;
 
@@ -14,7 +19,12 @@ namespace esAPI.Services
             _httpClientFactory = httpClientFactory;
         }
 
-        public async Task<InventorySummaryDto> GetAndStoreInventory()
+        public Task<InventorySummaryDto> GetAndStoreInventory()
+        {
+            return GetAndStoreInventoryImpl();
+        }
+
+        private async Task<InventorySummaryDto> GetAndStoreInventoryImpl()
         {
             var client = _httpClientFactory.CreateClient(); // Default client, since it's our own API
             var response = await client.GetAsync("/inventory");

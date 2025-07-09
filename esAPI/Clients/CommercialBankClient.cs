@@ -1,8 +1,24 @@
+using System.Threading.Tasks;
 
 namespace esAPI.Clients
 {
-    public class CommercialBankClient(IHttpClientFactory factory) : BaseClient(factory, "commercial-bank")
+    public interface ICommercialBankClient
     {
+        Task<decimal> GetAccountBalanceAsync();
+        // Add other public methods as needed
+    }
+
+    public class CommercialBankClient : ICommercialBankClient
+    {
+        private readonly IHttpClientFactory _factory;
+        private readonly HttpClient _client;
+
+        public CommercialBankClient(IHttpClientFactory factory)
+        {
+            _factory = factory;
+            _client = factory.CreateClient("commercial-bank");
+        }
+
         public async Task<decimal> GetAccountBalanceAsync()
         {
             var response = await _client.GetAsync("/account/me/balance");

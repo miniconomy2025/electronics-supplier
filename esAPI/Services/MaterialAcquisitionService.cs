@@ -8,7 +8,13 @@ using esAPI.Clients;
 
 namespace esAPI.Services
 {
-    public class MaterialAcquisitionService
+    public interface IMaterialAcquisitionService
+    {
+        Task PurchaseMaterialsViaBank();
+        Task PlaceBulkLogisticsPickup(int orderId, string itemName, int quantity, string supplier);
+    }
+
+    public class MaterialAcquisitionService : IMaterialAcquisitionService
     {
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly BankService _bankService;
@@ -71,7 +77,7 @@ namespace esAPI.Services
                 pricePerKg = recyclerPrice;
                 availableQty = recyclerQty;
             }
-            if (supplier == null || availableQty == 0) return;
+            if (supplier == null || availableQty == 0 || supplierClient == null) return;
 
             // Determine quantity to buy
             int quantityToBuy = 0;
@@ -102,6 +108,9 @@ namespace esAPI.Services
             var totalPrice = order.GetProperty("price").GetDecimal();
             var supplierBankAccount = order.GetProperty("bankAccount").GetString();
             var orderId = order.TryGetProperty("orderId", out var idProp) ? idProp.GetInt32() : 0;
+
+            if (string.IsNullOrEmpty(supplierBankAccount))
+                throw new InvalidOperationException($"{supplier} bank account is missing from order response.");
 
             // Pay supplier
             await _bankClient.MakePaymentAsync(

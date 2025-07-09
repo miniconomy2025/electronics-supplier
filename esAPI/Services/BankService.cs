@@ -10,10 +10,10 @@ namespace esAPI.Services
     public class BankService
     {
         private readonly AppDbContext _db;
-        private readonly CommercialBankClient _bankClient;
+        private readonly ICommercialBankClient _bankClient;
         private readonly ISimulationStateService _stateService;
 
-        public BankService(AppDbContext db, CommercialBankClient bankClient, ISimulationStateService stateService)
+        public BankService(AppDbContext db, ICommercialBankClient bankClient, ISimulationStateService stateService)
         {
             _db = db;
             _bankClient = bankClient;

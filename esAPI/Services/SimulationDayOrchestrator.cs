@@ -7,18 +7,18 @@ namespace esAPI.Services
     public class SimulationDayOrchestrator
     {
         private readonly BankService _bankService;
-        private readonly InventoryService _inventoryService;
-        private readonly MachineAcquisitionService _machineAcquisitionService;
-        private readonly MaterialAcquisitionService _materialAcquisitionService;
-        private readonly ProductionService _productionService;
+        private readonly IInventoryService _inventoryService;
+        private readonly IMachineAcquisitionService _machineAcquisitionService;
+        private readonly IMaterialAcquisitionService _materialAcquisitionService;
+        private readonly IProductionService _productionService;
         private readonly ILogger<SimulationDayOrchestrator> _logger;
 
         public SimulationDayOrchestrator(
             BankService bankService,
-            InventoryService inventoryService,
-            MachineAcquisitionService machineAcquisitionService,
-            MaterialAcquisitionService materialAcquisitionService,
-            ProductionService productionService,
+            IInventoryService inventoryService,
+            IMachineAcquisitionService machineAcquisitionService,
+            IMaterialAcquisitionService materialAcquisitionService,
+            IProductionService productionService,
             ILogger<SimulationDayOrchestrator> logger)
         {
             _bankService = bankService;
