@@ -44,18 +44,23 @@ namespace esAPI.Controllers
 
         // GET /simulation - get current simulation state
         [HttpGet]
-        public ActionResult GetSimulation()
+        public ActionResult<DTOs.SimulationStateDto> GetSimulation()
         {
             var simTime = _stateService.GetCurrentSimulationTime(3);
             var canonicalSimDate = simTime.ToCanonicalTime();
-            var unixEpoch = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeSeconds();
-            return Ok(new {
-                isRunning = _stateService.IsRunning,
-                startTime = _stateService.StartTimeUtc,
-                currentDay = _stateService.CurrentDay,
-                currentUnixEpoch = unixEpoch,
-                canonicalSimulationDate = canonicalSimDate
-            });
+            var simulationEpoch = new DateTime(2050, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var simulationUnixEpoch = (long)(canonicalSimDate - simulationEpoch).TotalSeconds;
+
+            var dto = new DTOs.SimulationStateDto
+            {
+                IsRunning = _stateService.IsRunning,
+                StartTimeUtc = _stateService.StartTimeUtc,
+                CurrentDay = _stateService.CurrentDay,
+                SimulationUnixEpoch = simulationUnixEpoch,
+                CanonicalSimulationDate = canonicalSimDate
+            };
+
+            return Ok(dto);
         }
 
         // PATCH /simulation/advance - advance the simulation by one day
@@ -101,7 +106,7 @@ namespace esAPI.Controllers
 
             // Truncate all tables except views and migration history
             // Use lowercase table names as they appear in the database
-            await _context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE companies, materials, material_supplies, material_orders, machines, machine_orders, machine_ratios, machine_statuses, machine_details, electronics, electronics_orders, electronics_statuses, order_statuses, lookup_values, simulation RESTART IDENTITY CASCADE;");
+            await _context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE companies, materials, material_supplies, material_orders, machines, machine_orders, machine_ratios, machine_statuses, machine_details, electronics, electronics_orders, electronics_statuses, order_statuses, lookup_values, simulation, disasters RESTART IDENTITY CASCADE;");
 
             return Ok(new { message = "Simulation stopped and all data deleted." });
         }
