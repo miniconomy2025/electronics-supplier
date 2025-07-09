@@ -1,6 +1,6 @@
-using esAPI.Clients;
+using esAPI.Interfaces;
 
-namespace FactoryApi.Clients;
+namespace esAPI.Clients;
 
 public class SupplierApiClientFactory(IServiceProvider serviceProvider)
 {

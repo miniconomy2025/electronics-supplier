@@ -1,6 +1,3 @@
-using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using System.Linq;
 using esAPI.DTOs;
 
 namespace esAPI.Services
@@ -54,7 +51,7 @@ namespace esAPI.Services
             _logger.LogInformation($"Bank Balance: {bankBalance}, Spending Cap: {spendingCap}");
         }
 
-        private bool NeedToBuyMachine(InventorySummaryDto inventory)
+        private static bool NeedToBuyMachine(InventorySummaryDto inventory)
         {
             return inventory.Machines.InUse == 0;
         }
@@ -77,7 +74,7 @@ namespace esAPI.Services
             }
         }
 
-        private bool NeedToRestockMaterials(InventorySummaryDto inventory)
+        private static bool NeedToRestockMaterials(InventorySummaryDto inventory)
         {
             bool HasMaterial(string name) =>
                 inventory.MaterialsInStock.Any(m => m.MaterialName.Equals(name, StringComparison.OrdinalIgnoreCase) && m.Quantity > 0);

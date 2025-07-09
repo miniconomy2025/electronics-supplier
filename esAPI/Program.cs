@@ -9,8 +9,6 @@ using esAPI.Services;
 using esAPI.Interfaces;
 using esAPI.Configuration;
 
-using FactoryApi.Clients;
-
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure TLS settings

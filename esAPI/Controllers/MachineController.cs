@@ -4,6 +4,7 @@ using esAPI.Data;
 using esAPI.Models;
 using esAPI.Services;
 using esAPI.DTOs;
+using esAPI.Interfaces;
 
 [ApiController]
 [Route("machines")]

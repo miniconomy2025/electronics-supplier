@@ -36,8 +36,8 @@ namespace esAPI.Clients
             {
                 to_account_number = toAccountNumber,
                 to_bank_name = toBankName,
-                amount = amount,
-                description = description
+                amount,
+                description
             };
             var response = await _client.PostAsJsonAsync("/transaction", paymentReq);
             response.EnsureSuccessStatusCode();
