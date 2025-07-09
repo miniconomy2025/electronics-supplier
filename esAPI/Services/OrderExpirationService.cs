@@ -2,17 +2,22 @@ using esAPI.Data;
 using esAPI.Models;
 using esAPI.Models.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
+using System.Linq;
 
 namespace esAPI.Services
 {
-    public class OrderExpirationService
+    public class OrderExpirationService : IHostedService
     {
-        private readonly AppDbContext _context;
+        private readonly IServiceProvider _serviceProvider;
         private readonly ISimulationStateService _stateService;
 
-        public OrderExpirationService(AppDbContext context, ISimulationStateService stateService)
+        public OrderExpirationService(IServiceProvider serviceProvider, ISimulationStateService stateService)
         {
-            _context = context;
+            _serviceProvider = serviceProvider;
             _stateService = stateService;
         }
 
@@ -24,26 +29,30 @@ namespace esAPI.Services
         /// <returns>True if reservation was successful</returns>
         public async Task<bool> ReserveElectronicsForOrderAsync(int orderId, int quantity)
         {
-            // Get available electronics (not sold, not reserved)
-            var availableElectronics = await _context.Electronics
-                .Where(e => e.SoldAt == null && e.ElectronicsStatusId == (int)Electronics.Status.Available)
-                .OrderBy(e => e.ProducedAt) // FIFO - oldest first
-                .Take(quantity)
-                .ToListAsync();
-
-            if (availableElectronics.Count < quantity)
+            using (var scope = _serviceProvider.CreateScope())
             {
-                return false; // Not enough available electronics
-            }
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                // Get available electronics (not sold, not reserved)
+                var availableElectronics = await db.Electronics
+                    .Where(e => e.SoldAt == null && e.ElectronicsStatusId == (int)Electronics.Status.Available)
+                    .OrderBy(e => e.ProducedAt) // FIFO - oldest first
+                    .Take(quantity)
+                    .ToListAsync();
 
-            // Mark electronics as reserved
-            foreach (var electronic in availableElectronics)
-            {
-                electronic.ElectronicsStatusId = (int)Electronics.Status.Reserved;
-            }
+                if (availableElectronics.Count < quantity)
+                {
+                    return false; // Not enough available electronics
+                }
 
-            await _context.SaveChangesAsync();
-            return true;
+                // Mark electronics as reserved
+                foreach (var electronic in availableElectronics)
+                {
+                    electronic.ElectronicsStatusId = (int)Electronics.Status.Reserved;
+                }
+
+                await db.SaveChangesAsync();
+                return true;
+            }
         }
 
         /// <summary>
@@ -53,32 +62,36 @@ namespace esAPI.Services
         /// <returns>Number of electronics freed</returns>
         public async Task<int> FreeReservedElectronicsAsync(int orderId)
         {
-            // Find electronics that were reserved for this order
-            // Since we don't have a direct link, we'll free electronics that are reserved
-            // and were reserved around the time the order was placed
-            var order = await _context.ElectronicsOrders
-                .FirstOrDefaultAsync(o => o.OrderId == orderId);
-
-            if (order == null)
-                return 0;
-
-            // Get reserved electronics that were reserved around the order time
-            // This is a simplified approach - in a real system you'd have a direct link
-            var reservedElectronics = await _context.Electronics
-                .Where(e => e.ElectronicsStatusId == (int)Electronics.Status.Reserved && e.SoldAt == null)
-                .OrderBy(e => e.ProducedAt)
-                .Take(order.TotalAmount) // Free up to the total order amount
-                .ToListAsync();
-
-            int freedCount = 0;
-            foreach (var electronic in reservedElectronics)
+            using (var scope = _serviceProvider.CreateScope())
             {
-                electronic.ElectronicsStatusId = (int)Electronics.Status.Available;
-                freedCount++;
-            }
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                // Find electronics that were reserved for this order
+                // Since we don't have a direct link, we'll free electronics that are reserved
+                // and were reserved around the time the order was placed
+                var order = await db.ElectronicsOrders
+                    .FirstOrDefaultAsync(o => o.OrderId == orderId);
 
-            await _context.SaveChangesAsync();
-            return freedCount;
+                if (order == null)
+                    return 0;
+
+                // Get reserved electronics that were reserved around the order time
+                // This is a simplified approach - in a real system you'd have a direct link
+                var reservedElectronics = await db.Electronics
+                    .Where(e => e.ElectronicsStatusId == (int)Electronics.Status.Reserved && e.SoldAt == null)
+                    .OrderBy(e => e.ProducedAt)
+                    .Take(order.TotalAmount) // Free up to the total order amount
+                    .ToListAsync();
+
+                int freedCount = 0;
+                foreach (var electronic in reservedElectronics)
+                {
+                    electronic.ElectronicsStatusId = (int)Electronics.Status.Available;
+                    freedCount++;
+                }
+
+                await db.SaveChangesAsync();
+                return freedCount;
+            }
         }
 
         /// <summary>
@@ -93,29 +106,45 @@ namespace esAPI.Services
             var currentTime = _stateService.GetCurrentSimulationTime(3);
             var oneDayAgo = currentTime - 1.0m; // 1 simulation day ago
 
-            // Find pending orders that are older than 1 day
-            var expiredOrders = await _context.ElectronicsOrders
-                .Where(o => o.OrderStatusId == (int)Order.Status.Pending && o.OrderedAt < oneDayAgo)
-                .ToListAsync();
-
-            int expiredCount = 0;
-            foreach (var order in expiredOrders)
+            using (var scope = _serviceProvider.CreateScope())
             {
-                // Mark order as expired
-                order.OrderStatusId = (int)Order.Status.Expired;
-                
-                // Free reserved electronics
-                await FreeReservedElectronicsAsync(order.OrderId);
-                
-                expiredCount++;
-            }
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                // Get current electronics price per unit
+                var pricePerUnit = db.LookupValues
+                    .OrderByDescending(l => l.ChangedAt)
+                    .Select(l => l.ElectronicsPricePerUnit)
+                    .FirstOrDefault();
 
-            if (expiredCount > 0)
-            {
-                await _context.SaveChangesAsync();
-            }
+                // Find pending orders that are older than 1 day
+                var expiredOrders = await db.ElectronicsOrders
+                    .Where(o => o.OrderStatusId == (int)Order.Status.Pending && o.OrderedAt < oneDayAgo)
+                    .ToListAsync();
 
-            return expiredCount;
+                int expiredCount = 0;
+                foreach (var order in expiredOrders)
+                {
+                    // Calculate total due for the order
+                    var totalDue = order.TotalAmount * pricePerUnit;
+                    // Sum all successful payments for this order
+                    var totalPaid = db.Payments
+                        .Where(p => p.OrderId == order.OrderId && p.Status == "SUCCESS")
+                        .Sum(p => (decimal?)p.Amount) ?? 0m;
+                    // Only expire if not fully paid
+                    if (totalPaid < totalDue)
+                    {
+                        // Mark order as expired
+                        order.OrderStatusId = (int)Order.Status.Expired;
+                        // Free reserved electronics
+                        await FreeReservedElectronicsAsync(order.OrderId);
+                        expiredCount++;
+                    }
+                }
+                if (expiredCount > 0)
+                {
+                    await db.SaveChangesAsync();
+                }
+                return expiredCount;
+            }
         }
 
         /// <summary>
@@ -124,9 +153,13 @@ namespace esAPI.Services
         /// <returns>Count of available electronics</returns>
         public async Task<int> GetAvailableElectronicsCountAsync()
         {
-            return await _context.Electronics
-                .Where(e => e.SoldAt == null && e.ElectronicsStatusId == (int)Electronics.Status.Available)
-                .CountAsync();
+            using (var scope = _serviceProvider.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                return await db.Electronics
+                    .Where(e => e.SoldAt == null && e.ElectronicsStatusId == (int)Electronics.Status.Available)
+                    .CountAsync();
+            }
         }
 
         /// <summary>
@@ -135,9 +168,25 @@ namespace esAPI.Services
         /// <returns>Count of reserved electronics</returns>
         public async Task<int> GetReservedElectronicsCountAsync()
         {
-            return await _context.Electronics
-                .Where(e => e.SoldAt == null && e.ElectronicsStatusId == (int)Electronics.Status.Reserved)
-                .CountAsync();
+            using (var scope = _serviceProvider.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                return await db.Electronics
+                    .Where(e => e.SoldAt == null && e.ElectronicsStatusId == (int)Electronics.Status.Reserved)
+                    .CountAsync();
+            }
+        }
+
+        public Task StartAsync(CancellationToken cancellationToken)
+        {
+            // TODO: Add background logic here
+            return Task.CompletedTask;
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            // TODO: Add cleanup logic here
+            return Task.CompletedTask;
         }
     }
 } 
