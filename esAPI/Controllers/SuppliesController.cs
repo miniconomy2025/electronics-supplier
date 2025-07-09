@@ -6,7 +6,7 @@ using esAPI.Services;
 namespace esAPI.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("supplies")]
     public class SuppliesController(ISupplyService service) : ControllerBase
     {
         private readonly ISupplyService _service = service;
