@@ -27,6 +27,7 @@ namespace esAPI.Data
         public DbSet<SimulationModel> Simulations { get; set; }
         public DbSet<CurrentSupply> CurrentSupplies { get; set; }
         public DbSet<DisasterModel> Disasters { get; set; }
+        public DbSet<BankBalanceSnapshot> BankBalanceSnapshots { get; set; }
 
         public DbSet<EffectiveMaterialStock> EffectiveMaterialStock { get; set; }
 

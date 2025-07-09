@@ -92,6 +92,12 @@ builder.Services.AddScoped<esAPI.Services.IMaterialOrderService, esAPI.Services.
 builder.Services.AddScoped<esAPI.Services.ISupplyService, esAPI.Services.SupplyService>();
 builder.Services.AddScoped<CommercialBankClient>();
 builder.Services.AddScoped<BankAccountService>();
+builder.Services.AddScoped<BankService>();
+builder.Services.AddScoped<InventoryService>();
+builder.Services.AddScoped<MachineAcquisitionService>();
+builder.Services.AddScoped<MaterialAcquisitionService>();
+builder.Services.AddScoped<ProductionService>();
+builder.Services.AddScoped<SimulationDayOrchestrator>();
 builder.Services.AddHostedService<OrderExpirationService>();
 builder.Services.Configure<InventoryConfig>(
     builder.Configuration.GetSection(InventoryConfig.SectionName)
