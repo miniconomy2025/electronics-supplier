@@ -5,6 +5,8 @@ namespace esAPI.Clients
     public interface ICommercialBankClient
     {
         Task<decimal> GetAccountBalanceAsync();
+        Task<string?> CreateAccountAsync();
+        Task<string> MakePaymentAsync(string toAccountNumber, string toBankName, decimal amount, string description);
         // Add other public methods as needed
     }
 

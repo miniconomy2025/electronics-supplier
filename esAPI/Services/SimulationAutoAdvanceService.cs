@@ -15,37 +15,33 @@ namespace esAPI.Services
 {
     public class SimulationAutoAdvanceService : IHostedService
     {
-        private readonly AppDbContext _context;
-        private readonly BankAccountService _bankAccountService;
-        private readonly SimulationDayOrchestrator _dayOrchestrator;
-        private readonly ISimulationStateService _stateService;
-        private readonly bool _autoAdvanceEnabled;
+        private readonly IServiceProvider _serviceProvider;
         private CancellationTokenSource? _cts;
         private Task? _backgroundTask;
         private const int MinutesPerSimDay = 2;
         private const int MaxSimDays = 365;
 
-        public SimulationAutoAdvanceService(
-            AppDbContext context,
-            BankAccountService bankAccountService,
-            SimulationDayOrchestrator dayOrchestrator,
-            ISimulationStateService stateService,
-            IConfiguration config)
+        public SimulationAutoAdvanceService(IServiceProvider serviceProvider)
         {
-            _context = context;
-            _bankAccountService = bankAccountService;
-            _dayOrchestrator = dayOrchestrator;
-            _stateService = stateService;
-            _autoAdvanceEnabled = config.GetValue<bool>("Simulation:AutoAdvanceEnabled");
+            _serviceProvider = serviceProvider;
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
         {
-            if (!_autoAdvanceEnabled)
-                return Task.CompletedTask;
+            using (var scope = _serviceProvider.CreateScope())
+            {
+                var bankAccountService = scope.ServiceProvider.GetRequiredService<BankAccountService>();
+                var dayOrchestrator = scope.ServiceProvider.GetRequiredService<SimulationDayOrchestrator>();
+                var stateService = scope.ServiceProvider.GetRequiredService<ISimulationStateService>();
+                var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+                var autoAdvanceEnabled = config.GetValue<bool>("Simulation:AutoAdvanceEnabled");
 
-            _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            _backgroundTask = RunSimulationLoop(_cts.Token);
+                if (!autoAdvanceEnabled)
+                    return Task.CompletedTask;
+
+                _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                _backgroundTask = RunSimulationLoop(_cts.Token);
+            }
             return Task.CompletedTask;
         }
 
@@ -59,16 +55,35 @@ namespace esAPI.Services
         {
             while (!stoppingToken.IsCancellationRequested)
             {
-                if (_stateService.IsRunning)
+                using (var scope = _serviceProvider.CreateScope())
                 {
-                    if (_stateService.CurrentDay > MaxSimDays)
+                    var bankAccountService = scope.ServiceProvider.GetRequiredService<BankAccountService>();
+                    var dayOrchestrator = scope.ServiceProvider.GetRequiredService<SimulationDayOrchestrator>();
+                    var stateService = scope.ServiceProvider.GetRequiredService<ISimulationStateService>();
+                    var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+                    var autoAdvanceEnabled = config.GetValue<bool>("Simulation:AutoAdvanceEnabled");
+
+                    if (!autoAdvanceEnabled)
                     {
-                        _stateService.Stop();
-                        break;
+                        await Task.Delay(TimeSpan.FromMinutes(MinutesPerSimDay), stoppingToken);
+                        continue;
                     }
-                    var engine = new SimulationEngine(_context, _bankAccountService, _dayOrchestrator);
-                    await engine.RunDayAsync(_stateService.CurrentDay);
-                    _stateService.AdvanceDay();
+
+                    if (stateService.IsRunning)
+                    {
+                        if (stateService.CurrentDay > MaxSimDays)
+                        {
+                            stateService.Stop();
+                            break;
+                        }
+                        using (var dbScope = _serviceProvider.CreateScope())
+                        {
+                            var db = dbScope.ServiceProvider.GetRequiredService<AppDbContext>();
+                            var engine = new SimulationEngine(db, bankAccountService, dayOrchestrator);
+                            await engine.RunDayAsync(stateService.CurrentDay);
+                            stateService.AdvanceDay();
+                        }
+                    }
                 }
                 await Task.Delay(TimeSpan.FromMinutes(MinutesPerSimDay), stoppingToken);
             }

@@ -95,9 +95,9 @@ builder.Services.AddScoped<BankAccountService>();
 builder.Services.AddScoped<BankService>();
 builder.Services.AddScoped<InventoryService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
-builder.Services.AddScoped<MachineAcquisitionService>();
-builder.Services.AddScoped<IMaterialAcquisitionService, MaterialAcquisitionService>();
+builder.Services.AddScoped<IMachineAcquisitionService, MachineAcquisitionService>();
 builder.Services.AddScoped<IProductionService, ProductionService>();
+builder.Services.AddScoped<IMaterialAcquisitionService, MaterialAcquisitionService>();
 builder.Services.AddScoped<SimulationDayOrchestrator>();
 builder.Services.AddHostedService<OrderExpirationService>();
 builder.Services.Configure<InventoryConfig>(

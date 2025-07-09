@@ -19,9 +19,9 @@ namespace esAPI.Services
     {
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly BankService _bankService;
-        private readonly CommercialBankClient _bankClient;
+        private readonly ICommercialBankClient _bankClient;
 
-        public MachineAcquisitionService(IHttpClientFactory httpClientFactory, BankService bankService, CommercialBankClient bankClient)
+        public MachineAcquisitionService(IHttpClientFactory httpClientFactory, BankService bankService, ICommercialBankClient bankClient)
         {
             _httpClientFactory = httpClientFactory;
             _bankService = bankService;
