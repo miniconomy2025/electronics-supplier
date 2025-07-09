@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using esAPI.Models;
 using esAPI.Data;
 using esAPI.Clients;
+using esAPI.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace esAPI.Tests.Services
@@ -84,4 +85,4 @@ namespace esAPI.Tests.Services
             mockProductionService.Verify(s => s.ProduceElectronics(), Times.Once);
         }
     }
-} 
+}

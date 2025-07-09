@@ -2,6 +2,7 @@ using esAPI.Data;
 using esAPI.Models;
 using esAPI.Models.Enums;
 using esAPI.Services;
+using esAPI.Interfaces;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Moq;
@@ -153,7 +154,7 @@ namespace esAPI.Tests.Services
             var mockStateService = new Mock<ISimulationStateService>();
             mockStateService.Setup(x => x.IsRunning).Returns(true);
             mockStateService.Setup(x => x.GetCurrentSimulationTime(3)).Returns(3.0m);
-            
+
             var services = new ServiceCollection();
             services.AddSingleton(context);
             services.AddSingleton(mockStateService.Object);
@@ -196,4 +197,4 @@ namespace esAPI.Tests.Services
             expiredOrder!.OrderStatusId.Should().Be((int)Order.Status.Expired);
         }
     }
-} 
+}
