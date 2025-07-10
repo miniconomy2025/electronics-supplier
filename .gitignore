@@ -15,3 +15,5 @@ certs/
 publish/
 
 *.pem
+
+.vscode

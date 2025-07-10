@@ -16,4 +16,4 @@ namespace esAPI.Models
         [Column("machines_affected")]
         public int MachinesAffected { get; set; }
     }
-} 
+}

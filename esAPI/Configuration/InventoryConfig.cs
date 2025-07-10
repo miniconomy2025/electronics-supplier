@@ -11,5 +11,5 @@ public class InventoryConfig
 {
     public const string SectionName = "Inventory";
 
-    public List<MonitoredMaterialConfig> MonitoredMaterials { get; set; } = new();
+    public List<MonitoredMaterialConfig> MonitoredMaterials { get; set; } = [];
 }

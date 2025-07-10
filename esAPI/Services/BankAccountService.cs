@@ -1,24 +1,14 @@
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 using esAPI.Data;
 using esAPI.Clients;
 
 namespace esAPI.Services
 {
-    public class BankAccountService
+    public class BankAccountService(AppDbContext db, ICommercialBankClient bankClient, ILogger<BankAccountService> logger)
     {
-        private readonly AppDbContext _db;
-        private readonly ICommercialBankClient _bankClient;
-        private readonly ILogger<BankAccountService> _logger;
-
-        public BankAccountService(AppDbContext db, ICommercialBankClient bankClient, ILogger<BankAccountService> logger)
-        {
-            _db = db;
-            _bankClient = bankClient;
-            _logger = logger;
-        }
+        private readonly AppDbContext _db = db;
+        private readonly ICommercialBankClient _bankClient = bankClient;
+        private readonly ILogger<BankAccountService> _logger = logger;
 
         public async Task SetupBankAccount(CancellationToken cancellationToken = default)
         {
@@ -48,4 +38,4 @@ namespace esAPI.Services
             _logger.LogInformation($"Bank account created and saved: {accountNumber}");
         }
     }
-} 
+}

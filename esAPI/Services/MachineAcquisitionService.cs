@@ -1,8 +1,4 @@
-using System;
-using System.Net.Http;
 using System.Text.Json;
-using System.Threading.Tasks;
-using esAPI.Services;
 using esAPI.Clients;
 using esAPI.Data;
 using Microsoft.EntityFrameworkCore;
@@ -18,20 +14,12 @@ namespace esAPI.Services
 
     }
 
-    public class MachineAcquisitionService : IMachineAcquisitionService
+    public class MachineAcquisitionService(IHttpClientFactory httpClientFactory, BankService bankService, ICommercialBankClient bankClient, AppDbContext context) : IMachineAcquisitionService
     {
-        private readonly IHttpClientFactory _httpClientFactory;
-        private readonly BankService _bankService;
-        private readonly ICommercialBankClient _bankClient;
-        private readonly AppDbContext _context;
-
-        public MachineAcquisitionService(IHttpClientFactory httpClientFactory, BankService bankService, ICommercialBankClient bankClient, AppDbContext context)
-        {
-            _httpClientFactory = httpClientFactory;
-            _bankService = bankService;
-            _bankClient = bankClient;
-            _context = context;
-        }
+        private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
+        private readonly BankService _bankService = bankService;
+        private readonly ICommercialBankClient _bankClient = bankClient;
+        private readonly AppDbContext _context = context
 
         // Returns true if 'electronics_machine' is available
         public async Task<bool> CheckTHOHForMachines()
@@ -90,6 +78,7 @@ namespace esAPI.Services
                 machineName = "electronics_machine",
                 quantity = toBuy
             };
+            // TODO: Add to our own Machine orders table
             var orderResp = await thohClient.PostAsJsonAsync("/machines", orderReq);
             orderResp.EnsureSuccessStatusCode();
             var orderContent = await orderResp.Content.ReadAsStringAsync();
@@ -164,4 +153,4 @@ namespace esAPI.Services
 
         public Task QueryOrderDetailsFromTHOH() => Task.CompletedTask;
     }
-} 
+}

@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 
 using esAPI.DTOs.Supply;
-using esAPI.Services;
+using esAPI.Interfaces;
 
 namespace esAPI.Controllers
 {

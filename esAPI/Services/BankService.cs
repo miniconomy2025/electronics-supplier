@@ -1,24 +1,15 @@
-using System;
-using System.Threading.Tasks;
 using esAPI.Data;
 using esAPI.Models;
+using esAPI.Interfaces;
 using esAPI.Clients;
-using Microsoft.EntityFrameworkCore;
 
 namespace esAPI.Services
 {
-    public class BankService
+    public class BankService(AppDbContext db, ICommercialBankClient bankClient, ISimulationStateService stateService)
     {
-        private readonly AppDbContext _db;
-        private readonly ICommercialBankClient _bankClient;
-        private readonly ISimulationStateService _stateService;
-
-        public BankService(AppDbContext db, ICommercialBankClient bankClient, ISimulationStateService stateService)
-        {
-            _db = db;
-            _bankClient = bankClient;
-            _stateService = stateService;
-        }
+        private readonly AppDbContext _db = db;
+        private readonly ICommercialBankClient _bankClient = bankClient;
+        private readonly ISimulationStateService _stateService = stateService;
 
         public async Task<decimal> GetAndStoreBalance(int simulationDay)
         {
@@ -36,4 +27,4 @@ namespace esAPI.Services
             return balance;
         }
     }
-} 
+}

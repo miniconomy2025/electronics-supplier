@@ -9,8 +9,8 @@ namespace esAPI.Models
         [Key]
         [Column("status_id")]
         public int StatusId { get; set; }
-        
+
         [Column("status")]
         public string Status { get; set; } = string.Empty;
     }
-} 
+}

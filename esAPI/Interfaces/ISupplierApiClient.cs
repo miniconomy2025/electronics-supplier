@@ -1,6 +1,6 @@
 using esAPI.DTOs;
 
-namespace esAPI.Clients;
+namespace esAPI.Interfaces;
 
 public interface ISupplierApiClient
 {

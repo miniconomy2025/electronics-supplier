@@ -1,4 +1,3 @@
-
 namespace esAPI.Clients
 {
     public abstract class BaseClient

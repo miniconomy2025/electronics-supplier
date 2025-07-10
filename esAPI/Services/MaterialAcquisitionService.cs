@@ -1,9 +1,4 @@
-using System;
-using System.Linq;
-using System.Net.Http;
 using System.Text.Json;
-using System.Threading.Tasks;
-using esAPI.Services;
 using esAPI.Clients;
 using Microsoft.EntityFrameworkCore;
 using esAPI.Data;
@@ -16,21 +11,12 @@ namespace esAPI.Services
         Task<int> PlaceBulkLogisticsPickup(int orderId, string itemName, int quantity, string supplier);
     }
 
-    public class MaterialAcquisitionService : IMaterialAcquisitionService
+    public class MaterialAcquisitionService(IHttpClientFactory httpClientFactory, BankService bankService, ICommercialBankClient bankClient, AppDbContext context) : IMaterialAcquisitionService
     {
-        private readonly IHttpClientFactory _httpClientFactory;
-        private readonly BankService _bankService;
-        private readonly ICommercialBankClient _bankClient;
-
-        private readonly AppDbContext _context;
-
-        public MaterialAcquisitionService(IHttpClientFactory httpClientFactory, BankService bankService, ICommercialBankClient bankClient, AppDbContext context)
-        {
-            _httpClientFactory = httpClientFactory;
-            _bankService = bankService;
-            _bankClient = bankClient;
-            _context = context;
-        }
+        private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
+        private readonly BankService _bankService = bankService;
+        private readonly ICommercialBankClient _bankClient = bankClient;
+        private readonly AppDbContext _context = context;
 
         public async Task PurchaseMaterialsViaBank()
         {
@@ -171,4 +157,4 @@ namespace esAPI.Services
             return pickupRequestId;
         }
     }
-} 
+}
