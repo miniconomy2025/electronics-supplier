@@ -5,7 +5,7 @@ using esAPI.Clients;
 
 namespace esAPI.Simulation
 {
-    public class SimulationEngine(AppDbContext context, BankAccountService bankAccountService, SimulationDayOrchestrator dayOrchestrator, IStartupCostCalculator costCalculator, ICommercialBankClient bankClient)
+    public class SimulationEngine(AppDbContext context, BankService bankService, BankAccountService bankAccountService, SimulationDayOrchestrator dayOrchestrator, IStartupCostCalculator costCalculator, ICommercialBankClient bankClient)
     {
         private readonly AppDbContext _context = context;
         private readonly BankAccountService _bankAccountService = bankAccountService;
@@ -13,6 +13,7 @@ namespace esAPI.Simulation
 
         private readonly IStartupCostCalculator _costCalculator = costCalculator;
 
+        private readonly BankService _bankService = bankService;
 
         private readonly ICommercialBankClient _bankClient = bankClient;
 
@@ -29,6 +30,8 @@ namespace esAPI.Simulation
             Console.WriteLine($"Running simulation logic for Day {dayNumber}");
 
             // 1. Query bank and store our balance
+            await _bankService.GetAndStoreBalance(dayNumber);
+
 
             // 2. Check machine inventory and buy if none
             var machineTask = new MachineTask(_context);

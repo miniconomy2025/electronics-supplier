@@ -48,7 +48,7 @@ namespace esAPI.Services
                     var dayOrchestrator = scope.ServiceProvider.GetRequiredService<SimulationDayOrchestrator>();
                     var stateService = scope.ServiceProvider.GetRequiredService<ISimulationStateService>();
                     var startupCostCalculator = scope.ServiceProvider.GetRequiredService<IStartupCostCalculator>();
-
+                    var bankService = scope.ServiceProvider.GetRequiredService<BankService>();
                     var bankClient = scope.ServiceProvider.GetRequiredService<ICommercialBankClient>();
 
                     var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
@@ -69,7 +69,7 @@ namespace esAPI.Services
                         }
                         using var dbScope = _serviceProvider.CreateScope();
                         var db = dbScope.ServiceProvider.GetRequiredService<AppDbContext>();
-                        var engine = new SimulationEngine(db, bankAccountService, dayOrchestrator, startupCostCalculator, bankClient);
+                        var engine = new SimulationEngine(db, bankService, bankAccountService, dayOrchestrator, startupCostCalculator, bankClient);
                         await engine.RunDayAsync(stateService.CurrentDay);
                         stateService.AdvanceDay();
                     }
