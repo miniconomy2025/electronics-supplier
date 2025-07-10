@@ -18,7 +18,6 @@ namespace esAPI.Services
 
     public class MaterialAcquisitionService : IMaterialAcquisitionService
     {
-
         private readonly IMaterialSourcingService _sourcingService;
         private readonly IBulkLogisticsClient _logisticsClient;
         private readonly IHttpClientFactory _httpClientFactory;
@@ -27,7 +26,6 @@ namespace esAPI.Services
         private readonly AppDbContext _dbContext;
 
         private static ConcurrentDictionary<string, int> _statusIdCache = new();
-
 
         public MaterialAcquisitionService(IHttpClientFactory httpClientFactory, AppDbContext dbContext, BankService bankService, ICommercialBankClient bankClient, IMaterialSourcingService sourcingService, IBulkLogisticsClient logisticsClient)
         {
