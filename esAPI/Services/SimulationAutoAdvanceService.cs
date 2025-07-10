@@ -1,6 +1,7 @@
 using esAPI.Data;
 using esAPI.Simulation;
 using esAPI.Interfaces;
+using esAPI.Clients;
 
 namespace esAPI.Services
 {
@@ -46,6 +47,10 @@ namespace esAPI.Services
                     var bankAccountService = scope.ServiceProvider.GetRequiredService<BankAccountService>();
                     var dayOrchestrator = scope.ServiceProvider.GetRequiredService<SimulationDayOrchestrator>();
                     var stateService = scope.ServiceProvider.GetRequiredService<ISimulationStateService>();
+                    var startupCostCalculator = scope.ServiceProvider.GetRequiredService<IStartupCostCalculator>();
+                    var bankService = scope.ServiceProvider.GetRequiredService<BankService>();
+                    var bankClient = scope.ServiceProvider.GetRequiredService<ICommercialBankClient>();
+
                     var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
                     var autoAdvanceEnabled = config.GetValue<bool>("Simulation:AutoAdvanceEnabled");
 
@@ -64,7 +69,7 @@ namespace esAPI.Services
                         }
                         using var dbScope = _serviceProvider.CreateScope();
                         var db = dbScope.ServiceProvider.GetRequiredService<AppDbContext>();
-                        var engine = new SimulationEngine(db, bankAccountService, dayOrchestrator);
+                        var engine = new SimulationEngine(db, bankService, bankAccountService, dayOrchestrator, startupCostCalculator, bankClient);
                         await engine.RunDayAsync(stateService.CurrentDay);
                         stateService.AdvanceDay();
                     }
