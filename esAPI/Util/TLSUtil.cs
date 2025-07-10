@@ -34,11 +34,12 @@ public class TLSUtil
 
             if (builder.Environment.IsDevelopment())
             {
-                options.ListenLocalhost(7251, listenOptions =>
-            {
-                listenOptions.UseHttps(ServerCert);
-                listenOptions.Protocols = HttpProtocols.Http1AndHttp2;
-            });
+                // Commenting for development purposes
+                //     options.ListenLocalhost(7251, listenOptions =>
+                // {
+                //     listenOptions.UseHttps(ServerCert);
+                //     listenOptions.Protocols = HttpProtocols.Http1AndHttp2;
+                // });
                 options.ListenLocalhost(5062);
             }
             else
