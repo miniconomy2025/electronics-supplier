@@ -59,8 +59,8 @@ namespace esAPI.Services
             bool hasSilicon = inventory.MaterialsInStock.Any(m => m.MaterialName.ToLower() == "silicon" && m.Quantity > 0);
             if (!hasCopper || !hasSilicon)
             {
-                await _materialAcquisitionService.PurchaseMaterialsViaBank();
-                // await _materialAcquisitionService.PlaceBulkLogisticsPickup(); // No longer needed, handled inside service
+                await _materialAcquisitionService.ExecutePurchaseStrategyAsync();
+                
             }
 
             // 5. Bulk logistics delivery is handled by /logistics endpoint

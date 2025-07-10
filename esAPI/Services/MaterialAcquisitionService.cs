@@ -5,153 +5,189 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using esAPI.Services;
 using esAPI.Clients;
+using esAPI.DTOs;
+using esAPI.Models;
+using esAPI.Data;
+using Microsoft.EntityFrameworkCore;
+using System.Collections.Concurrent;
 
 namespace esAPI.Services
 {
     public interface IMaterialAcquisitionService
     {
-        Task PurchaseMaterialsViaBank();
-        Task PlaceBulkLogisticsPickup(int orderId, string itemName, int quantity, string supplier);
+        Task ExecutePurchaseStrategyAsync();
+        // Task PurchaseMaterialsViaBank();
+        // Task PlaceBulkLogisticsPickup(int orderId, string itemName, int quantity, string supplier);
     }
 
     public class MaterialAcquisitionService : IMaterialAcquisitionService
     {
+
+        private readonly IMaterialSourcingService _sourcingService;
+        private readonly IBulkLogisticsClient _logisticsClient;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly BankService _bankService;
         private readonly ICommercialBankClient _bankClient;
+        private readonly AppDbContext _dbContext;
 
-        public MaterialAcquisitionService(IHttpClientFactory httpClientFactory, BankService bankService, ICommercialBankClient bankClient)
+        private static ConcurrentDictionary<string, int> _statusIdCache = new();
+
+
+        public MaterialAcquisitionService(IHttpClientFactory httpClientFactory, AppDbContext dbContext, BankService bankService, ICommercialBankClient bankClient, IMaterialSourcingService sourcingService, IBulkLogisticsClient logisticsClient)
         {
             _httpClientFactory = httpClientFactory;
             _bankService = bankService;
             _bankClient = bankClient;
+
+            _sourcingService = sourcingService;
+            _bankClient = bankClient;
+            _logisticsClient = logisticsClient;
+            _dbContext = dbContext;
         }
 
-        public async Task PurchaseMaterialsViaBank()
+        public async Task ExecutePurchaseStrategyAsync()
         {
-            // 1. Copper: buy half the available stock from the cheapest supplier
-            await PurchaseMaterial("copper", buyHalf: true);
-            // 2. Silicon: buy as much as possible with 30% of current bank balance
-            await PurchaseMaterial("silicon", buyHalf: false);
+            await PurchaseWithStrategy("copper", sourcedInfo => Task.FromResult(sourcedInfo.MaterialDetails.AvailableQuantity / 2));
+            await PurchaseWithStrategy("silicon", async sourcedInfo =>
+            {
+                var balance = await _bankService.GetAndStoreBalance(0);
+                var budget = balance * 0.3m;
+                int qty = (int)Math.Floor(budget / sourcedInfo.MaterialDetails.PricePerKg);
+                return Math.Min(qty, sourcedInfo.MaterialDetails.AvailableQuantity);
+            });
         }
 
-        private async Task PurchaseMaterial(string materialName, bool buyHalf)
+        private async Task PurchaseWithStrategy(string materialName, Func<SourcedSupplier, Task<int>> quantityStrategy)
         {
-            // Query both suppliers
-            var thohClient = _httpClientFactory.CreateClient("thoh");
-            var recyclerClient = _httpClientFactory.CreateClient("recycler");
-            var thohResp = await thohClient.GetAsync("/raw-materials");
-            thohResp.EnsureSuccessStatusCode();
-            var thohContent = await thohResp.Content.ReadAsStringAsync();
-            var thohMaterials = JsonDocument.Parse(thohContent).RootElement;
-            var recyclerResp = await recyclerClient.GetAsync("/raw-materials");
-            recyclerResp.EnsureSuccessStatusCode();
-            var recyclerContent = await recyclerResp.Content.ReadAsStringAsync();
-            var recyclerMaterials = JsonDocument.Parse(recyclerContent).RootElement;
+            var sourcedInfo = await _sourcingService.FindBestSupplierAsync(materialName);
+            if (sourcedInfo == null) return;
 
-            // Find material in each supplier
-            var thohMat = thohMaterials.EnumerateArray().FirstOrDefault(m => m.GetProperty("rawMaterialName").GetString()?.ToLower() == materialName);
-            var recyclerMat = recyclerMaterials.EnumerateArray().FirstOrDefault(m => m.GetProperty("rawMaterialName").GetString()?.ToLower() == materialName);
-
-            // Find cheapest supplier with stock
-            decimal thohPrice = thohMat.ValueKind != JsonValueKind.Undefined ? thohMat.GetProperty("pricePerKg").GetDecimal() : decimal.MaxValue;
-            int thohQty = thohMat.ValueKind != JsonValueKind.Undefined ? thohMat.GetProperty("quantityAvailable").GetInt32() : 0;
-            decimal recyclerPrice = recyclerMat.ValueKind != JsonValueKind.Undefined ? recyclerMat.GetProperty("pricePerKg").GetDecimal() : decimal.MaxValue;
-            int recyclerQty = recyclerMat.ValueKind != JsonValueKind.Undefined ? recyclerMat.GetProperty("quantityAvailable").GetInt32() : 0;
-
-            string supplier = null;
-            HttpClient supplierClient = null;
-            decimal pricePerKg = 0;
-            int availableQty = 0;
-            if (thohQty > 0 && thohPrice <= recyclerPrice)
+            int quantityToBuy = await quantityStrategy(sourcedInfo);
+            if (quantityToBuy <= 0)
             {
-                supplier = "thoh";
-                supplierClient = thohClient;
-                pricePerKg = thohPrice;
-                availableQty = thohQty;
+                return;
             }
-            else if (recyclerQty > 0)
-            {
-                supplier = "recycler";
-                supplierClient = recyclerClient;
-                pricePerKg = recyclerPrice;
-                availableQty = recyclerQty;
-            }
-            if (supplier == null || availableQty == 0 || supplierClient == null) return;
 
-            // Determine quantity to buy
-            int quantityToBuy = 0;
-            if (buyHalf)
+            await ProcureAndPayAsync(sourcedInfo, quantityToBuy);
+        }
+
+        private async Task<bool> ProcureAndPayAsync(SourcedSupplier sourcedInfo, int quantityToBuy)
+        {
+            var materialName = sourcedInfo.MaterialDetails.MaterialName;
+
+            var orderRequest = new SupplierOrderRequest { MaterialName = materialName, WeightQuantity = quantityToBuy };
+            var orderResponse = await sourcedInfo.Client.PlaceOrderAsync(orderRequest);
+            if (orderResponse == null || string.IsNullOrEmpty(orderResponse.BankAccount)) return false;
+
+            var localOrder = await CreateLocalOrderRecordAsync(sourcedInfo, quantityToBuy, orderResponse);
+            if (localOrder == null)
             {
-                quantityToBuy = availableQty / 2;
+                return false;
+            }
+
+            // --- Attempt to Pay the Supplier ---
+            var paymentSuccess = await _bankClient.MakePaymentAsync(orderResponse.BankAccount, sourcedInfo.Name, orderResponse.Price, $"Order {orderResponse.OrderId}");
+            if (paymentSuccess == string.Empty)
+            {
+                await UpdateOrderStatusAsync(localOrder.OrderId, "REJECTED");
+                return false;
+            }
+
+            // --- Update Order Status to 'ACCEPTED' ---
+            await UpdateOrderStatusAsync(localOrder.OrderId, "ACCEPTED");
+
+            // --- Arrange and Pay for Logistics ---
+            var logisticsSuccess = await ArrangeLogisticsAsync(orderResponse, materialName, quantityToBuy, sourcedInfo.Name);
+
+            if (!logisticsSuccess)
+            {
+                await UpdateOrderStatusAsync(localOrder.OrderId, "DISASTER");
+                return false;
+            }
+
+            // --- Final Status Update to 'IN_TRANSIT' ---
+            await UpdateOrderStatusAsync(localOrder.OrderId, "IN_TRANSIT");
+
+            return true;
+        }
+
+        private async Task<bool> ArrangeLogisticsAsync(SupplierOrderResponse order, string materialName, int quantity, string supplierName)
+        {
+            var pickupReq = new LogisticsPickupRequest
+            {
+                OriginalExternalOrderId = order.OrderId.ToString(),
+                OriginCompanyId = supplierName,
+                DestinationCompanyId = "1",
+                Items = [new LogisticsItem { Name = materialName, Quantity = quantity }]
+            };
+            var pickupResp = await _logisticsClient.ArrangePickupAsync(pickupReq);
+            if (pickupResp == null || string.IsNullOrEmpty(pickupResp.BulkLogisticsBankAccountNumber)) return false;
+
+            var paymentSuccess = await _bankClient.MakePaymentAsync(pickupResp.BulkLogisticsBankAccountNumber, "commercial-bank", pickupResp.Cost, $"Pickup for order {order.OrderId}");
+
+            return paymentSuccess == string.Empty;
+        }
+
+        private async Task<MaterialOrder?> CreateLocalOrderRecordAsync(SourcedSupplier sourcedInfo, int quantity, SupplierOrderResponse supplierResponse)
+        {
+            int pendingStatusId = await GetStatusIdAsync("PENDING");
+            if (pendingStatusId == 0) return null;
+
+            var supplierCompanyId = (await _dbContext.Companies.FirstOrDefaultAsync(c => c.CompanyName == sourcedInfo.Name))?.CompanyId;
+            var materialId = (await _dbContext.Materials.FirstOrDefaultAsync(m => m.MaterialName == sourcedInfo.MaterialDetails.MaterialName))?.MaterialId;
+
+            if (supplierCompanyId == null || materialId == null)
+            {
+                return null;
+            }
+
+            var newOrder = new MaterialOrder
+            {
+                SupplierId = supplierCompanyId.Value,
+                MaterialId = materialId.Value,
+                ExternalOrderId = supplierResponse.OrderId,
+                RemainingAmount = quantity,
+                OrderStatusId = pendingStatusId,
+                OrderedAt = 1.0m,
+            };
+
+            _dbContext.MaterialOrders.Add(newOrder);
+            await _dbContext.SaveChangesAsync();
+
+            return newOrder;
+        }
+
+        private async Task UpdateOrderStatusAsync(int orderId, string newStatusName)
+        {
+            var order = await _dbContext.MaterialOrders.FindAsync(orderId);
+            int newStatusId = await GetStatusIdAsync(newStatusName);
+
+            if (order != null && newStatusId != 0)
+            {
+                order.OrderStatusId = newStatusId;
+                await _dbContext.SaveChangesAsync();
             }
             else
             {
-                var balance = await _bankService.GetAndStoreBalance(0); // dayNumber not needed
-                var budget = balance * 0.3m;
-                quantityToBuy = (int)Math.Floor(budget / pricePerKg);
-                quantityToBuy = Math.Min(quantityToBuy, availableQty);
+
             }
-            if (quantityToBuy == 0) return;
-
-            // Place order
-            var orderReq = new
-            {
-                materialName = materialName,
-                weightQuantity = quantityToBuy
-            };
-            var orderResp = await supplierClient.PostAsJsonAsync("/raw-materials", orderReq);
-            orderResp.EnsureSuccessStatusCode();
-            var orderContent = await orderResp.Content.ReadAsStringAsync();
-            using var orderDoc = JsonDocument.Parse(orderContent);
-            var order = orderDoc.RootElement;
-            var totalPrice = order.GetProperty("price").GetDecimal();
-            var supplierBankAccount = order.GetProperty("bankAccount").GetString();
-            var orderId = order.TryGetProperty("orderId", out var idProp) ? idProp.GetInt32() : 0;
-
-            if (string.IsNullOrEmpty(supplierBankAccount))
-                throw new InvalidOperationException($"{supplier} bank account is missing from order response.");
-
-            // Pay supplier
-            await _bankClient.MakePaymentAsync(
-                supplierBankAccount!,
-                supplier,
-                totalPrice,
-                $"Purchase {quantityToBuy}kg {materialName} from {supplier}"
-            );
-
-            // Arrange pickup with Bulk Logistics
-            await PlaceBulkLogisticsPickup(orderId, materialName, quantityToBuy, supplier);
         }
 
-        public async Task PlaceBulkLogisticsPickup(int orderId, string materialName, int quantity, string supplier)
+        private async Task<int> GetStatusIdAsync(string statusName)
         {
-            var bulkClient = _httpClientFactory.CreateClient("bulk-logistics");
-            var pickupReq = new
+            if (_statusIdCache.TryGetValue(statusName, out int cachedId))
             {
-                originalExternalOrderId = orderId.ToString(),
-                originCompanyId = supplier,
-                destinationCompanyId = "1",
-                items = new[]
-                {
-                    new { name = materialName, quantity = quantity }
-                }
-            };
-            var pickupResp = await bulkClient.PostAsJsonAsync("/api/pickup-request", pickupReq);
-            pickupResp.EnsureSuccessStatusCode();
-            var pickupContent = await pickupResp.Content.ReadAsStringAsync();
-            using var pickupDoc = JsonDocument.Parse(pickupContent);
-            var pickup = pickupDoc.RootElement;
-            var cost = pickup.GetProperty("cost").GetDecimal();
-            var bulkBankAccount = pickup.GetProperty("bulkLogisticsBankAccountNumber").GetString();
+                return cachedId;
+            }
 
-            // Pay Bulk Logistics
-            await _bankClient.MakePaymentAsync(
-                bulkBankAccount!,
-                "commercial-bank",
-                cost,
-                $"Pickup {quantity}kg {materialName} from {supplier} order {orderId}"
-            );
+            var status = await _dbContext.OrderStatuses.AsNoTracking().FirstOrDefaultAsync(s => s.Status == statusName);
+            if (status != null)
+            {
+                _statusIdCache.TryAdd(statusName, status.StatusId);
+                return status.StatusId;
+            }
+
+            return 0;
         }
     }
-} 
+}
