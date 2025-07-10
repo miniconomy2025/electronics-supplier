@@ -6,7 +6,8 @@ namespace esAPI.Clients
         Task<string?> CreateAccountAsync();
         Task<string> MakePaymentAsync(string toAccountNumber, string toBankName, decimal amount, string description);
         Task<string?> RequestLoanAsync(decimal amount);
-        // Add other public methods as needed
+
+        Task<bool> SetNotificationUrlAsync();
     }
 
     public class CommercialBankClient(IHttpClientFactory factory) : ICommercialBankClient
@@ -21,6 +22,17 @@ namespace esAPI.Clients
             var content = await response.Content.ReadAsStringAsync();
             using var doc = System.Text.Json.JsonDocument.Parse(content);
             return doc.RootElement.TryGetProperty("balance", out var bal) ? bal.GetDecimal() : 0m;
+        }
+
+        public async Task<bool> SetNotificationUrlAsync()
+        {
+            var requestBody = new { notification_url = "https://electronics-supplier-api.projects.bbdgrad.com/payments" };
+
+            var response = await _client.PostAsJsonAsync("/account/me/notify", requestBody);
+            response.EnsureSuccessStatusCode();
+            var content = await response.Content.ReadAsStringAsync();
+            using var doc = System.Text.Json.JsonDocument.Parse(content);
+            return doc.RootElement.TryGetProperty("success", out var bal) && bal.GetBoolean();
         }
 
         public async Task<string?> CreateAccountAsync()
