@@ -16,6 +16,8 @@ var tlsUtil = new TLSUtil(builder);
 
 tlsUtil.AddSecureHttpClient(builder.Services, "commercial-bank", "https://commercial-bank-api.projects.bbdgrad.com");
 tlsUtil.AddSecureHttpClient(builder.Services, "bulk-logistics", "https://bulk-logistics-api.projects.bbdgrad.com");
+tlsUtil.AddSecureHttpClient(builder.Services, "thoh", "https://thoh-api.projects.bbdgrad.com");
+tlsUtil.AddSecureHttpClient(builder.Services, "recycler", "https://recycler-api.projects.bbdgrad.com");
 
 //--------------------------------------------------------------------------
 
@@ -32,6 +34,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
+
+builder.Services.AddHttpClient(); 
 
 builder.Services.AddScoped<IElectronicsService, ElectronicsService>();
 builder.Services.AddScoped<IMaterialOrderService, MaterialOrderService>();

@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using esAPI.DTOs;
+using esAPI.Interfaces;
 
 namespace esAPI.Clients;
 
@@ -20,12 +21,9 @@ public interface IThohMachineApiClient
     Task<ThohMachinePurchaseResponse?> PurchaseMachineAsync(ThohMachinePurchaseRequest request);
 }
 
-public class ThohApiClient : BaseClient, ISupplierApiClient, IThohMachineApiClient
+public class ThohApiClient(IHttpClientFactory httpClientFactory) : BaseClient(httpClientFactory, ClientName), ISupplierApiClient, IThohMachineApiClient
 {
     private const string ClientName = "thoh";
-
-    // The constructor now matches the BaseClient's requirements.
-    public ThohApiClient(IHttpClientFactory httpClientFactory) : base(httpClientFactory, ClientName) { }
 
     public async Task<List<ThohMachineInfo>> GetAvailableMachinesAsync()
     {

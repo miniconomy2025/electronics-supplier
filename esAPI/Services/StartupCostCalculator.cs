@@ -1,6 +1,7 @@
 using System.Linq;
 using esAPI.Clients;
 using esAPI.Data;
+using esAPI.Interfaces;
 
 namespace esAPI.Services;
 

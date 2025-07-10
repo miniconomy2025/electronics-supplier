@@ -5,6 +5,7 @@ using esAPI.Models;
 using esAPI.Data;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Concurrent;
+using esAPI.Interfaces;
 
 namespace esAPI.Services
 {
@@ -15,7 +16,7 @@ namespace esAPI.Services
         // Task PlaceBulkLogisticsPickup(int orderId, string itemName, int quantity, string supplier);
     }
 
-    public class MaterialAcquisitionService(IHttpClientFactory httpClientFactory, BankService bankService, ICommercialBankClient bankClient) : IMaterialAcquisitionService
+    public class MaterialAcquisitionService : IMaterialAcquisitionService
     {
 
         private readonly IMaterialSourcingService _sourcingService;
@@ -55,9 +56,11 @@ namespace esAPI.Services
         private async Task PurchaseWithStrategy(string materialName, Func<SourcedSupplier, Task<int>> quantityStrategy)
         {
             var sourcedInfo = await _sourcingService.FindBestSupplierAsync(materialName);
+            Console.WriteLine(sourcedInfo);
             if (sourcedInfo == null) return;
 
             int quantityToBuy = await quantityStrategy(sourcedInfo);
+            Console.WriteLine(quantityToBuy);
             if (quantityToBuy <= 0)
             {
                 return;
@@ -69,6 +72,8 @@ namespace esAPI.Services
         private async Task<bool> ProcureAndPayAsync(SourcedSupplier sourcedInfo, int quantityToBuy)
         {
             var materialName = sourcedInfo.MaterialDetails.MaterialName;
+
+            Console.WriteLine("Try buying " + materialName);
 
             var orderRequest = new SupplierOrderRequest { MaterialName = materialName, WeightQuantity = quantityToBuy };
             var orderResponse = await sourcedInfo.Client.PlaceOrderAsync(orderRequest);

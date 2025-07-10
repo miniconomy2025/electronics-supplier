@@ -84,6 +84,7 @@ public class InventoryManagementService(IServiceProvider serviceProvider, ILogge
 
         if (isAcquisitionNeeded)
         {
+            _logger.LogInformation("All material stock levels are insufficient. Triggering ExecutePurchaseStrategyAsync");
             await acquisitionService.ExecutePurchaseStrategyAsync();
         }
         else

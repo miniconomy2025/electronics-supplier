@@ -11,26 +11,15 @@ namespace esAPI.Controllers
 {
     [ApiController]
     [Route("simulation")]
-    public class SimulationController(AppDbContext context, BankAccountService bankAccountService, SimulationDayOrchestrator dayOrchestrator, ISimulationStateService stateService) : ControllerBase
+    public class SimulationController(AppDbContext context, BankAccountService bankAccountService, SimulationDayOrchestrator dayOrchestrator, ISimulationStateService stateService, IStartupCostCalculator costCalculator, ICommercialBankClient bankClient) : ControllerBase
     {
-        private readonly AppDbContext _context;
-        private readonly BankAccountService _bankAccountService;
-        private readonly SimulationDayOrchestrator _dayOrchestrator;
-        private readonly ISimulationStateService _stateService;
+        private readonly AppDbContext _context = context;
+        private readonly BankAccountService _bankAccountService = bankAccountService;
+        private readonly SimulationDayOrchestrator _dayOrchestrator = dayOrchestrator;
+        private readonly ISimulationStateService _stateService = stateService;
+        private readonly IStartupCostCalculator _costCalculator = costCalculator;
+        private readonly ICommercialBankClient _bankClient = bankClient;
 
-        private readonly IStartupCostCalculator _costCalculator;
-        private readonly ICommercialBankClient _bankClient;
-
-        public SimulationController(AppDbContext context, BankAccountService bankAccountService, SimulationDayOrchestrator dayOrchestrator,
-        ISimulationStateService stateService, IStartupCostCalculator costCalculator, ICommercialBankClient bankClient)
-        {
-            _context = context;
-            _bankAccountService = bankAccountService;
-            _dayOrchestrator = dayOrchestrator;
-            _stateService = stateService;
-            _costCalculator = costCalculator;
-            _bankClient = bankClient;
-        }
 
         // POST /simulation - start the simulation
         [HttpPost]

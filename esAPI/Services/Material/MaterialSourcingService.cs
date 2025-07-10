@@ -1,4 +1,5 @@
 using esAPI.Clients;
+using esAPI.Interfaces;
 
 namespace esAPI.Services;
 

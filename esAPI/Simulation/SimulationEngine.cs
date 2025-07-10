@@ -5,25 +5,16 @@ using esAPI.Clients;
 
 namespace esAPI.Simulation
 {
-    public class SimulationEngine(AppDbContext context, BankAccountService bankAccountService, SimulationDayOrchestrator dayOrchestrator)
+    public class SimulationEngine(AppDbContext context, BankAccountService bankAccountService, SimulationDayOrchestrator dayOrchestrator, IStartupCostCalculator costCalculator, ICommercialBankClient bankClient)
     {
-        private readonly AppDbContext _context;
-        private readonly BankAccountService _bankAccountService;
-        private readonly SimulationDayOrchestrator _dayOrchestrator;
+        private readonly AppDbContext _context = context;
+        private readonly BankAccountService _bankAccountService = bankAccountService;
+        private readonly SimulationDayOrchestrator _dayOrchestrator = dayOrchestrator;
 
-        private readonly IStartupCostCalculator _costCalculator;
+        private readonly IStartupCostCalculator _costCalculator = costCalculator;
 
 
-        private readonly ICommercialBankClient _bankClient;
-        public SimulationEngine(AppDbContext context, BankAccountService bankAccountService,
-        SimulationDayOrchestrator dayOrchestrator, IStartupCostCalculator costCalculator, ICommercialBankClient bankClient)
-        {
-            _context = context;
-            _bankAccountService = bankAccountService;
-            _dayOrchestrator = dayOrchestrator;
-            _costCalculator = costCalculator;
-            _bankClient = bankClient;
-        }
+        private readonly ICommercialBankClient _bankClient = bankClient;
 
         public static event Func<int, Task>? OnDayAdvanced;
 

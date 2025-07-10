@@ -1,5 +1,6 @@
 using esAPI.Clients;
 using esAPI.DTOs;
+using esAPI.Interfaces;
 
 namespace esAPI.Clients;
 
