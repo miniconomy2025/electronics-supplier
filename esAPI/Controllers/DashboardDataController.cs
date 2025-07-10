@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using System.Linq;
 using esAPI.Data;
 
-namespace YourNamespace.Controllers
+namespace esAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
