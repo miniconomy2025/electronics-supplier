@@ -54,6 +54,7 @@ namespace esAPI.Services
         private static bool NeedToBuyMachine(InventorySummaryDto inventory)
         {
             return inventory.Machines.InUse == 0;
+            // Change to when BROKEN = TOTAL
         }
 
         private async Task TryAcquireMachine()
