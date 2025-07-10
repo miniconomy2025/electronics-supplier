@@ -1,6 +1,7 @@
 using esAPI.Data;
 using esAPI.Simulation.Tasks;
 using esAPI.Services;
+using esAPI.Clients;
 
 namespace esAPI.Simulation
 {
@@ -10,11 +11,18 @@ namespace esAPI.Simulation
         private readonly BankAccountService _bankAccountService;
         private readonly SimulationDayOrchestrator _dayOrchestrator;
 
-        public SimulationEngine(AppDbContext context, BankAccountService bankAccountService, SimulationDayOrchestrator dayOrchestrator)
+        private readonly IStartupCostCalculator _costCalculator;
+
+
+        private readonly ICommercialBankClient _bankClient;
+        public SimulationEngine(AppDbContext context, BankAccountService bankAccountService,
+        SimulationDayOrchestrator dayOrchestrator, IStartupCostCalculator costCalculator, ICommercialBankClient bankClient)
         {
             _context = context;
             _bankAccountService = bankAccountService;
             _dayOrchestrator = dayOrchestrator;
+            _costCalculator = costCalculator;
+            _bankClient = bankClient;
         }
 
         public static event Func<int, Task>? OnDayAdvanced;
@@ -23,7 +31,8 @@ namespace esAPI.Simulation
         {
             if (dayNumber == 1)
             {
-                await _bankAccountService.SetupBankAccount();
+                await ExecuteStartupSequence();
+
             }
             await _dayOrchestrator.RunDayAsync(dayNumber);
             Console.WriteLine($"Running simulation logic for Day {dayNumber}");
@@ -40,6 +49,28 @@ namespace esAPI.Simulation
             // - OrderTask
             if (OnDayAdvanced != null)
                 await OnDayAdvanced(dayNumber);
+        }
+
+        private async Task<bool> ExecuteStartupSequence()
+        {
+
+            await _bankAccountService.SetupBankAccount();
+
+            var allPlans = await _costCalculator.GenerateAllPossibleStartupPlansAsync();
+            if (!allPlans.Any())
+            {
+                return false;
+            }
+
+            var bestPlan = allPlans.OrderBy(p => p.TotalCost).First();
+
+            string? loanSuccess = await _bankClient.RequestLoanAsync(bestPlan.TotalCost);
+            if (loanSuccess == null)
+            {
+                return false;
+            }
+
+            return true;
         }
     }
 }

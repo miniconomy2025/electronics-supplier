@@ -91,21 +91,32 @@ builder.Services.AddScoped<esAPI.Services.IElectronicsService, esAPI.Services.El
 builder.Services.AddScoped<esAPI.Services.IMaterialOrderService, esAPI.Services.MaterialOrderService>();
 builder.Services.AddScoped<esAPI.Services.ISupplyService, esAPI.Services.SupplyService>();
 builder.Services.AddScoped<ICommercialBankClient, CommercialBankClient>();
+builder.Services.AddScoped<ThohApiClient>();
+builder.Services.AddScoped<RecyclerApiClient>();
+builder.Services.AddScoped<IBulkLogisticsClient, BulkLogisticsClient>();
+
 builder.Services.AddScoped<BankAccountService>();
 builder.Services.AddScoped<BankService>();
 builder.Services.AddScoped<InventoryService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
-builder.Services.AddScoped<IMachineAcquisitionService, MachineAcquisitionService>();
 builder.Services.AddScoped<IProductionService, ProductionService>();
+builder.Services.AddScoped<IMachineAcquisitionService, MachineAcquisitionService>();
+
+builder.Services.AddScoped<IMaterialSourcingService, MaterialSourcingService>();
 builder.Services.AddScoped<IMaterialAcquisitionService, MaterialAcquisitionService>();
-builder.Services.AddScoped<SimulationDayOrchestrator>();
+
+builder.Services.AddScoped<IThohMachineApiClient, ThohApiClient>();
+builder.Services.AddScoped<ISupplierApiClient, ThohApiClient>();
+builder.Services.AddScoped<ISupplierApiClient, RecyclerApiClient>();
+
+builder.Services.AddScoped<IStartupCostCalculator, StartupCostCalculator>();
+
 builder.Services.AddScoped<OrderExpirationService>();
 builder.Services.Configure<InventoryConfig>(
     builder.Configuration.GetSection(InventoryConfig.SectionName)
 );
-builder.Services.AddScoped<SimulatedRecyclerApiClient>();
-builder.Services.AddScoped<SimulatedThohApiClient>();
-builder.Services.AddScoped<SupplierApiClientFactory>();
+
+builder.Services.AddScoped<SimulationDayOrchestrator>();
 builder.Services.AddSingleton<ISimulationStateService, SimulationStateService>();
 
 builder.Services.AddHostedService<InventoryManagementService>();
