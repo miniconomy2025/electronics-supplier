@@ -62,7 +62,7 @@ namespace esAPI.Controllers
 
         private async Task<IActionResult> HandleDeliveryAsync(LogisticsRequestDto request)
         {
-            if (!int.TryParse(request.Id, out var externalOrderId))
+            if (!int.TryParse(request.Id, out var pickupReqID))
                 return BadRequest("Invalid external order ID format.");
 
             bool isMachineDelivery = request.Items.All(item => item.Name.Equals("machine", StringComparison.OrdinalIgnoreCase));
@@ -75,7 +75,7 @@ namespace esAPI.Controllers
             {
                 // Machine delivery
                 var machineOrder = await _context.MachineOrders
-                    .FirstOrDefaultAsync(o => o.ExternalOrderId == externalOrderId);
+                    .FirstOrDefaultAsync(o => o.PickupRequestId  == pickupReqID); 
 
                 if (machineOrder == null)
                     return NotFound($"No machine order found with ID {request.Id}");
@@ -126,7 +126,7 @@ namespace esAPI.Controllers
             {
                 // MATERIAL DELIVERY
                 var order = await _context.MaterialOrders
-                    .FirstOrDefaultAsync(o => o.ExternalOrderId == externalOrderId);
+                    .FirstOrDefaultAsync(o => o.PickupRequestId == pickupReqID);
 
                 if (order == null)
                     return NotFound($"No material order found with ID {request.Id}");

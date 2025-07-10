@@ -1,3 +1,6 @@
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using System.Linq;
 using esAPI.DTOs;
 
 namespace esAPI.Services
@@ -34,7 +37,7 @@ namespace esAPI.Services
 
             // checking our current material inventory, if we need more mats, purchase through bank
             if (NeedToRestockMaterials(inventory))
-                await _materialAcquisitionService.PurchaseMaterialsViaBank();
+                await _materialAcquisitionService.ExecutePurchaseStrategyAsync();
 
             // logistics will then call our logistics endpoint when delivering it, this will then fill our supply table
 
@@ -51,10 +54,9 @@ namespace esAPI.Services
             _logger.LogInformation($"Bank Balance: {bankBalance}, Spending Cap: {spendingCap}");
         }
 
-        private static bool NeedToBuyMachine(InventorySummaryDto inventory)
+        private bool NeedToBuyMachine(InventorySummaryDto inventory)
         {
             return inventory.Machines.InUse == 0;
-            // Change to when BROKEN = TOTAL
         }
 
         private async Task TryAcquireMachine()
@@ -75,7 +77,7 @@ namespace esAPI.Services
             }
         }
 
-        private static bool NeedToRestockMaterials(InventorySummaryDto inventory)
+        private bool NeedToRestockMaterials(InventorySummaryDto inventory)
         {
             bool HasMaterial(string name) =>
                 inventory.MaterialsInStock.Any(m => m.MaterialName.Equals(name, StringComparison.OrdinalIgnoreCase) && m.Quantity > 0);
