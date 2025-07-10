@@ -37,7 +37,7 @@ namespace esAPI.Services
 
             // checking our current material inventory, if we need more mats, purchase through bank
             if (NeedToRestockMaterials(inventory))
-                await _materialAcquisitionService.ExecutePurchaseStrategyAsync();
+                await _materialAcquisitionService.PurchaseMaterialsViaBank();
 
             // logistics will then call our logistics endpoint when delivering it, this will then fill our supply table
 
