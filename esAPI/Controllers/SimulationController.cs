@@ -7,6 +7,7 @@ using esAPI.Simulation;
 using SimulationModel = esAPI.Models.Simulation;
 using esAPI.Services;
 using Microsoft.EntityFrameworkCore;
+using esAPI.Clients;
 
 namespace esAPI.Controllers
 {
@@ -19,12 +20,18 @@ namespace esAPI.Controllers
         private readonly SimulationDayOrchestrator _dayOrchestrator;
         private readonly ISimulationStateService _stateService;
 
-        public SimulationController(AppDbContext context, BankAccountService bankAccountService, SimulationDayOrchestrator dayOrchestrator, ISimulationStateService stateService)
+        private readonly IStartupCostCalculator _costCalculator;
+        private readonly ICommercialBankClient _bankClient;
+
+        public SimulationController(AppDbContext context, BankAccountService bankAccountService, SimulationDayOrchestrator dayOrchestrator,
+        ISimulationStateService stateService, IStartupCostCalculator costCalculator, ICommercialBankClient bankClient)
         {
             _context = context;
             _bankAccountService = bankAccountService;
             _dayOrchestrator = dayOrchestrator;
             _stateService = stateService;
+            _costCalculator = costCalculator;
+            _bankClient = bankClient;
         }
 
         // POST /simulation - start the simulation
@@ -65,7 +72,7 @@ namespace esAPI.Controllers
             if (_stateService.CurrentDay >= 365)
                 return BadRequest("Simulation has reached the maximum number of days (1 year).");
 
-            var engine = new SimulationEngine(_context, _bankAccountService, _dayOrchestrator);
+            var engine = new SimulationEngine(_context, _bankAccountService, _dayOrchestrator, _costCalculator, _bankClient);
             await engine.RunDayAsync(_stateService.CurrentDay);
             _stateService.AdvanceDay();
 

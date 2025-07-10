@@ -32,6 +32,8 @@ namespace esAPI.Data
 
         public DbSet<EffectiveMaterialStock> EffectiveMaterialStock { get; set; }
 
+        public DbSet<DailyMaterialConsumption> DailyMaterialConsumption { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
 
@@ -39,6 +41,7 @@ namespace esAPI.Data
 
             modelBuilder.Entity<CurrentSupply>().ToView("current_supplies");
             modelBuilder.Entity<EffectiveMaterialStock>().ToView("effective_material_stock");
+            modelBuilder.Entity<DailyMaterialConsumption>().ToView("daily_material_consumption");
         }
     }
 }
