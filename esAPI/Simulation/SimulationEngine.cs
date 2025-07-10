@@ -50,6 +50,8 @@ namespace esAPI.Simulation
 
             await _bankAccountService.SetupBankAccount();
 
+            await _bankClient.SetNotificationUrlAsync();
+
             var allPlans = await _costCalculator.GenerateAllPossibleStartupPlansAsync();
             if (!allPlans.Any())
             {
