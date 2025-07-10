@@ -38,3 +38,29 @@ module "budget" {
   project_name = var.project_name
   budget_emails = var.budget_emails
 }
+
+resource "aws_sns_topic" "bank_payment_notification_topic" {
+  name = "${var.project_name}-bank-payment-notification-topic"
+  tags = var.common_tags
+}
+
+module "payment_confirmation_queue" {
+  source         = "./modules/sqs-basic"
+  project_prefix = var.project_name
+  queue_name     = "payment-confirmation"
+  common_tags    = var.common_tags
+}
+
+
+module "payment_notification_fanout" {
+  source        = "./modules/sns-to-sqs-fanout"
+  sns_topic_arn = aws_sns_topic.bank_payment_notification_topic.arn
+
+  sqs_subscriber_queues = {
+    payment_confirmation = module.payment_confirmation_queue.queue_arn
+  }
+
+  sqs_queue_urls = {
+    payment_confirmation = module.payment_confirmation_queue.queue_id
+  }
+}

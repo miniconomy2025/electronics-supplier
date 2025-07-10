@@ -1,3 +1,5 @@
+using esAPI.Services;
+
 namespace esAPI.DTOs.Orders
 {
     public class ElectronicsOrder
@@ -7,5 +9,8 @@ namespace esAPI.DTOs.Orders
         public decimal OrderedAt { get; set; }
         public int TotalAmount { get; set; }
         public int RemainingAmount { get; set; }
+
+        // Simulation timestamp conversions
+        public DateTime OrderedAtSimTimestamp => OrderedAt.ToCanonicalTime();
     }
-} 
+}

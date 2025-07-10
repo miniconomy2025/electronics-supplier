@@ -1,22 +1,18 @@
-
 using esAPI.Data;
 using esAPI.Models;
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+
 using System.Text.RegularExpressions;
 
 #nullable enable
 namespace esAPI.Controllers
 {
-    public partial class BaseController : ControllerBase
+    public partial class BaseController(AppDbContext context) : ControllerBase
     {
 
-        protected readonly AppDbContext _context;
-
-        public BaseController(AppDbContext context)
-        {
-            _context = context;
-        }
+        protected readonly AppDbContext _context = context;
 
         protected async Task<Company?> GetOrganizationalUnitFromCertificateAsync()
         {

@@ -8,7 +8,10 @@ namespace esAPI.Models.Enums
             Accepted = 2,
             Rejected = 3,
             InProgress = 4,
-            Completed = 5
+            Completed = 5,
+            InTransit = 6,
+            Disaster = 7,
+            Expired = 8
         }
     }
-} 
+}

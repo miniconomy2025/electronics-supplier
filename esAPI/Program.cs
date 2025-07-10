@@ -1,67 +1,22 @@
-using Microsoft.EntityFrameworkCore;
-using esAPI.Data;
-using Npgsql;
 using System.Security.Cryptography.X509Certificates;
-using System.Net.Security;
-using Microsoft.AspNetCore.Server.Kestrel.Https;
-using System.Security.Authentication;
+
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
+
+using esAPI.Data;
+using esAPI.Clients;
+using esAPI.Services;
+using esAPI.Interfaces;
+using esAPI.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
-//---------------------------- TLS Configuration ----------------------------
-var sharedRootCA = new X509Certificate2("../certs/miniconomy-root-ca.crt");
-// var commercialBankClientCert = X509Certificate2.CreateFromPemFile("../certs/commercial-bank-client.pfx", "");
+// Configure TLS settings
+var tlsUtil = new TLSUtil(builder);
 
-// Load other client certificates
+tlsUtil.AddSecureHttpClient(builder.Services, "commercial-bank", "https://commercial-bank-api.projects.bbdgrad.com");
+tlsUtil.AddSecureHttpClient(builder.Services, "bulk-logistics", "https://bulk-logistics-api.projects.bbdgrad.com");
 
-bool ValidateCertificateWithRoot(X509Certificate2 cert, X509Chain chain, SslPolicyErrors errors, X509Certificate2 rootCA)
-{
-    if (errors != SslPolicyErrors.None)
-        return false;
-
-    chain.ChainPolicy.ExtraStore.Add(rootCA);
-    chain.ChainPolicy.VerificationFlags = X509VerificationFlags.AllowUnknownCertificateAuthority;
-    chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
-
-    var isValid = chain.Build(cert);
-    var actualRoot = chain.ChainElements[^1].Certificate;
-
-    return isValid && actualRoot.Thumbprint == rootCA.Thumbprint;
-}
-
-// Shared validation logic using the root CA
-Func<HttpRequestMessage, X509Certificate2, X509Chain, SslPolicyErrors, bool> CreateServerCertValidator = (message, serverCert, chain, sslPolicyErrors) =>
-    ValidateCertificateWithRoot(serverCert, chain, sslPolicyErrors, sharedRootCA);
-
-builder.WebHost.ConfigureKestrel(options =>
-{
-    options.ConfigureHttpsDefaults(httpsOptions =>
-    {
-        httpsOptions.SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13;
-
-        // Require client certificates
-        httpsOptions.ClientCertificateMode = ClientCertificateMode.RequireCertificate;
-
-        // Validate client cert using shared root
-        httpsOptions.ClientCertificateValidation = (cert, chain, errors) =>
-            ValidateCertificateWithRoot(cert, chain, errors, sharedRootCA);
-    });
-});
-
-// Example: Commercial Bank HTTP Client Configuration
-// builder.Services.AddHttpClient("commercial-bank", client =>
-// {
-//     client.BaseAddress = new Uri("https://commercial-bank.com");
-// })
-// .ConfigurePrimaryHttpMessageHandler(() =>
-// {
-//     var handler = new HttpClientHandler();
-//     handler.ClientCertificates.Add(commercialBankClientCert);
-
-//     handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
-//         ValidateCertificateWithRoot(cert, chain, errors, sharedRootCA);
-//     return handler;
-// });
 //--------------------------------------------------------------------------
 
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(
@@ -73,12 +28,38 @@ var dataSource = dataSourceBuilder.Build();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(dataSource)
 );
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
-builder.Services.AddScoped<esAPI.Services.IElectronicsService, esAPI.Services.ElectronicsService>();
-builder.Services.AddScoped<esAPI.Services.IMaterialOrderService, esAPI.Services.MaterialOrderService>();
-builder.Services.AddScoped<esAPI.Services.ISupplyService, esAPI.Services.SupplyService>();
+
+builder.Services.AddScoped<IElectronicsService, ElectronicsService>();
+builder.Services.AddScoped<IMaterialOrderService, MaterialOrderService>();
+builder.Services.AddScoped<ISupplyService, SupplyService>();
+builder.Services.AddScoped<ICommercialBankClient, CommercialBankClient>();
+builder.Services.AddScoped<BankAccountService>();
+builder.Services.AddScoped<BankService>();
+builder.Services.AddScoped<InventoryService>();
+builder.Services.AddScoped<IInventoryService, InventoryService>();
+builder.Services.AddScoped<IMachineAcquisitionService, MachineAcquisitionService>();
+builder.Services.AddScoped<IProductionService, ProductionService>();
+builder.Services.AddScoped<IMaterialAcquisitionService, MaterialAcquisitionService>();
+builder.Services.AddScoped<SimulationDayOrchestrator>();
+builder.Services.AddScoped<OrderExpirationService>();
+builder.Services.AddScoped<SimulatedRecyclerApiClient>();
+builder.Services.AddScoped<SimulatedThohApiClient>();
+builder.Services.AddScoped<SupplierApiClientFactory>();
+
+builder.Services.Configure<InventoryConfig>(
+    builder.Configuration.GetSection(InventoryConfig.SectionName)
+);
+
+// Singleton Design Pattern!!
+builder.Services.AddSingleton<ISimulationStateService, SimulationStateService>();
+
+builder.Services.AddHostedService<InventoryManagementService>();
+builder.Services.AddHostedService<SimulationAutoAdvanceService>();
+builder.Services.AddHostedService<OrderExpirationBackgroundService>();
 
 // Add CORS services
 builder.Services.AddCors(options =>
@@ -101,6 +82,23 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.Use(async (context, next) =>
+{
+    var cert = await context.Connection.GetClientCertificateAsync();
+    if (cert != null)
+    {
+        Console.WriteLine("Client cert CN: " + cert.GetNameInfo(X509NameType.SimpleName, false));
+        Console.WriteLine("Issuer: " + cert.Issuer);
+        Console.WriteLine("Thumbprint: " + cert.Thumbprint);
+    }
+    else
+    {
+        Console.WriteLine("❌ No client cert received.");
+    }
+
+    await next();
+});
 
 // Use CORS
 app.UseCors("AllowSwagger");

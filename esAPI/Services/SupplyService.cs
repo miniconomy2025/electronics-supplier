@@ -1,20 +1,15 @@
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using esAPI.Data;
 using esAPI.DTOs.Supply;
 using esAPI.Models;
+using esAPI.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace esAPI.Services
 {
-    public class SupplyService : ISupplyService
+    public class SupplyService(AppDbContext context, ISimulationStateService stateService) : ISupplyService
     {
-        private readonly AppDbContext _context;
-        public SupplyService(AppDbContext context)
-        {
-            _context = context;
-        }
+        private readonly AppDbContext _context = context;
+        private readonly ISimulationStateService _stateService = stateService;
 
         public async Task<IEnumerable<SupplyDto>> GetAllSuppliesAsync()
         {
@@ -56,8 +51,8 @@ namespace esAPI.Services
             var supply = new MaterialSupply
             {
                 MaterialId = dto.MaterialId,
-                ReceivedAt = dto.ReceivedAt,
-                ProcessedAt = dto.ProcessedAt ?? 0
+                ReceivedAt = dto.ReceivedAt != 0 ? dto.ReceivedAt : _stateService.GetCurrentSimulationTime(3),
+                ProcessedAt = dto.ProcessedAt ?? null
             };
             _context.MaterialSupplies.Add(supply);
             await _context.SaveChangesAsync();
@@ -74,4 +69,4 @@ namespace esAPI.Services
             return true;
         }
     }
-} 
+}

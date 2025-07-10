@@ -1,25 +1,20 @@
-using System.Threading.Tasks;
 using esAPI.DTOs.Electronics;
 using esAPI.Data;
+using esAPI.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace esAPI.Services
 {
-    public class ElectronicsService : IElectronicsService
+    public class ElectronicsService(AppDbContext context, ISimulationStateService stateService) : IElectronicsService
     {
-        private readonly AppDbContext _context;
-
-        public ElectronicsService(AppDbContext context)
-        {
-            _context = context;
-        }
+        private readonly AppDbContext _context = context;
+        private readonly ISimulationStateService _stateService = stateService;
 
         public async Task<ElectronicsDetailsDto?> GetElectronicsDetailsAsync()
         {
             var result = await _context.Database.SqlQueryRaw<ElectronicsDetailsDto>(
                 "SELECT \"availableStock\" AS AvailableStock, \"pricePerUnit\" AS PricePerUnit FROM available_electronics_stock")
                 .ToListAsync();
-            
             return result.FirstOrDefault();
         }
 
@@ -47,7 +42,7 @@ namespace esAPI.Services
                     .ToList();
                 foreach (var e in newElectronics)
                 {
-                    e.ProducedAt = sim.DayNumber;
+                    e.ProducedAt = _stateService.GetCurrentSimulationTime(3);
                 }
                 await _context.SaveChangesAsync();
             }
