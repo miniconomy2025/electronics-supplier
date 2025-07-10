@@ -1,19 +1,22 @@
 using System.Text.Json;
 using esAPI.Clients;
+using Microsoft.EntityFrameworkCore;
+using esAPI.Data;
 
 namespace esAPI.Services
 {
     public interface IMaterialAcquisitionService
     {
         Task PurchaseMaterialsViaBank();
-        Task PlaceBulkLogisticsPickup(int orderId, string itemName, int quantity, string supplier);
+        Task<int> PlaceBulkLogisticsPickup(int orderId, string itemName, int quantity, string supplier);
     }
 
-    public class MaterialAcquisitionService(IHttpClientFactory httpClientFactory, BankService bankService, ICommercialBankClient bankClient) : IMaterialAcquisitionService
+    public class MaterialAcquisitionService(IHttpClientFactory httpClientFactory, BankService bankService, ICommercialBankClient bankClient, AppDbContext context) : IMaterialAcquisitionService
     {
         private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
         private readonly BankService _bankService = bankService;
         private readonly ICommercialBankClient _bankClient = bankClient;
+        private readonly AppDbContext _context = context;
 
         public async Task PurchaseMaterialsViaBank()
         {
@@ -108,11 +111,20 @@ namespace esAPI.Services
                 $"Purchase {quantityToBuy}kg {materialName} from {supplier}"
             );
 
-            // Arrange pickup with Bulk Logistics
-            await PlaceBulkLogisticsPickup(orderId, materialName, quantityToBuy, supplier);
+            int pickupRequestId = await PlaceBulkLogisticsPickup(orderId, materialName, quantityToBuy, supplier);
+
+            // Save pickupRequestId to material_orders table
+            var orderEntity = await _context.MaterialOrders
+                .FirstOrDefaultAsync(o => o.ExternalOrderId == orderId && o.Supplier!.CompanyName.ToLower() == supplier);
+
+            if (orderEntity != null)
+            {
+                orderEntity.PickupRequestId = pickupRequestId;
+                await _context.SaveChangesAsync();
+            }
         }
 
-        public async Task PlaceBulkLogisticsPickup(int orderId, string materialName, int quantity, string supplier)
+        public async Task<int> PlaceBulkLogisticsPickup(int orderId, string materialName, int quantity, string supplier)
         {
             var bulkClient = _httpClientFactory.CreateClient("bulk-logistics");
             var pickupReq = new
@@ -130,6 +142,7 @@ namespace esAPI.Services
             var pickupContent = await pickupResp.Content.ReadAsStringAsync();
             using var pickupDoc = JsonDocument.Parse(pickupContent);
             var pickup = pickupDoc.RootElement;
+            var pickupRequestId = pickup.GetProperty("pickupRequestId").GetInt32(); // as INT now
             var cost = pickup.GetProperty("cost").GetDecimal();
             var bulkBankAccount = pickup.GetProperty("bulkLogisticsBankAccountNumber").GetString();
 
@@ -140,6 +153,8 @@ namespace esAPI.Services
                 cost,
                 $"Pickup {quantity}kg {materialName} from {supplier} order {orderId}"
             );
+
+            return pickupRequestId;
         }
     }
 }
