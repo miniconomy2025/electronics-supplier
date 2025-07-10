@@ -118,6 +118,7 @@ namespace esAPI.Services
                 DestinationCompanyId = "1",
                 Items = [new LogisticsItem { Name = materialName, Quantity = quantity }]
             };
+
             var pickupResp = await _logisticsClient.ArrangePickupAsync(pickupReq);
             if (pickupResp == null || string.IsNullOrEmpty(pickupResp.BulkLogisticsBankAccountNumber)) return false;
 
@@ -149,10 +150,24 @@ namespace esAPI.Services
                 OrderedAt = 1.0m,
             };
 
-            _dbContext.MaterialOrders.Add(newOrder);
-            await _dbContext.SaveChangesAsync();
+            var pickupResp = await bulkClient.PostAsJsonAsync("/api/pickup-request", pickupReq);
+            pickupResp.EnsureSuccessStatusCode();
+            var pickupContent = await pickupResp.Content.ReadAsStringAsync();
+            using var pickupDoc = JsonDocument.Parse(pickupContent);
+            var pickup = pickupDoc.RootElement;
+            var pickupRequestId = pickup.GetProperty("pickupRequestId").GetInt32(); // as INT now
+            var cost = pickup.GetProperty("cost").GetDecimal();
+            var bulkBankAccount = pickup.GetProperty("bulkLogisticsBankAccountNumber").GetString();
 
-            return newOrder;
+            // Pay Bulk Logistics
+            await _bankClient.MakePaymentAsync(
+                bulkBankAccount!,
+                "commercial-bank",
+                cost,
+                $"Pickup {quantity}kg {materialName} from {supplier} order {orderId}"
+            );
+
+            return pickupRequestId;
         }
 
         private async Task UpdateOrderStatusAsync(int orderId, string newStatusName)
