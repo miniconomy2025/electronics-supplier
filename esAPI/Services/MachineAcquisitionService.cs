@@ -4,6 +4,8 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using esAPI.Services;
 using esAPI.Clients;
+using esAPI.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace esAPI.Services
 {
@@ -12,7 +14,8 @@ namespace esAPI.Services
         Task<bool> CheckTHOHForMachines();
         Task<(int? orderId, int quantity)> PurchaseMachineViaBank();
         Task QueryOrderDetailsFromTHOH();
-        Task PlaceBulkLogisticsPickup(int thohOrderId, int quantity);
+        Task<int> PlaceBulkLogisticsPickup(int thohOrderId, int quantity);
+
     }
 
     public class MachineAcquisitionService : IMachineAcquisitionService
@@ -20,12 +23,14 @@ namespace esAPI.Services
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly BankService _bankService;
         private readonly ICommercialBankClient _bankClient;
+        private readonly AppDbContext _context;
 
-        public MachineAcquisitionService(IHttpClientFactory httpClientFactory, BankService bankService, ICommercialBankClient bankClient)
+        public MachineAcquisitionService(IHttpClientFactory httpClientFactory, BankService bankService, ICommercialBankClient bankClient, AppDbContext context)
         {
             _httpClientFactory = httpClientFactory;
             _bankService = bankService;
             _bankClient = bankClient;
+            _context = context;
         }
 
         // Returns true if 'electronics_machine' is available
@@ -104,10 +109,25 @@ namespace esAPI.Services
                 totalPrice,
                 $"Purchase {toBuy} electronics_machine from THOH"
             );
+            
+            
+            // 6. Place pickup with Bulk Logistics
+            int pickupRequestId = await PlaceBulkLogisticsPickup(orderId.Value, toBuy);
+
+            // 7. Save pickupRequestId to DB
+            var orderEntity = await _context.MachineOrders
+                .FirstOrDefaultAsync(o => o.ExternalOrderId == orderId && o.Supplier.CompanyName.ToLower() == "thoh");
+
+            if (orderEntity != null)
+            {
+                orderEntity.PickupRequestId = pickupRequestId;
+                await _context.SaveChangesAsync();
+            }
+
             return (orderId, toBuy);
         }
 
-        public async Task PlaceBulkLogisticsPickup(int thohOrderId, int quantity)
+        public async Task<int> PlaceBulkLogisticsPickup(int thohOrderId, int quantity)
         {
             // 1. Place pickup request with Bulk Logistics
             var bulkClient = _httpClientFactory.CreateClient("bulk-logistics");
@@ -126,6 +146,8 @@ namespace esAPI.Services
             var pickupContent = await pickupResp.Content.ReadAsStringAsync();
             using var pickupDoc = JsonDocument.Parse(pickupContent);
             var pickup = pickupDoc.RootElement;
+
+            var pickupRequestId = pickup.GetProperty("pickupRequestId").GetInt32();
             var cost = pickup.GetProperty("cost").GetDecimal();
             var bulkBankAccount = pickup.GetProperty("bulkLogisticsBankAccountNumber").GetString();
 
@@ -136,6 +158,8 @@ namespace esAPI.Services
                 cost,
                 $"Pickup {quantity} electronics_machine from THOH order {thohOrderId}"
             );
+
+            return pickupRequestId;
         }
 
         public Task QueryOrderDetailsFromTHOH() => Task.CompletedTask;
