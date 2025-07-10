@@ -60,7 +60,6 @@ namespace esAPI.Tests.Controllers
             // Assert
             var notFoundResult = result.Result.Should().BeOfType<NotFoundResult>().Subject;
             notFoundResult.StatusCode.Should().Be(404);
-
             _mockElectronicsService.Verify(s => s.GetElectronicsDetailsAsync(), Times.Once);
         }
 
@@ -69,7 +68,6 @@ namespace esAPI.Tests.Controllers
         {
             // Arrange
             var expectedException = new InvalidOperationException("Database connection failed");
-
             _mockElectronicsService
                 .Setup(s => s.GetElectronicsDetailsAsync())
                 .ThrowsAsync(expectedException);
@@ -77,7 +75,6 @@ namespace esAPI.Tests.Controllers
             // Act & Assert
             var exception = await Assert.ThrowsAsync<InvalidOperationException>(
                 () => _controller.GetElectronics());
-
             exception.Message.Should().Be("Database connection failed");
             _mockElectronicsService.Verify(s => s.GetElectronicsDetailsAsync(), Times.Once);
         }
@@ -107,7 +104,6 @@ namespace esAPI.Tests.Controllers
             // Assert
             var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
             okResult.StatusCode.Should().Be(200);
-
             var returnedDetails = okResult.Value.Should().BeOfType<ElectronicsDetailsDto>().Subject;
             returnedDetails.AvailableStock.Should().Be(availableStock);
             returnedDetails.PricePerUnit.Should().Be(pricePerUnit);
@@ -133,12 +129,10 @@ namespace esAPI.Tests.Controllers
             // Assert
             var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
             var returnedDetails = okResult.Value.Should().BeOfType<ElectronicsDetailsDto>().Subject;
-
             // Verify response matches swagger schema
             returnedDetails.Should().NotBeNull();
             returnedDetails.AvailableStock.Should().BeOfType(typeof(int), "availableStock should be integer");
             returnedDetails.PricePerUnit.Should().BeOfType(typeof(decimal), "pricePerUnit should be number");
-
             // Verify property values are reasonable
             returnedDetails.AvailableStock.Should().BeGreaterThanOrEqualTo(0, "stock cannot be negative");
             returnedDetails.PricePerUnit.Should().BeGreaterThanOrEqualTo(0, "price cannot be negative");

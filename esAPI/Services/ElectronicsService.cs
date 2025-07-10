@@ -15,7 +15,6 @@ namespace esAPI.Services
             var result = await _context.Database.SqlQueryRaw<ElectronicsDetailsDto>(
                 "SELECT \"availableStock\" AS AvailableStock, \"pricePerUnit\" AS PricePerUnit FROM available_electronics_stock")
                 .ToListAsync();
-
             return result.FirstOrDefault();
         }
 
