@@ -118,6 +118,7 @@ namespace esAPI.Services
                 DestinationCompanyId = "1",
                 Items = [new LogisticsItem { Name = materialName, Quantity = quantity }]
             };
+
             var pickupResp = await _logisticsClient.ArrangePickupAsync(pickupReq);
             if (pickupResp == null || string.IsNullOrEmpty(pickupResp.BulkLogisticsBankAccountNumber)) return false;
 
