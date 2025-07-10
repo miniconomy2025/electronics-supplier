@@ -21,9 +21,6 @@ namespace esAPI.Controllers
         public async Task<IActionResult> CreateOrder([FromBody] ElectronicsOrderRequest dto)
         {
             // Get current simulation day
-            var sim = _context.Simulations.FirstOrDefault(s => s.IsRunning);
-            if (sim == null)
-                return BadRequest("Simulation not running.");
 
             // --- for testing disabled
             // var manufacturer = await GetOrganizationalUnitFromCertificateAsync();
