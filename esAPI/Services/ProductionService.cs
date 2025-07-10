@@ -1,7 +1,4 @@
-using System.Net.Http;
 using System.Text.Json;
-using System.Threading.Tasks;
-using System.Collections.Generic;
 
 namespace esAPI.Services
 {
@@ -10,14 +7,9 @@ namespace esAPI.Services
         Task<(int electronicsCreated, Dictionary<string, int> materialsUsed)> ProduceElectronics();
     }
 
-    public class ProductionService : IProductionService
+    public class ProductionService(IHttpClientFactory httpClientFactory) : IProductionService
     {
-        private readonly IHttpClientFactory _httpClientFactory;
-
-        public ProductionService(IHttpClientFactory httpClientFactory)
-        {
-            _httpClientFactory = httpClientFactory;
-        }
+        private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
 
         public async Task<(int electronicsCreated, Dictionary<string, int> materialsUsed)> ProduceElectronics()
         {
@@ -39,4 +31,4 @@ namespace esAPI.Services
             return (created, materialsUsed);
         }
     }
-} 
+}

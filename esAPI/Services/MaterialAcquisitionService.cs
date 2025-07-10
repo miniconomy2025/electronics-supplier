@@ -1,9 +1,4 @@
-using System;
-using System.Linq;
-using System.Net.Http;
 using System.Text.Json;
-using System.Threading.Tasks;
-using esAPI.Services;
 using esAPI.Clients;
 using esAPI.DTOs;
 using esAPI.Models;
@@ -20,7 +15,7 @@ namespace esAPI.Services
         // Task PlaceBulkLogisticsPickup(int orderId, string itemName, int quantity, string supplier);
     }
 
-    public class MaterialAcquisitionService : IMaterialAcquisitionService
+    public class MaterialAcquisitionService(IHttpClientFactory httpClientFactory, BankService bankService, ICommercialBankClient bankClient) : IMaterialAcquisitionService
     {
 
         private readonly IMaterialSourcingService _sourcingService;

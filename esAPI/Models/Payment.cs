@@ -1,4 +1,3 @@
-using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -27,4 +26,4 @@ namespace esAPI.Models
         [Column("order_id")]
         public int? OrderId { get; set; }
     }
-} 
+}

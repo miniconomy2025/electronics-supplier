@@ -32,7 +32,7 @@ namespace esAPI.Data
 
         public DbSet<EffectiveMaterialStock> EffectiveMaterialStock { get; set; }
 
-        public DbSet<DailyMaterialConsumption> DailyMaterialConsumption { get; set; }
+                public DbSet<DailyMaterialConsumption> DailyMaterialConsumption { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

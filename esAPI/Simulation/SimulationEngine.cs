@@ -5,7 +5,7 @@ using esAPI.Clients;
 
 namespace esAPI.Simulation
 {
-    public class SimulationEngine
+    public class SimulationEngine(AppDbContext context, BankAccountService bankAccountService, SimulationDayOrchestrator dayOrchestrator)
     {
         private readonly AppDbContext _context;
         private readonly BankAccountService _bankAccountService;

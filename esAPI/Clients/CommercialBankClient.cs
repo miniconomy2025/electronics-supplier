@@ -1,5 +1,3 @@
-using System.Threading.Tasks;
-
 namespace esAPI.Clients
 {
     public interface ICommercialBankClient
@@ -11,16 +9,10 @@ namespace esAPI.Clients
         // Add other public methods as needed
     }
 
-    public class CommercialBankClient : ICommercialBankClient
+    public class CommercialBankClient(IHttpClientFactory factory) : ICommercialBankClient
     {
-        private readonly IHttpClientFactory _factory;
-        private readonly HttpClient _client;
-
-        public CommercialBankClient(IHttpClientFactory factory)
-        {
-            _factory = factory;
-            _client = factory.CreateClient("commercial-bank");
-        }
+        private readonly IHttpClientFactory _factory = factory;
+        private readonly HttpClient _client = factory.CreateClient("commercial-bank");
 
         public async Task<decimal> GetAccountBalanceAsync()
         {
@@ -57,8 +49,8 @@ namespace esAPI.Clients
             {
                 to_account_number = toAccountNumber,
                 to_bank_name = toBankName,
-                amount = amount,
-                description = description
+                amount,
+                description
             };
             var response = await _client.PostAsJsonAsync("/transaction", paymentReq);
             response.EnsureSuccessStatusCode();
