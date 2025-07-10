@@ -19,7 +19,7 @@ namespace esAPI.Services
         private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
         private readonly BankService _bankService = bankService;
         private readonly ICommercialBankClient _bankClient = bankClient;
-        private readonly AppDbContext _context = context
+        private readonly AppDbContext _context = context;
 
         // Returns true if 'electronics_machine' is available
         public async Task<bool> CheckTHOHForMachines()
