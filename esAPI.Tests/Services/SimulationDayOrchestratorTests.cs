@@ -57,7 +57,7 @@ namespace esAPI.Tests.Services
             mockMachineService.Setup(s => s.PlaceBulkLogisticsPickup(123, 2)).Returns(Task.CompletedTask);
 
             // Setup material acquisition
-            mockMaterialService.Setup(s => s.PurchaseMaterialsViaBank()).Returns(Task.CompletedTask);
+            mockMaterialService.Setup(s => s.ExecutePurchaseStrategyAsync()).Returns(Task.CompletedTask);
 
             // Setup production
             mockProductionService.Setup(s => s.ProduceElectronics())
@@ -81,7 +81,7 @@ namespace esAPI.Tests.Services
             mockMachineService.Verify(s => s.PurchaseMachineViaBank(), Times.Once);
             mockMachineService.Verify(s => s.QueryOrderDetailsFromTHOH(), Times.Once);
             mockMachineService.Verify(s => s.PlaceBulkLogisticsPickup(123, 2), Times.Once);
-            mockMaterialService.Verify(s => s.PurchaseMaterialsViaBank(), Times.Once);
+            mockMaterialService.Verify(s => s.ExecutePurchaseStrategyAsync(), Times.Once);
             mockProductionService.Verify(s => s.ProduceElectronics(), Times.Once);
         }
     }
