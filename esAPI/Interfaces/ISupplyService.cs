@@ -1,8 +1,6 @@
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using esAPI.DTOs.Supply;
 
-namespace esAPI.Services
+namespace esAPI.Interfaces
 {
     public interface ISupplyService
     {
@@ -11,4 +9,4 @@ namespace esAPI.Services
         Task<SupplyDto> CreateSupplyAsync(CreateSupplyDto dto);
         Task<bool> DeleteSupplyByIdAsync(int id);
     }
-} 
+}

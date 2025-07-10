@@ -28,3 +28,32 @@ SELECT
     SUM(CASE WHEN ms.status = 'BROKEN' THEN 1 ELSE 0 END) AS "broken"
 FROM machines m
 INNER JOIN machine_statuses ms ON m.machine_status = ms.status_id;
+
+CREATE OR REPLACE VIEW effective_material_stock AS
+WITH
+ 
+  physical_stock AS (
+    SELECT
+      ms.material_id,
+      COUNT(ms.supply_id) AS quantity
+    FROM material_supplies ms
+    GROUP BY ms.material_id
+  ),
+  
+  pending_stock AS (
+    SELECT
+      mo.material_id,
+      SUM(mo.remaining_amount) AS quantity
+    FROM material_orders mo
+    JOIN order_statuses os ON mo.order_status = os.status_id
+    WHERE os.status NOT IN ('COMPLETED', 'DISASTER', 'REJECTED', 'EXPIRED')
+    GROUP BY mo.material_id
+  )
+
+SELECT
+  m.material_id,
+  m.material_name,
+  (COALESCE(ps.quantity, 0) + COALESCE(os.quantity, 0)) AS effective_quantity
+FROM materials m
+LEFT JOIN physical_stock ps ON m.material_id = ps.material_id
+LEFT JOIN pending_stock os ON m.material_id = os.material_id;

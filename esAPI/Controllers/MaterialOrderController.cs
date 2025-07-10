@@ -1,21 +1,16 @@
 using Microsoft.AspNetCore.Mvc;
 
+using esAPI.Interfaces;
 using esAPI.DTOs.MaterialOrder;
-using esAPI.Services;
 
 namespace esAPI.Controllers
 {
     [ApiController]
     [Route("materials/orders")]
     [Produces("application/json")]
-    public class MaterialOrdersController : ControllerBase
+    public class MaterialOrdersController(IMaterialOrderService service) : ControllerBase
     {
-        private readonly IMaterialOrderService _service;
-
-        public MaterialOrdersController(IMaterialOrderService service)
-        {
-            _service = service;
-        }
+        private readonly IMaterialOrderService _service = service;
 
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<MaterialOrderResponse>), StatusCodes.Status200OK)]

@@ -1,20 +1,15 @@
 using Microsoft.AspNetCore.Mvc;
 
+using esAPI.Interfaces;
 using esAPI.DTOs.Electronics;
-using esAPI.Services;
 
 namespace esAPI.Controllers
 {
     [ApiController]
     [Route("electronics")]
-    public class ElectronicsController : ControllerBase
+    public class ElectronicsController(IElectronicsService service) : ControllerBase
     {
-        private readonly IElectronicsService _service;
-
-        public ElectronicsController(IElectronicsService service)
-        {
-            _service = service;
-        }
+        private readonly IElectronicsService _service = service;
 
         [HttpGet]
         public async Task<ActionResult<ElectronicsDetailsDto>> GetElectronics()
@@ -32,4 +27,4 @@ namespace esAPI.Controllers
             return Created(string.Empty, result);
         }
     }
-} 
+}

@@ -9,4 +9,4 @@ namespace esAPI.Models.Enums
             Broken = 3
         }
     }
-} 
+}

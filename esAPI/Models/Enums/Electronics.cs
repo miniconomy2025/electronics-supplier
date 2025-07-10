@@ -8,4 +8,4 @@ namespace esAPI.Models.Enums
             Reserved = 2
         }
     }
-} 
+}
