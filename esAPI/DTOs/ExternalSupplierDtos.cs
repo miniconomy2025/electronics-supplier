@@ -25,7 +25,7 @@ public class RecyclerApiResponseDto
 
 public class SupplierMaterialInfo
 {
-    public required string MaterialName { get; set; }
-    public int AvailableQuantity { get; set; }
-    public decimal PricePerKg { get; set; }
+    public int MaterialId { get; set; }
+    public decimal Price { get; set; }
+    public int AvailableStock { get; set; }
 }
