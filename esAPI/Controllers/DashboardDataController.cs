@@ -17,7 +17,7 @@ namespace esAPI.Controllers
             _context = context;
         }
 
-        // Example endpoint: Get machine statuses count
+        // 1. Machine statuses count
         [HttpGet("machines-status")]
         public async Task<IActionResult> GetMachinesStatus()
         {
@@ -37,6 +37,7 @@ namespace esAPI.Controllers
             return Ok(data);
         }
 
+        // 2. Current material supply
         [HttpGet("current-supply")]
         public async Task<IActionResult> GetCurrentSupply()
         {
@@ -54,7 +55,50 @@ namespace esAPI.Controllers
             return Ok(result);
         }
 
+        // 3. Electronics stock (from view)
+        [HttpGet("electronics-stock")]
+        public async Task<IActionResult> GetElectronicsStock()
+        {
+            var stock = await _context.Database
+                .SqlQueryRaw<ElectronicsStockDto>("SELECT * FROM available_electronics_stock")
+                .FirstOrDefaultAsync();
 
-        // Add more endpoints for other data as needed
+            return Ok(stock ?? new ElectronicsStockDto());
+        }
+
+        // 4. Total earnings (from view)
+        [HttpGet("total-earnings")]
+        public async Task<IActionResult> GetEarnings()
+        {
+            var total = await _context.Payments
+                .Where(p => p.Status == "COMPLETED")
+                .SumAsync(p => (decimal?)p.Amount) ?? 0;
+
+            return Ok(new EarningsDto { TotalEarnings = total });
+        }
+
+        // 5. Inventory summary (from function)
+        [HttpGet("inventory-summary")]
+        public async Task<IActionResult> GetInventorySummary()
+        {
+            var result = await _context.Database
+                .SqlQueryRaw<string>("SELECT get_inventory_summary()")
+                .FirstOrDefaultAsync();
+
+            // result is a JSON string, so just return it as content
+            return Content(result ?? "{}", "application/json");
+        }
+
+        // --- DTOs for responses ---
+        private class ElectronicsStockDto
+        {
+            public int availableStock { get; set; }
+            public decimal pricePerUnit { get; set; }
+        }
+
+        private class EarningsDto
+        {
+            public decimal TotalEarnings { get; set; }
+        }
     }
 }
