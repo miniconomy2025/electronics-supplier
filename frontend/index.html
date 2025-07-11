@@ -19,20 +19,17 @@
         <h1>The Electronics Company</h1>
       </header>
 
+      <!-- Replace the earnings and machine values with spans for JS to fill -->
       <section aria-label="Financial Summary">
         <article>
           <h2>Earnings</h2>
-          <p>123434.45</p>
-        </article>
-        <article>
-          <h2>Total Expenditure</h2>
-          <p>123434.45</p>
+          <p id="earningsValue">Loading...</p>
         </article>
       </section>
 
-      <section aria-label="Earnings Monthly">
-        <h2>Earnings Monthly</h2>
-        <canvas id="montlyIncomeChart" width="400" height="200"></canvas>
+      <section aria-label="Bank Account">
+        <h2>Bank Balance Over Time</h2>
+        <canvas id="bankAccountChart" width="400" height="200"></canvas>
       </section>
 
       <section aria-label="Machines Status">
@@ -63,61 +60,36 @@
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td><time datetime="2020-01-23">23 January 2020</time></td>
-              <td>Tata</td>
-              <td>Phone electronics</td>
-              <td>9999999</td>
-              <td>500</td>
-              <td><strong class="status-done">Done</strong></td>
-            </tr>
-            <tr>
-              <td><time datetime="2020-01-23">23 January 2020</time></td>
-              <td>Samsung</td>
-              <td>Phone electronics</td>
-              <td>8888888</td>
-              <td>600</td>
-              <td><strong class="status-pending">Pending</strong></td>
-            </tr>
-            <tr>
-              <td><time datetime="2020-01-23">23 January 2020</time></td>
-              <td>Apple</td>
-              <td>Phone electronics</td>
-              <td>7777777</td>
-              <td>700</td>
-              <td><strong class="status-pending">Pending</strong></td>
-            </tr>
-            <tr>
-              <td><time datetime="2020-01-23">23 January 2020</time></td>
-              <td>Intel</td>
-              <td>Phone electronics</td>
-              <td>6666666</td>
-              <td>500</td>
-              <td><strong class="status-done">Done</strong></td>
-            </tr>
+            <!-- JS will populate rows here -->
           </tbody>
         </table>
       </section>
 
-      <section aria-label="Bank Account">
-        <h2>Bank Account</h2>
-         <canvas id="backAccountChart" width="400" height="200"></canvas>
-      </section>
-
       <section aria-label="Machines">
         <h2>Machines</h2>
-
         <article>
           <h3>In use</h3>
-          <p>6</p>
+          <p id="machinesInUse">-</p>
         </article>
         <article>
           <h3>Broken</h3>
-          <p>5</p>
+          <p id="machinesBroken">-</p>
         </article>
         <article>
           <h3>Available</h3>
-          <p>15</p>
+          <p id="machinesAvailable">-</p>
+        </article>
+      </section>
+
+      <section aria-label="Electronics">
+        <h2>Electronics</h2>
+        <article>
+          <h3>Available Stock</h3>
+          <p id="electronicsStock">-</p>
+        </article>
+        <article>
+          <h3>Price per Unit</h3>
+          <p id="electronicsPrice">-</p>
         </article>
       </section>
     </main>

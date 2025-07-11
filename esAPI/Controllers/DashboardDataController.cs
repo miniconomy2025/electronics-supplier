@@ -17,7 +17,7 @@ namespace esAPI.Controllers
             _context = context;
         }
 
-        // Example endpoint: Get machine statuses count
+        // 1. Machine statuses count
         [HttpGet("machines-status")]
         public async Task<IActionResult> GetMachinesStatus()
         {
@@ -37,6 +37,7 @@ namespace esAPI.Controllers
             return Ok(data);
         }
 
+        // 2. Current material supply
         [HttpGet("current-supply")]
         public async Task<IActionResult> GetCurrentSupply()
         {
@@ -54,7 +55,102 @@ namespace esAPI.Controllers
             return Ok(result);
         }
 
+        // 3. Electronics stock (from view)
+        [HttpGet("electronics-stock")]
+        public async Task<IActionResult> GetElectronicsStock()
+        {
+            var stock = await _context.Database
+                .SqlQueryRaw<ElectronicsStockDto>("SELECT * FROM available_electronics_stock")
+                .FirstOrDefaultAsync();
 
-        // Add more endpoints for other data as needed
+            return Ok(stock ?? new ElectronicsStockDto());
+        }
+
+        // 4. Total earnings (from view)
+        [HttpGet("total-earnings")]
+        public async Task<IActionResult> GetEarnings()
+        {
+            var total = await _context.Payments
+                .Where(p => p.Status == "COMPLETED")
+                .SumAsync(p => (decimal?)p.Amount) ?? 0;
+
+            return Ok(new EarningsDto { TotalEarnings = total });
+        }
+
+        // 5. Inventory summary (from function)
+        [HttpGet("inventory-summary")]
+        public async Task<IActionResult> GetInventorySummary()
+        {
+            await using var cmd = _context.Database.GetDbConnection().CreateCommand();
+            cmd.CommandText = "SELECT get_inventory_summary()";
+            await _context.Database.OpenConnectionAsync();
+
+            using var reader = await cmd.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
+            {
+                var json = reader.GetString(0);
+                return Content(json, "application/json");
+            }
+
+            return NotFound();
+        }
+
+        [HttpGet("orders")]
+        public async Task<IActionResult> GetOrders()
+        {
+            var orders = await (
+                from o in _context.ElectronicsOrders
+                join c in _context.Companies on o.ManufacturerId equals c.CompanyId
+                join s in _context.OrderStatuses on o.OrderStatusId equals s.StatusId
+                orderby o.OrderedAt descending
+                select new
+                {
+                    DateOfTransaction = o.OrderedAt,
+                    CompanyName = c.CompanyName,
+                    Item = "Phone electronics",
+                    AccountNo = c.BankAccountNumber,
+                    Amount = o.TotalAmount,
+                    Status = s.Status
+                }
+
+            ).ToListAsync();
+
+            return Ok(orders);
+        }
+
+        [HttpGet("payments")]
+        public async Task<IActionResult> GetPaymentsOverTime()
+        {
+            var payments = await _context.Payments
+                .Where(p => p.Status == "COMPLETED")
+                .OrderBy(p => p.Timestamp)
+                .ToListAsync();
+
+            var result = new List<object>();
+            decimal runningTotal = 0;
+
+            foreach (var p in payments)
+            {
+                runningTotal += p.Amount;
+                result.Add(new
+                {
+                    timestamp = p.Timestamp,
+                    cumulativeBalance = runningTotal
+                });
+            }
+
+            return Ok(result);
+        }
+        // --- DTOs for responses ---
+        private class ElectronicsStockDto
+        {
+            public int availableStock { get; set; }
+            public decimal pricePerUnit { get; set; }
+        }
+
+        private class EarningsDto
+        {
+            public decimal TotalEarnings { get; set; }
+        }
     }
 }
