@@ -19,14 +19,15 @@
         <h1>The Electronics Company</h1>
       </header>
 
+      <!-- Replace the earnings and machine values with spans for JS to fill -->
       <section aria-label="Financial Summary">
         <article>
           <h2>Earnings</h2>
-          <p>123434.45</p>
+          <p id="earningsValue">Loading...</p>
         </article>
         <article>
           <h2>Total Expenditure</h2>
-          <p>123434.45</p>
+          <p id="expenditureValue">-</p>
         </article>
       </section>
 
@@ -106,18 +107,29 @@
 
       <section aria-label="Machines">
         <h2>Machines</h2>
-
         <article>
           <h3>In use</h3>
-          <p>6</p>
+          <p id="machinesInUse">-</p>
         </article>
         <article>
           <h3>Broken</h3>
-          <p>5</p>
+          <p id="machinesBroken">-</p>
         </article>
         <article>
           <h3>Available</h3>
-          <p>15</p>
+          <p id="machinesAvailable">-</p>
+        </article>
+      </section>
+
+      <section aria-label="Electronics">
+        <h2>Electronics</h2>
+        <article>
+          <h3>Available Stock</h3>
+          <p id="electronicsStock">-</p>
+        </article>
+        <article>
+          <h3>Price per Unit</h3>
+          <p id="electronicsPrice">-</p>
         </article>
       </section>
     </main>
