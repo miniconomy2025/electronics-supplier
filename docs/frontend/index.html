@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Electronics Company - Dashboard</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cal+Sans&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>The Electronics Company</h1>
+      </header>
+
+      <!-- Replace the earnings and machine values with spans for JS to fill -->
+      <section aria-label="Financial Summary">
+        <article>
+          <h2>Earnings</h2>
+          <p id="earningsValue">Loading...</p>
+        </article>
+        <article>
+          <h2>Total Expenditure</h2>
+          <p id="expenditureValue">-</p>
+        </article>
+      </section>
+
+      <section aria-label="Earnings Monthly">
+        <h2>Earnings Monthly</h2>
+        <canvas id="montlyIncomeChart" width="400" height="200"></canvas>
+      </section>
+
+      <section aria-label="Machines Status">
+        <h2>Machines Status</h2>
+        <div id="machinesStatusChartContainer" style="padding: 30px; max-width: 350px; margin: auto;">
+          <canvas id="machinesStatusChart"></canvas>
+        </div>
+      </section>
+
+
+      <section aria-label="Raw Materials">
+        <h2>Raw Materials</h2>
+        <!-- Raw materials content here -->
+        <canvas id="rawMaterialsChart" width="400" height="200"></canvas>
+      </section>
+
+      <section aria-label="Orders">
+        <h2>Orders</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Date of transaction</th>
+              <th>Company Name</th>
+              <th>Item</th>
+              <th>Account No</th>
+              <th>Amount</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><time datetime="2020-01-23">23 January 2020</time></td>
+              <td>Tata</td>
+              <td>Phone electronics</td>
+              <td>9999999</td>
+              <td>500</td>
+              <td><strong class="status-done">Done</strong></td>
+            </tr>
+            <tr>
+              <td><time datetime="2020-01-23">23 January 2020</time></td>
+              <td>Samsung</td>
+              <td>Phone electronics</td>
+              <td>8888888</td>
+              <td>600</td>
+              <td><strong class="status-pending">Pending</strong></td>
+            </tr>
+            <tr>
+              <td><time datetime="2020-01-23">23 January 2020</time></td>
+              <td>Apple</td>
+              <td>Phone electronics</td>
+              <td>7777777</td>
+              <td>700</td>
+              <td><strong class="status-pending">Pending</strong></td>
+            </tr>
+            <tr>
+              <td><time datetime="2020-01-23">23 January 2020</time></td>
+              <td>Intel</td>
+              <td>Phone electronics</td>
+              <td>6666666</td>
+              <td>500</td>
+              <td><strong class="status-done">Done</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section aria-label="Bank Account">
+        <h2>Bank Account</h2>
+         <canvas id="backAccountChart" width="400" height="200"></canvas>
+      </section>
+
+      <section aria-label="Machines">
+        <h2>Machines</h2>
+        <article>
+          <h3>In use</h3>
+          <p id="machinesInUse">-</p>
+        </article>
+        <article>
+          <h3>Broken</h3>
+          <p id="machinesBroken">-</p>
+        </article>
+        <article>
+          <h3>Available</h3>
+          <p id="machinesAvailable">-</p>
+        </article>
+      </section>
+
+      <section aria-label="Electronics">
+        <h2>Electronics</h2>
+        <article>
+          <h3>Available Stock</h3>
+          <p id="electronicsStock">-</p>
+        </article>
+        <article>
+          <h3>Price per Unit</h3>
+          <p id="electronicsPrice">-</p>
+        </article>
+      </section>
+    </main>
+
+    <script src="charts.js"></script>
+  </body>
+</html>
