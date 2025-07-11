@@ -81,14 +81,66 @@ namespace esAPI.Controllers
         [HttpGet("inventory-summary")]
         public async Task<IActionResult> GetInventorySummary()
         {
-            var result = await _context.Database
-                .SqlQueryRaw<string>("SELECT get_inventory_summary()")
-                .FirstOrDefaultAsync();
+            await using var cmd = _context.Database.GetDbConnection().CreateCommand();
+            cmd.CommandText = "SELECT get_inventory_summary()";
+            await _context.Database.OpenConnectionAsync();
 
-            // result is a JSON string, so just return it as content
-            return Content(result ?? "{}", "application/json");
+            using var reader = await cmd.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
+            {
+                var json = reader.GetString(0);
+                return Content(json, "application/json");
+            }
+
+            return NotFound();
         }
 
+        [HttpGet("orders")]
+        public async Task<IActionResult> GetOrders()
+        {
+            var orders = await (
+                from o in _context.ElectronicsOrders
+                join c in _context.Companies on o.ManufacturerId equals c.CompanyId
+                join s in _context.OrderStatuses on o.OrderStatusId equals s.StatusId
+                orderby o.OrderedAt descending
+                select new
+                {
+                    DateOfTransaction = o.OrderedAt,
+                    CompanyName = c.CompanyName,
+                    Item = "Phone electronics",
+                    AccountNo = c.BankAccountNumber,
+                    Amount = o.TotalAmount,
+                    Status = s.Status
+                }
+
+            ).ToListAsync();
+
+            return Ok(orders);
+        }
+
+        [HttpGet("payments")]
+        public async Task<IActionResult> GetPaymentsOverTime()
+        {
+            var payments = await _context.Payments
+                .Where(p => p.Status == "COMPLETED")
+                .OrderBy(p => p.Timestamp)
+                .ToListAsync();
+
+            var result = new List<object>();
+            decimal runningTotal = 0;
+
+            foreach (var p in payments)
+            {
+                runningTotal += p.Amount;
+                result.Add(new
+                {
+                    timestamp = p.Timestamp,
+                    cumulativeBalance = runningTotal
+                });
+            }
+
+            return Ok(result);
+        }
         // --- DTOs for responses ---
         private class ElectronicsStockDto
         {
