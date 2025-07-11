@@ -1,7 +1,7 @@
 const rawMaterialsChartCtx = document.getElementById('rawMaterialsChart').getContext('2d');
 
 async function fetchCurrentSupply() {
-  const response = await fetch('http://localhost:5062/api/DashboardData/current-supply');
+  const response = await fetch('https://electronics-supplier-api.projects.bbdgrad.com:444/api/DashboardData/current-supply');
   const data = await response.json();
 
   return {
@@ -48,7 +48,7 @@ async function initRawMaterialsChart() {
 }
 
 async function fetchMachinesStatus() {
-  const response = await fetch('http://localhost:5062/api/DashboardData/machines-status');
+  const response = await fetch('https://electronics-supplier-api.projects.bbdgrad.com:444/api/DashboardData/machines-status');
   const data = await response.json();
 
   return {
@@ -86,18 +86,18 @@ async function initMachinesStatusChart() {
 }
 
 async function fetchEarnings() {
-  const response = await fetch('http://localhost:5062/api/DashboardData/total-earnings');
+  const response = await fetch('https://electronics-supplier-api.projects.bbdgrad.com:444/api/DashboardData/total-earnings');
   const data = await response.json();
   return data.totalEarnings ?? 0;
 }
 
 async function fetchElectronicsStock() {
-  const response = await fetch('http://localhost:5062/api/DashboardData/electronics-stock');
+  const response = await fetch('https://electronics-supplier-api.projects.bbdgrad.com:444/api/DashboardData/electronics-stock');
   return await response.json();
 }
 
 async function fetchMachinesStatusRaw() {
-  const response = await fetch('http://localhost:5062/api/DashboardData/machines-status');
+  const response = await fetch('https://electronics-supplier-api.projects.bbdgrad.com:444/api/DashboardData/machines-status');
   return await response.json();
 }
 
@@ -127,7 +127,7 @@ async function updateDashboardSummary() {
 }
 
 async function fetchOrders() {
-  const response = await fetch('http://localhost:5062/api/DashboardData/orders');
+  const response = await fetch('https://electronics-supplier-api.projects.bbdgrad.com:444/api/DashboardData/orders');
   return await response.json();
 }
 
@@ -191,7 +191,7 @@ function convertToDate(decimalTimestamp) {
 }
 
 async function fetchBankBalanceHistory() {
-  const response = await fetch('http://localhost:5062/api/DashboardData/payments');
+  const response = await fetch('https://electronics-supplier-api.projects.bbdgrad.com:444/api/DashboardData/payments');
   const data = await response.json();
 
   return {
