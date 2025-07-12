@@ -9,14 +9,16 @@ using esAPI.Models.Enums;
 using Machine = esAPI.Models.Machine;
 using MS = esAPI.Models.Enums.Machine;
 using Electronics = esAPI.Models.Enums.Electronics;
+using esAPI.Interfaces;
 
 namespace esAPI.Controllers
 {
     [ApiController]
     [Route("logistics")]
-    public class LogisticsController(AppDbContext context) : ControllerBase
+    public class LogisticsController(AppDbContext context, ISimulationStateService stateService) : ControllerBase
     {
         private readonly AppDbContext _context = context;
+        private readonly ISimulationStateService _stateService = stateService;
 
         [HttpPost]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
@@ -67,9 +69,11 @@ namespace esAPI.Controllers
 
             bool isMachineDelivery = request.Items.All(item => item.Name.Equals("machine", StringComparison.OrdinalIgnoreCase));
 
-            var sim = _context.Simulations.FirstOrDefault(s => s.IsRunning);
-            if (sim == null)
+            if (!_stateService.IsRunning)
                 return BadRequest("Simulation not running.");
+
+            int currentDay = _stateService.CurrentDay;
+
 
             if (isMachineDelivery)
             {
@@ -94,8 +98,8 @@ namespace esAPI.Controllers
                     {
                         OrderId = machineOrder.OrderId,
                         MachineStatusId = (int)MS.Status.Standby,
-                        ReceivedAt = sim.DayNumber,
-                        PurchasedAt = sim.DayNumber,
+                        ReceivedAt = currentDay,
+                        PurchasedAt = currentDay,
                         PurchasePrice = 0
                     })
                     .ToList();
@@ -106,7 +110,7 @@ namespace esAPI.Controllers
 
                 if (machineOrder.RemainingAmount == 0)
                 {
-                    machineOrder.ReceivedAt = sim.DayNumber;
+                    machineOrder.ReceivedAt = currentDay;
                     machineOrder.OrderStatusId = (int)Order.Status.Completed;
                 }
                 else if (machineOrder.OrderStatusId == (int)Order.Status.Pending || machineOrder.OrderStatusId == (int)Order.Status.Accepted)
@@ -143,7 +147,7 @@ namespace esAPI.Controllers
                     .Select(_ => new MaterialSupply
                     {
                         MaterialId = order.MaterialId,
-                        ReceivedAt = sim.DayNumber
+                        ReceivedAt = currentDay
                     })
                     .ToList();
 
@@ -153,7 +157,7 @@ namespace esAPI.Controllers
 
                 if (order.RemainingAmount == 0)
                 {
-                    order.ReceivedAt = sim.DayNumber;
+                    order.ReceivedAt = currentDay;
                     order.OrderStatusId = (int)Order.Status.Completed;
                 }
                 else if (order.OrderStatusId == (int)Order.Status.Pending || order.OrderStatusId == (int)Order.Status.Accepted)
@@ -197,13 +201,15 @@ namespace esAPI.Controllers
             if (electronicsToRemove.Count < pickupAmount)
                 return BadRequest("Not enough electronics stock available to fulfill the pickup.");
 
-            var sim = _context.Simulations.FirstOrDefault(s => s.IsRunning);
-            if (sim == null)
+            if (!_stateService.IsRunning)
                 return BadRequest("Simulation not running.");
+
+            int currentDay = _stateService.CurrentDay;
+
 
             foreach (var e in electronicsToRemove)
             {
-                e.SoldAt = sim.DayNumber;
+                e.SoldAt = currentDay;
                 e.ElectronicsStatusId = (int)Electronics.Status.Reserved;
             }
 
@@ -211,7 +217,7 @@ namespace esAPI.Controllers
 
             if (order.RemainingAmount == 0)
             {
-                order.ProcessedAt = sim.DayNumber;
+                order.ProcessedAt = currentDay;
                 order.OrderStatusId = (int)Order.Status.Completed; // COMPLETED
             }
             else if (order.OrderStatusId == (int)Order.Status.Pending || order.OrderStatusId == (int)Order.Status.Accepted) // PENDING or ACCEPTED
