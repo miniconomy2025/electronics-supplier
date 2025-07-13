@@ -69,7 +69,8 @@ namespace esAPI.Services
                         }
                         using var dbScope = _serviceProvider.CreateScope();
                         var db = dbScope.ServiceProvider.GetRequiredService<AppDbContext>();
-                        var engine = new SimulationEngine(db, bankService, bankAccountService, dayOrchestrator, startupCostCalculator, bankClient);
+                        var logger = dbScope.ServiceProvider.GetRequiredService<ILogger<SimulationEngine>>();
+                        var engine = new SimulationEngine(db, bankService, bankAccountService, dayOrchestrator, startupCostCalculator, bankClient, logger);
                         await engine.RunDayAsync(stateService.CurrentDay);
                         stateService.AdvanceDay();
                     }
