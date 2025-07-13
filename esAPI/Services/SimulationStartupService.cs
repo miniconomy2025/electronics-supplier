@@ -3,6 +3,7 @@ using esAPI.Data;
 using esAPI.Services;
 using esAPI.Simulation;
 using esAPI.Interfaces;
+using esAPI.Clients;
 
 namespace esAPI.Services
 {
