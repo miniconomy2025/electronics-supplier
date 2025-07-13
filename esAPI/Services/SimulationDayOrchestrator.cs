@@ -46,13 +46,6 @@ namespace esAPI.Services
                 return accountResult;
             }
 
-            var notifSuccess = await SetNotificationUrlAsync();
-            if (!notifSuccess)
-            {
-                _logger.LogError("Failed to set notification URL with Commercial Bank API.");
-                return new OrchestratorResult { Success = false, Error = "Failed to set notification URL" };
-            }
-
             _logger.LogInformation("Simulation orchestration completed successfully. AccountNumber: {AccountNumber}", accountResult.AccountNumber);
             return new OrchestratorResult
             {
@@ -119,19 +112,6 @@ namespace esAPI.Services
             }
         }
 
-        private async Task<bool> SetNotificationUrlAsync()
-        {
-            _logger.LogInformation("Setting notification URL with Commercial Bank API.");
-            var result = await _bankClient.SetNotificationUrlAsync();
-            if (result)
-            {
-                _logger.LogInformation("Notification URL set successfully.");
-            }
-            else
-            {
-                _logger.LogError("Failed to set notification URL.");
-            }
-            return result;
-        }
+
     }
 }

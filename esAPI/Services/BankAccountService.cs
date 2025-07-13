@@ -26,10 +26,19 @@ namespace esAPI.Services
             }
 
             _logger.LogInformation("No bank account found. Creating new account with Commercial Bank...");
-            var accountNumber = await _bankClient.CreateAccountAsync();
+            var createAccountRequest = new { notification_url = "https://electronics-supplier-api.projects.bbdgrad.com/payments" };
+            var response = await _bankClient.CreateAccountAsync(createAccountRequest);
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError("Failed to create bank account with Commercial Bank API. Status: {Status}", response.StatusCode);
+                return;
+            }
+            
+            var accountNumber = await response.Content.ReadAsStringAsync();
             if (string.IsNullOrWhiteSpace(accountNumber))
             {
-                _logger.LogError("Failed to create bank account with Commercial Bank API.");
+                _logger.LogError("Failed to create bank account with Commercial Bank API - empty response.");
                 return;
             }
 

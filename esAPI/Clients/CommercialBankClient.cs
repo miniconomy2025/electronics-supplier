@@ -3,12 +3,9 @@ namespace esAPI.Clients
     public interface ICommercialBankClient
     {
         Task<decimal> GetAccountBalanceAsync();
-        Task<string?> CreateAccountAsync();
         Task<HttpResponseMessage> CreateAccountAsync(object requestBody);
         Task<string> MakePaymentAsync(string toAccountNumber, string toBankName, decimal amount, string description);
         Task<string?> RequestLoanAsync(decimal amount);
-
-        Task<bool> SetNotificationUrlAsync();
         Task<string?> GetAccountDetailsAsync();
         Task<HttpResponseMessage> GetAccountAsync();
     }
@@ -27,36 +24,28 @@ namespace esAPI.Clients
             return doc.RootElement.TryGetProperty("balance", out var bal) ? bal.GetDecimal() : 0m;
         }
 
-        public async Task<bool> SetNotificationUrlAsync()
-        {
-            var requestBody = new { notification_url = "https://electronics-supplier-api.projects.bbdgrad.com/payments" };
 
-            var response = await _client.PostAsJsonAsync("/account/me/notify", requestBody);
-            response.EnsureSuccessStatusCode();
-            var content = await response.Content.ReadAsStringAsync();
-            using var doc = System.Text.Json.JsonDocument.Parse(content);
-            return doc.RootElement.TryGetProperty("success", out var bal) && bal.GetBoolean();
-        }
-
-        public async Task<string?> CreateAccountAsync()
-        {
-            var response = await _client.PostAsync("/account", null);
-            response.EnsureSuccessStatusCode();
-            var content = await response.Content.ReadAsStringAsync();
-            using var doc = System.Text.Json.JsonDocument.Parse(content);
-            return doc.RootElement.TryGetProperty("account_number", out var accNum) ? accNum.GetString() : null;
-        }
 
         public async Task<HttpResponseMessage> CreateAccountAsync(object requestBody)
         {
             Console.WriteLine($"🔧 CommercialBankClient: Making POST request to /account");
             Console.WriteLine($"🔧 CommercialBankClient: Base address: {_client.BaseAddress}");
             Console.WriteLine($"🔧 CommercialBankClient: Full URL: {_client.BaseAddress}/account");
+            Console.WriteLine($"🔧 CommercialBankClient: Request URI: {_client.BaseAddress}account");
             
             try
             {
-                var response = await _client.PostAsJsonAsync("/account", requestBody);
+                // Use the full URL directly to ensure it's correct
+                var fullUrl = $"{_client.BaseAddress}/account";
+                Console.WriteLine($"🔧 CommercialBankClient: Using full URL: {fullUrl}");
+                
+                var request = new HttpRequestMessage(HttpMethod.Post, fullUrl);
+                var json = System.Text.Json.JsonSerializer.Serialize(requestBody);
+                request.Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+                
+                var response = await _client.SendAsync(request);
                 Console.WriteLine($"🔧 CommercialBankClient: Response status: {response.StatusCode}");
+                Console.WriteLine($"🔧 CommercialBankClient: Response URL: {response.RequestMessage?.RequestUri}");
                 return response;
             }
             catch (Exception ex)

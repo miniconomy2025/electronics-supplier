@@ -60,10 +60,6 @@ namespace esAPI.Simulation
             await _bankAccountService.SetupBankAccount();
             _logger.LogInformation("✅ Bank account setup completed");
 
-            _logger.LogInformation("🔔 Setting notification URL");
-            await _bankClient.SetNotificationUrlAsync();
-            _logger.LogInformation("✅ Notification URL set");
-
             _logger.LogInformation("💰 Generating startup cost plans");
             var allPlans = await _costCalculator.GenerateAllPossibleStartupPlansAsync();
             if (!allPlans.Any())
