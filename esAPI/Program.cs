@@ -8,6 +8,7 @@ using esAPI.Clients;
 using esAPI.Services;
 using esAPI.Interfaces;
 using esAPI.Configuration;
+using Amazon.SQS;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -69,6 +70,15 @@ builder.Services.Configure<InventoryConfig>(
 
 builder.Services.AddScoped<SimulationDayOrchestrator>();
 builder.Services.AddSingleton<ISimulationStateService, SimulationStateService>();
+
+builder.Services.AddDefaultAWSOptions(builder.Configuration.GetAWSOptions());
+builder.Services.AddAWSService<IAmazonSQS>();
+builder.Services.AddSingleton<RetryQueuePublisher>();
+builder.Services.AddHostedService<RetryJobDispatcher>();
+
+// Register all retry handlers
+builder.Services.AddScoped<IRetryHandler<BankAccountRetryJob>, BankAccountRetryHandler>();
+builder.Services.AddScoped<IRetryHandler<BankBalanceRetryJob>, BankBalanceRetryHandler>();
 
 // builder.Services.AddHostedService<InventoryManagementService>(); // Disabled inventory management system temporarily
 builder.Services.AddHostedService<SimulationAutoAdvanceService>();
