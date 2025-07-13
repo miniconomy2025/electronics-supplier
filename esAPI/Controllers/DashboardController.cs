@@ -7,12 +7,12 @@ using esAPI.Data;
 namespace esAPI.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
-    public class DashboardDataController : ControllerBase
+    [Route("[controller]")]
+    public class DashboardController : ControllerBase
     {
         private readonly AppDbContext _context;
 
-        public DashboardDataController(AppDbContext context)
+        public DashboardController(AppDbContext context)
         {
             _context = context;
         }

@@ -54,7 +54,7 @@ namespace esAPI.Tests.Services
             mockMachineService.Setup(s => s.PurchaseMachineViaBank())
                 .ReturnsAsync((orderId: 123, quantity: 2));
             mockMachineService.Setup(s => s.QueryOrderDetailsFromTHOH()).Returns(Task.CompletedTask);
-            mockMachineService.Setup(s => s.PlaceBulkLogisticsPickup(123, 2)).ReturnsAsync(456);
+            mockMachineService.Setup(s => s.PlaceBulkLogisticsPickup(123, 2));
 
             // Setup material acquisition
             mockMaterialService.Setup(s => s.ExecutePurchaseStrategyAsync()).Returns(Task.CompletedTask);
