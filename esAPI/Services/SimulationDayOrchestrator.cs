@@ -38,7 +38,7 @@ namespace esAPI.Services
 
         public async Task<OrchestratorResult> OrchestrateAsync()
         {
-            _logger.LogInformation("Starting simulation orchestration: creating bank account and setting notification URL.");
+            _logger.LogInformation("Starting simulation orchestration");
             var accountResult = await CreateBankAccountAsync();
             if (!accountResult.Success && accountResult.Error != "accountAlreadyExists")
             {

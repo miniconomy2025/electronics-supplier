@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using System.Text.Json;
 
 using esAPI.Data;
 using esAPI.Services;
@@ -13,70 +12,33 @@ namespace esAPI.Controllers
 {
     [ApiController]
     [Route("simulation")]
-    public class SimulationController(AppDbContext context, BankService bankService, BankAccountService bankAccountService, SimulationDayOrchestrator dayOrchestrator, ISimulationStateService stateService, IStartupCostCalculator costCalculator, ICommercialBankClient bankClient, OrderExpirationBackgroundService orderExpirationBackgroundService, ILogger<SimulationController> logger, ILoggerFactory loggerFactory) : ControllerBase
+    public class SimulationController(SimulationStartupService simulationStartupService, SimulationDayOrchestrator dayOrchestrator, ISimulationStateService stateService, IStartupCostCalculator costCalculator, ICommercialBankClient bankClient, AppDbContext context, BankService bankService, BankAccountService bankAccountService, ILogger<SimulationController> logger, ILoggerFactory loggerFactory) : ControllerBase
     {
-        private readonly AppDbContext _context = context;
-        private readonly BankAccountService _bankAccountService = bankAccountService;
+        private readonly SimulationStartupService _simulationStartupService = simulationStartupService;
         private readonly SimulationDayOrchestrator _dayOrchestrator = dayOrchestrator;
         private readonly ISimulationStateService _stateService = stateService;
         private readonly IStartupCostCalculator _costCalculator = costCalculator;
         private readonly ICommercialBankClient _bankClient = bankClient;
-        private readonly OrderExpirationBackgroundService _orderExpirationBackgroundService = orderExpirationBackgroundService;
+        private readonly AppDbContext _context = context;
+        private readonly BankService _bankService = bankService;
+        private readonly BankAccountService _bankAccountService = bankAccountService;
         private readonly ILogger<SimulationController> _logger = logger;
         private readonly ILoggerFactory _loggerFactory = loggerFactory;
-
-        private readonly BankService _bankService = bankService;
 
         // POST /simulation - start the simulation
         [HttpPost]
         public async Task<IActionResult> StartSimulation()
         {
             _logger.LogInformation("🚀 ===== MAIN SIMULATION ENDPOINT CALLED =====");
-            _logger.LogInformation("🚀 Starting simulation");
             
-            // Set up bank account with commercial bank
-            _logger.LogInformation("🏦 Setting up bank account with commercial bank...");
-            var bankSetupResult = await SetupBankAccountAsync();
-            if (!bankSetupResult.Success)
+            var result = await _simulationStartupService.StartSimulationAsync();
+            if (!result.Success)
             {
-                _logger.LogError("❌ Failed to set up bank account. Error: {Error}", bankSetupResult.Error);
-                return StatusCode(502, $"Failed to set up bank account. Error: {bankSetupResult.Error}");
+                _logger.LogError("❌ Failed to start simulation. Error: {Error}", result.Error);
+                return StatusCode(502, $"Failed to start simulation. Error: {result.Error}");
             }
             
-            _logger.LogInformation("✅ Bank account setup completed successfully");
-            _stateService.Start();
-            _logger.LogInformation("📊 Simulation state service started");
-            
-            // Start order expiration background service only after simulation starts
-            _orderExpirationBackgroundService.StartAsync();
-            _logger.LogInformation("⏰ Order expiration background service started");
-
-            // Persist simulation start to the database
-            _logger.LogInformation("💾 Persisting simulation start to database");
-            var sim = await _context.Simulations.FirstOrDefaultAsync();
-            if (sim == null)
-            {
-                _logger.LogInformation("📝 Creating new simulation record in database");
-                sim = new Models.Simulation
-                {
-                    IsRunning = true,
-                    StartedAt = DateTime.UtcNow,
-                    DayNumber = 1
-                };
-                _context.Simulations.Add(sim);
-            }
-            else
-            {
-                _logger.LogInformation("🔄 Updating existing simulation record in database");
-                sim.IsRunning = true;
-                sim.StartedAt = DateTime.UtcNow;
-                sim.DayNumber = 1;
-            }
-            await _context.SaveChangesAsync();
-            _logger.LogInformation("✅ Simulation start persisted to database");
-
-            _logger.LogInformation("✅ Simulation started successfully with bank account: {AccountNumber}", bankSetupResult.AccountNumber);
-            return Ok(new { message = "Simulation started and bank account setup completed.", account_number = bankSetupResult.AccountNumber });
+            return Ok(new { message = "Simulation started and bank account setup completed.", account_number = result.AccountNumber });
         }
 
         // POST /simulation/manual-backdoor - manually start the simulation with bank account setup
@@ -84,50 +46,15 @@ namespace esAPI.Controllers
         public async Task<IActionResult> ManualStartSimulation()
         {
             _logger.LogInformation("🚀 ===== MANUAL BACKDOOR ENDPOINT CALLED =====");
-            _logger.LogInformation("🚀 Starting simulation via manual backdoor with bank account setup");
             
-            // Set up bank account with commercial bank
-            _logger.LogInformation("🏦 Setting up bank account with commercial bank...");
-            var bankSetupResult = await SetupBankAccountAsync();
-            if (!bankSetupResult.Success)
+            var result = await _simulationStartupService.StartSimulationAsync();
+            if (!result.Success)
             {
-                _logger.LogError("❌ Failed to set up bank account. Error: {Error}", bankSetupResult.Error);
-                return StatusCode(502, $"Failed to set up bank account. Error: {bankSetupResult.Error}");
+                _logger.LogError("❌ Failed to start simulation. Error: {Error}", result.Error);
+                return StatusCode(502, $"Failed to start simulation. Error: {result.Error}");
             }
             
-            _logger.LogInformation("✅ Bank account setup completed successfully");
-            _stateService.Start();
-            _logger.LogInformation("📊 Simulation state service started");
-            
-            _orderExpirationBackgroundService.StartAsync();
-            _logger.LogInformation("⏰ Order expiration background service started");
-
-            // Persist simulation start to the database
-            _logger.LogInformation("💾 Persisting simulation start to database");
-            var sim = await _context.Simulations.FirstOrDefaultAsync();
-            if (sim == null)
-            {
-                _logger.LogInformation("📝 Creating new simulation record in database");
-                sim = new Models.Simulation
-                {
-                    IsRunning = true,
-                    StartedAt = DateTime.UtcNow,
-                    DayNumber = 1
-                };
-                _context.Simulations.Add(sim);
-            }
-            else
-            {
-                _logger.LogInformation("🔄 Updating existing simulation record in database");
-                sim.IsRunning = true;
-                sim.StartedAt = DateTime.UtcNow;
-                sim.DayNumber = 1;
-            }
-            await _context.SaveChangesAsync();
-            _logger.LogInformation("✅ Simulation start persisted to database");
-
-            _logger.LogInformation("✅ Simulation started successfully via manual backdoor with bank account: {AccountNumber}", bankSetupResult.AccountNumber);
-            return Ok(new { message = "Simulation started via manual backdoor with bank account setup completed.", account_number = bankSetupResult.AccountNumber });
+            return Ok(new { message = "Simulation started via manual backdoor with bank account setup completed.", account_number = result.AccountNumber });
         }
 
         // GET /simulation - get current simulation state
@@ -236,101 +163,6 @@ namespace esAPI.Controllers
             return Ok(new { message = "Simulation stopped and all data deleted." });
         }
 
-        private async Task<(bool Success, string? AccountNumber, string? Error)> SetupBankAccountAsync()
-        {
-            try
-            {
-                _logger.LogInformation("🏦 Creating bank account with notification URL...");
-                
-                // Create account with notification URL
-                var createAccountRequest = new
-                {
-                    notification_url = "https://electronics-supplier-api.projects.bbdgrad.com/payments"
-                };
 
-                _logger.LogInformation("🏦 Request body: {@Request}", createAccountRequest);
-                _logger.LogInformation("🏦 About to make HTTP request to commercial bank...");
-                
-                var createResponse = await _bankClient.CreateAccountAsync(createAccountRequest);
-                
-                if (createResponse.IsSuccessStatusCode)
-                {
-                    var accountNumber = await createResponse.Content.ReadAsStringAsync();
-                    _logger.LogInformation("🏦 Bank account created successfully: {AccountNumber}", accountNumber);
-                    
-                    // Store account number in database
-                    await StoreBankAccountNumberAsync(accountNumber);
-                    
-                    return (true, accountNumber, (string?)null);
-                }
-                else if (createResponse.StatusCode == System.Net.HttpStatusCode.Conflict)
-                {
-                    _logger.LogInformation("🏦 Account already exists, retrieving account number...");
-                    
-                    // Get existing account number
-                    var getResponse = await _bankClient.GetAccountAsync();
-                    if (getResponse.IsSuccessStatusCode)
-                    {
-                        var accountNumber = await getResponse.Content.ReadAsStringAsync();
-                        _logger.LogInformation("🏦 Retrieved existing account number: {AccountNumber}", accountNumber);
-                        
-                        // Store account number in database
-                        await StoreBankAccountNumberAsync(accountNumber);
-                        
-                        return (true, accountNumber, (string?)null);
-                    }
-                    else
-                    {
-                        _logger.LogError("❌ Failed to retrieve existing account number. Status: {Status}", getResponse.StatusCode);
-                        return (false, (string?)null, $"Failed to retrieve existing account number. Status: {getResponse.StatusCode}");
-                    }
-                }
-                else
-                {
-                    _logger.LogError("❌ Failed to create bank account. Status: {Status}", createResponse.StatusCode);
-                    return (false, (string?)null, $"Failed to create bank account. Status: {createResponse.StatusCode}");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ Exception during bank account setup");
-                return (false, (string?)null, ex.Message);
-            }
-        }
-
-        private async Task StoreBankAccountNumberAsync(string accountNumber)
-        {
-            try
-            {
-                _logger.LogInformation("💾 Storing bank account number in database: {AccountNumber}", accountNumber);
-                
-                // Parse the JSON response to extract the account number
-                var responseData = System.Text.Json.JsonSerializer.Deserialize<JsonElement>(accountNumber);
-                var actualAccountNumber = responseData.GetProperty("account_number").GetString();
-                
-                if (string.IsNullOrWhiteSpace(actualAccountNumber))
-                {
-                    _logger.LogError("❌ No account number found in response");
-                    return;
-                }
-                
-                // Get the company record and update it
-                var company = await _context.Companies.FirstOrDefaultAsync(c => c.CompanyId == 1);
-                if (company == null)
-                {
-                    _logger.LogError("❌ Electronics Supplier company (ID=1) not found in database");
-                    return;
-                }
-                
-                company.BankAccountNumber = actualAccountNumber;
-                await _context.SaveChangesAsync();
-                
-                _logger.LogInformation("✅ Bank account number stored successfully in Company table: {AccountNumber}", actualAccountNumber);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ Failed to store bank account number in database");
-            }
-        }
     }
 }

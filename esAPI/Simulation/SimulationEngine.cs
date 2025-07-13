@@ -57,7 +57,12 @@ namespace esAPI.Simulation
         private async Task<bool> ExecuteStartupSequence()
         {
             _logger.LogInformation("🏦 Setting up bank account");
-            await _bankAccountService.SetupBankAccount();
+            var bankSetupResult = await _bankAccountService.SetupBankAccountAsync();
+            if (!bankSetupResult.Success)
+            {
+                _logger.LogError("❌ Failed to set up bank account: {Error}", bankSetupResult.Error);
+                return false;
+            }
             _logger.LogInformation("✅ Bank account setup completed");
 
             _logger.LogInformation("💰 Generating startup cost plans");

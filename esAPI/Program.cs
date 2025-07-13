@@ -48,6 +48,7 @@ builder.Services.AddScoped<IBulkLogisticsClient, BulkLogisticsClient>();
 builder.Services.AddScoped<BankAccountService>();
 builder.Services.AddScoped<BankService>();
 builder.Services.AddScoped<InventoryService>();
+builder.Services.AddScoped<SimulationStartupService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
 builder.Services.AddScoped<IProductionService, ProductionService>();
 builder.Services.AddScoped<IMachineAcquisitionService, MachineAcquisitionService>();
