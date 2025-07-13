@@ -24,20 +24,19 @@ namespace esAPI.Services
                 _logger.LogInformation("💰 Retrieved bank balance: {Balance}", balance);
 
                 var simTime = _stateService.GetCurrentSimulationTime(3);
-                var canonicalTimestamp = SimulationTimeService.ToCanonicalTime(simTime);
 
                 _logger.LogInformation("💾 Storing bank balance snapshot in database");
                 var snapshot = new BankBalanceSnapshot
                 {
                     SimulationDay = simulationDay,
                     Balance = balance,
-                    Timestamp = canonicalTimestamp
+                    Timestamp = simTime
                 };
                 _db.BankBalanceSnapshots.Add(snapshot);
                 await _db.SaveChangesAsync();
 
                 _logger.LogInformation("✅ Bank balance snapshot stored: Day={Day}, Balance={Balance}, Timestamp={Timestamp}",
-                    simulationDay, balance, canonicalTimestamp);
+                    simulationDay, balance, simTime);
 
                 return balance;
             }

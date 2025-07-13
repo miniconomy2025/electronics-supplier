@@ -13,7 +13,7 @@ namespace esAPI.Models
         public int SimulationDay { get; set; }
         [Column("balance")]
         public decimal Balance { get; set; }
-        [Column("timestamp")]
-        public DateTime Timestamp { get; set; }
+        [Column("timestamp", TypeName = "numeric(1000,3)")]
+        public decimal Timestamp { get; set; }
     }
 }

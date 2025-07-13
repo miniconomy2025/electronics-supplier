@@ -28,13 +28,12 @@ namespace esAPI.Services
         {
             var balance = await _bankClient.GetAccountBalanceAsync();
             var simTime = _stateService.GetCurrentSimulationTime(3);
-            var canonicalTimestamp = SimulationTimeService.ToCanonicalTime(simTime);
 
             var snapshot = new BankBalanceSnapshot
             {
                 SimulationDay = job.SimulationDay,
                 Balance = balance,
-                Timestamp = canonicalTimestamp
+                Timestamp = simTime
             };
             _db.BankBalanceSnapshots.Add(snapshot);
             await _db.SaveChangesAsync(token);
