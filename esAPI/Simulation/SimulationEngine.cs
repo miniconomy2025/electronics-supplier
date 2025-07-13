@@ -26,7 +26,6 @@ namespace esAPI.Simulation
                 await ExecuteStartupSequence();
 
             }
-            await _dayOrchestrator.RunDayAsync(dayNumber);
             Console.WriteLine($"Running simulation logic for Day {dayNumber}");
 
             // 1. Query bank and store our balance

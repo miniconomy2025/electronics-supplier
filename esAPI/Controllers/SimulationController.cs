@@ -11,7 +11,7 @@ namespace esAPI.Controllers
 {
     [ApiController]
     [Route("simulation")]
-    public class SimulationController(AppDbContext context, BankService bankService, BankAccountService bankAccountService, SimulationDayOrchestrator dayOrchestrator, ISimulationStateService stateService, IStartupCostCalculator costCalculator, ICommercialBankClient bankClient) : ControllerBase
+    public class SimulationController(AppDbContext context, BankService bankService, BankAccountService bankAccountService, SimulationDayOrchestrator dayOrchestrator, ISimulationStateService stateService, IStartupCostCalculator costCalculator, ICommercialBankClient bankClient, OrderExpirationBackgroundService orderExpirationBackgroundService) : ControllerBase
     {
         private readonly AppDbContext _context = context;
         private readonly BankAccountService _bankAccountService = bankAccountService;
@@ -19,16 +19,53 @@ namespace esAPI.Controllers
         private readonly ISimulationStateService _stateService = stateService;
         private readonly IStartupCostCalculator _costCalculator = costCalculator;
         private readonly ICommercialBankClient _bankClient = bankClient;
+        private readonly OrderExpirationBackgroundService _orderExpirationBackgroundService = orderExpirationBackgroundService;
 
         private readonly BankService _bankService = bankService;
 
 
         // POST /simulation - start the simulation
         [HttpPost]
-        public IActionResult StartSimulation()
+        public async Task<IActionResult> StartSimulation()
         {
+            var result = await _dayOrchestrator.OrchestrateAsync();
+            if (!result.Success)
+            {
+                return StatusCode(502, $"Failed to set up Commercial Bank account or notification URL. Error: {result.Error}");
+            }
             _stateService.Start();
-            return Ok("Simulation started.");
+            // Start order expiration background service only after simulation starts
+            _orderExpirationBackgroundService.StartAsync();
+
+            // Persist simulation start to the database
+            var sim = await _context.Simulations.FirstOrDefaultAsync();
+            if (sim == null)
+            {
+                sim = new Models.Simulation
+                {
+                    IsRunning = true,
+                    StartedAt = DateTime.UtcNow,
+                    DayNumber = 1
+                };
+                _context.Simulations.Add(sim);
+            }
+            else
+            {
+                sim.IsRunning = true;
+                sim.StartedAt = DateTime.UtcNow;
+                sim.DayNumber = 1;
+            }
+            await _context.SaveChangesAsync();
+
+            if (!string.IsNullOrEmpty(result.AccountNumber))
+            {
+                return StatusCode(201, new { message = "Simulation started, account created, and notification URL set.", account_number = result.AccountNumber });
+            }
+            if (result.Error == "accountAlreadyExists")
+            {
+                return Ok(new { message = "Simulation started, account already exists, notification URL set." });
+            }
+            return Ok("Simulation started and notification URL set.");
         }
 
         // GET /simulation - get current simulation state

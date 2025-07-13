@@ -9,17 +9,14 @@ GROUP BY m.material_id, m.material_name;
 
 CREATE OR REPLACE VIEW available_electronics_stock AS
 SELECT
-    (SELECT COUNT(e.electronic_id)
+    COALESCE((SELECT COUNT(e.electronic_id)
      FROM electronics e
      INNER JOIN electronics_statuses es ON e.electronics_status = es.status_id
-     WHERE es.status = 'AVAILABLE') AS "availableStock",
-    lv.electronics_price_per_unit AS "pricePerUnit"
-FROM (
-    SELECT electronics_price_per_unit
-    FROM lookup_values
-    ORDER BY changed_at DESC
-    LIMIT 1
-) lv;
+     WHERE es.status = 'AVAILABLE'), 0) AS "availableStock",
+    COALESCE((SELECT electronics_price_per_unit
+        FROM lookup_values
+        ORDER BY changed_at DESC
+        LIMIT 1), 100.0) AS "pricePerUnit";
 
 CREATE OR REPLACE VIEW machine_status_counts AS
 SELECT

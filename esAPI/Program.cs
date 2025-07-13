@@ -69,9 +69,9 @@ builder.Services.Configure<InventoryConfig>(
 builder.Services.AddScoped<SimulationDayOrchestrator>();
 builder.Services.AddSingleton<ISimulationStateService, SimulationStateService>();
 
-builder.Services.AddHostedService<InventoryManagementService>();
+// builder.Services.AddHostedService<InventoryManagementService>(); // Disabled inventory management system temporarily
 builder.Services.AddHostedService<SimulationAutoAdvanceService>();
-builder.Services.AddHostedService<OrderExpirationBackgroundService>();
+builder.Services.AddSingleton<OrderExpirationBackgroundService>();
 
 // Add CORS services
 builder.Services.AddCors(options =>
