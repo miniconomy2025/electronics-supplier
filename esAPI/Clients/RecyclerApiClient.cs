@@ -1,4 +1,5 @@
 using esAPI.DTOs;
+using esAPI.Exceptions;
 using esAPI.Interfaces;
 
 namespace esAPI.Clients;
@@ -13,22 +14,27 @@ public class RecyclerApiClient : BaseClient, ISupplierApiClient
 
     public async Task<List<SupplierMaterialInfo>> GetAvailableMaterialsAsync()
     {
-        var recyclerResponse = await GetAsync<RecyclerApiResponseDto>("/materials");
-        if (recyclerResponse == null || recyclerResponse.Materials == null)
+        try
         {
-            return new List<SupplierMaterialInfo>();
-        }
+            var recyclerResponse = await GetAsync<RecyclerApiResponseDto>("/materials");
 
-    
-        var standardizedList = recyclerResponse.Materials.Select(recyclerMaterial =>
-            new SupplierMaterialInfo
+            if (recyclerResponse.Materials == null)
             {
-                MaterialName  = recyclerMaterial.Name,
-                AvailableQuantity  = recyclerMaterial.AvailableQuantityInKg,
-                PricePerKg = recyclerMaterial.Price
-            }).ToList();
+                throw new ApiResponseParseException("Recycler API response was successful but the 'materials' array was missing.");
+            }
 
-        return standardizedList;
+            return [.. recyclerResponse.Materials.Select(recyclerDto =>
+                new SupplierMaterialInfo
+                {
+                    MaterialName = recyclerDto.Name,
+                    AvailableQuantity = recyclerDto.AvailableQuantityInKg,
+                    PricePerKg = recyclerDto.Price
+                })];
+        }
+        catch (Exception ex) when (ex is not ApiClientException and not ApiResponseParseException)
+        {
+            throw; // Re-throw to allow the calling service to handle it.
+        }
     }
 
     public async Task<SupplierOrderResponse?> PlaceOrderAsync(SupplierOrderRequest request)

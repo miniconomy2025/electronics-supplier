@@ -1,3 +1,5 @@
+using esAPI.Exceptions;
+
 namespace esAPI.Clients
 {
     public abstract class BaseClient
@@ -12,35 +14,60 @@ namespace esAPI.Clients
             _client = _factory.CreateClient(clientName);
         }
 
-        protected async Task<TResponse?> GetAsync<TResponse>(string requestUri)
+        protected async Task<TResponse> GetAsync<TResponse>(string requestUri)
         {
             try
             {
-                return await _client.GetFromJsonAsync<TResponse>(requestUri);
+                HttpResponseMessage response = await _client.GetAsync(requestUri);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    await HandleErrorResponse(response);
+                }
+
+                var result = await response.Content.ReadFromJsonAsync<TResponse>();
+                return result == null
+                    ? throw new ApiResponseParseException($"Failed to parse successful response from GET {requestUri}. Response body was null or invalid.")
+                    : result;
             }
-            catch (Exception)
+            catch (Exception ex) when (ex is not ApiClientException and not ApiResponseParseException)
             {
-                return default;
+                throw;
             }
         }
 
-        protected async Task<TResponse?> PostAsync<TRequest, TResponse>(string requestUri, TRequest requestBody)
+        protected async Task<TResponse> PostAsync<TRequest, TResponse>(string requestUri, TRequest requestBody)
         {
             try
             {
-                var response = await _client.PostAsJsonAsync(requestUri, requestBody);
+                HttpResponseMessage response = await _client.PostAsJsonAsync(requestUri, requestBody);
+
                 if (!response.IsSuccessStatusCode)
                 {
-                    var errorContent = await response.Content.ReadAsStringAsync();
-                    
-                    return default;
+                    await HandleErrorResponse(response);
                 }
-                return await response.Content.ReadFromJsonAsync<TResponse>();
+
+                var result = await response.Content.ReadFromJsonAsync<TResponse>();
+                return result == null
+                    ? throw new ApiResponseParseException($"Failed to parse successful response from POST {requestUri}. Response body was null or invalid.")
+                    : result;
             }
-            catch (Exception)
+            catch (Exception ex) when (ex is not ApiClientException and not ApiResponseParseException)
             {
-                return default;
+                throw;
             }
+        }
+
+        protected async Task HandleErrorResponse(HttpResponseMessage response)
+        {
+            var statusCode = response.StatusCode;
+            var content = await response.Content.ReadAsStringAsync();
+
+            throw new ApiCallFailedException(
+                $"API call failed with status code {statusCode}.",
+                statusCode,
+                content
+            );
         }
     }
 }

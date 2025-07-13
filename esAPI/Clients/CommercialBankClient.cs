@@ -1,3 +1,5 @@
+using esAPI.Exceptions;
+
 namespace esAPI.Clients
 {
     public interface ICommercialBankClient
@@ -10,71 +12,108 @@ namespace esAPI.Clients
         Task<bool> SetNotificationUrlAsync();
     }
 
-    public class CommercialBankClient(IHttpClientFactory factory) : ICommercialBankClient
+    public class CommercialBankClient(IHttpClientFactory factory) : BaseClient(factory, ClientName), ICommercialBankClient
     {
-        private readonly IHttpClientFactory _factory = factory;
-        private readonly HttpClient _client = factory.CreateClient("commercial-bank");
+        private const string ClientName = "commercial-bank";
 
         public async Task<decimal> GetAccountBalanceAsync()
         {
-            var response = await _client.GetAsync("/account/me/balance");
-            response.EnsureSuccessStatusCode();
-            var content = await response.Content.ReadAsStringAsync();
-            using var doc = System.Text.Json.JsonDocument.Parse(content);
-            return doc.RootElement.TryGetProperty("balance", out var bal) ? bal.GetDecimal() : 0m;
+            var balanceResponse = await GetAsync<BankBalanceResponse>("/account/me/balance");
+            return balanceResponse.Balance;
+
         }
 
         public async Task<bool> SetNotificationUrlAsync()
         {
-            var requestBody = new { notification_url = "https://electronics-supplier-api.projects.bbdgrad.com/payments" };
+            var requestBody = new BankNotificationRequest { NotificationUrl = "https://electronics-supplier-api.projects.bbdgrad.com/payments" };
 
-            var response = await _client.PostAsJsonAsync("/account/me/notify", requestBody);
-            response.EnsureSuccessStatusCode();
-            var content = await response.Content.ReadAsStringAsync();
-            using var doc = System.Text.Json.JsonDocument.Parse(content);
-            return doc.RootElement.TryGetProperty("success", out var bal) && bal.GetBoolean();
+            try
+            {
+                var response = await _client.PostAsJsonAsync("/account/me/notify", requestBody);
+                if (!response.IsSuccessStatusCode)
+                {
+                    await HandleErrorResponse(response);
+                }
+                var notifyResponse = await response.Content.ReadFromJsonAsync<BankNotifyResponse>();
+                return notifyResponse?.Success ?? false;
+            }
+            catch (Exception ex) when (ex is not ApiClientException)
+            {
+                throw;
+            }
         }
 
         public async Task<string?> CreateAccountAsync()
         {
-            var response = await _client.PostAsync("/account", null);
-            response.EnsureSuccessStatusCode();
-            var content = await response.Content.ReadAsStringAsync();
-            using var doc = System.Text.Json.JsonDocument.Parse(content);
-            return doc.RootElement.TryGetProperty("account_number", out var accNum) ? accNum.GetString() : null;
+            try
+            {
+                var response = await _client.PostAsync("/account", null);
+                if (!response.IsSuccessStatusCode)
+                {
+                    await HandleErrorResponse(response);
+                }
+                var accountResponse = await response.Content.ReadFromJsonAsync<BankAccountResponse>();
+                if (string.IsNullOrEmpty(accountResponse?.AccountNumber))
+                {
+                    throw new ApiResponseParseException("Bank API created an account but did not return an account number.");
+                }
+                return accountResponse.AccountNumber;
+            }
+            catch (Exception ex) when (ex is not ApiClientException)
+            {
+                throw;
+            }
         }
 
         public async Task<string?> RequestLoanAsync(decimal amount)
         {
-            var requestBody = new { Amount = amount };
+            var requestBody = new BankLoanRequest { Amount = amount };
+            var loanResponse = await PostAsync<BankLoanRequest, BankLoanResponse>("/loan", requestBody);
 
-            var response = await _client.PostAsJsonAsync("/loan", requestBody);
-            response.EnsureSuccessStatusCode();
-            var content = await response.Content.ReadAsStringAsync();
-            using var doc = System.Text.Json.JsonDocument.Parse(content);
-            return doc.RootElement.TryGetProperty("loan_number", out var loanNum) ? loanNum.GetString() : null;;
+            return loanResponse?.LoanNumber;
         }
 
         public async Task<string> MakePaymentAsync(string toAccountNumber, string toBankName, decimal amount, string description)
         {
-            var paymentReq = new
+            var paymentReq = new BankPaymentRequest
             {
-                to_account_number = toAccountNumber,
-                to_bank_name = toBankName,
-                amount,
-                description
+                ToAccountNumber = toAccountNumber,
+                ToBankName = toBankName,
+                Amount = amount,
+                Description = description
             };
-            var response = await _client.PostAsJsonAsync("/transaction", paymentReq);
-            response.EnsureSuccessStatusCode();
-            var content = await response.Content.ReadAsStringAsync();
-            using var doc = System.Text.Json.JsonDocument.Parse(content);
-            var root = doc.RootElement;
-            if (!root.TryGetProperty("success", out var successProp) || !successProp.GetBoolean())
+
+            try
             {
-                var errorMsg = root.TryGetProperty("error", out var err) ? err.GetString() : "Unknown payment error";
-                throw new Exception($"Payment failed: {errorMsg}");
+                var response = await _client.PostAsJsonAsync("/transaction", paymentReq);
+                if (!response.IsSuccessStatusCode)
+                {
+                    await HandleErrorResponse(response);
+                }
+
+                var paymentResponse = await response.Content.ReadFromJsonAsync<BankPaymentResponse>();
+                if (paymentResponse == null)
+                {
+                    throw new ApiResponseParseException("Failed to parse payment response from the bank.");
+                }
+
+
+                if (!paymentResponse.Success)
+                {
+                    var errorMessage = paymentResponse.Error ?? "Unknown payment error from bank.";
+                    throw new ApiCallFailedException(errorMessage, response.StatusCode, await response.Content.ReadAsStringAsync());
+                }
+
+                if (string.IsNullOrEmpty(paymentResponse.TransactionNumber))
+                {
+                    throw new ApiResponseParseException("Bank payment was successful but did not return a transaction number.");
+                }
+                return paymentResponse.TransactionNumber;
             }
-            return root.TryGetProperty("transaction_number", out var txn) ? txn.GetString() ?? string.Empty : string.Empty;
+            catch (Exception ex) when (ex is not ApiClientException and not ApiResponseParseException)
+            {
+                throw;
+            }
         }
     }
 }
