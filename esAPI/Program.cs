@@ -97,16 +97,28 @@ app.UseHttpsRedirection();
 
 app.Use(async (context, next) =>
 {
-    var cert = await context.Connection.GetClientCertificateAsync();
-    if (cert != null)
+    // Check for client certificate info from ALB headers
+    var clientCertHeader = context.Request.Headers["X-Forwarded-Client-Cert"].FirstOrDefault();
+    if (!string.IsNullOrEmpty(clientCertHeader))
     {
-        Console.WriteLine("Client cert CN: " + cert.GetNameInfo(X509NameType.SimpleName, false));
-        Console.WriteLine("Issuer: " + cert.Issuer);
-        Console.WriteLine("Thumbprint: " + cert.Thumbprint);
+        Console.WriteLine("🔧 ALB Client cert header: " + clientCertHeader);
+        // Parse the certificate info from the header
+        // ALB forwards the certificate in a specific format
     }
     else
     {
-        Console.WriteLine("❌ No client cert received.");
+        // Fallback to direct connection (for development)
+        var cert = await context.Connection.GetClientCertificateAsync();
+        if (cert != null)
+        {
+            Console.WriteLine("Client cert CN: " + cert.GetNameInfo(X509NameType.SimpleName, false));
+            Console.WriteLine("Issuer: " + cert.Issuer);
+            Console.WriteLine("Thumbprint: " + cert.Thumbprint);
+        }
+        else
+        {
+            Console.WriteLine("❌ No client cert received (direct connection).");
+        }
     }
 
     await next();

@@ -43,6 +43,9 @@ namespace esAPI.Clients
                 var json = System.Text.Json.JsonSerializer.Serialize(requestBody);
                 request.Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
                 
+                Console.WriteLine($"🔧 CommercialBankClient: Request body: {json}");
+                Console.WriteLine($"🔧 CommercialBankClient: Sending request with client certificate...");
+                
                 var response = await _client.SendAsync(request);
                 Console.WriteLine($"🔧 CommercialBankClient: Response status: {response.StatusCode}");
                 Console.WriteLine($"🔧 CommercialBankClient: Response URL: {response.RequestMessage?.RequestUri}");
@@ -51,6 +54,7 @@ namespace esAPI.Clients
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ CommercialBankClient: Exception during POST: {ex.GetType().Name}: {ex.Message}");
+                Console.WriteLine($"❌ CommercialBankClient: Inner exception: {ex.InnerException?.Message}");
                 throw;
             }
         }
