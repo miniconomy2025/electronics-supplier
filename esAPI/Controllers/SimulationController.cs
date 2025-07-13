@@ -63,7 +63,7 @@ namespace esAPI.Controllers
             }
             if (result.Error == "accountAlreadyExists")
             {
-                return Ok(new { message = "Simulation started, account already exists, notification URL set." });
+                return Ok(new { message = "Simulation started, account already exists, notification URL set.", account_number = result.AccountNumber });
             }
             return Ok("Simulation started and notification URL set.");
         }

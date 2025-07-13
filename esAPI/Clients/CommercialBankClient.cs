@@ -8,6 +8,7 @@ namespace esAPI.Clients
         Task<string?> RequestLoanAsync(decimal amount);
 
         Task<bool> SetNotificationUrlAsync();
+        Task<string?> GetAccountDetailsAsync();
     }
 
     public class CommercialBankClient(IHttpClientFactory factory) : ICommercialBankClient
@@ -75,6 +76,15 @@ namespace esAPI.Clients
                 throw new Exception($"Payment failed: {errorMsg}");
             }
             return root.TryGetProperty("transaction_number", out var txn) ? txn.GetString() ?? string.Empty : string.Empty;
+        }
+
+        public async Task<string?> GetAccountDetailsAsync()
+        {
+            var response = await _client.GetAsync("/account/me");
+            response.EnsureSuccessStatusCode();
+            var content = await response.Content.ReadAsStringAsync();
+            using var doc = System.Text.Json.JsonDocument.Parse(content);
+            return doc.RootElement.TryGetProperty("account_number", out var accNum) ? accNum.GetString() : null;
         }
     }
 }

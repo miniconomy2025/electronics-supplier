@@ -77,8 +77,19 @@ namespace esAPI.Services
             }
             else if (accountResponse.StatusCode == HttpStatusCode.Conflict)
             {
-                _logger.LogWarning("Bank account already exists (409). Proceeding as success.");
-                return new OrchestratorResult { Success = false, Error = "accountAlreadyExists" };
+                _logger.LogWarning("Bank account already exists (409). Retrieving existing account details.");
+                var existingAccountNumber = await _bankClient.GetAccountDetailsAsync();
+                if (!string.IsNullOrEmpty(existingAccountNumber))
+                {
+                    _logger.LogInformation("Retrieved existing account number: {AccountNumber}", existingAccountNumber);
+                    await StoreAccountNumberInDbAsync(existingAccountNumber);
+                    return new OrchestratorResult { Success = false, Error = "accountAlreadyExists", AccountNumber = existingAccountNumber };
+                }
+                else
+                {
+                    _logger.LogError("Failed to retrieve existing account details.");
+                    return new OrchestratorResult { Success = false, Error = "Failed to retrieve existing account details" };
+                }
             }
             else
             {
