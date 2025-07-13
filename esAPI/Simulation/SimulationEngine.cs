@@ -35,6 +35,8 @@ namespace esAPI.Simulation
             await _bankService.GetAndStoreBalance(dayNumber);
             _logger.LogInformation("✅ Bank balance stored for day {DayNumber}", dayNumber);
 
+            // COMMENTED OUT: Other business logic for now
+            /*
             // 2. Check machine inventory and buy if none
             _logger.LogInformation("🔧 Checking machine availability for day {DayNumber}", dayNumber);
             var machineTask = new MachineTask(_context);
@@ -45,6 +47,8 @@ namespace esAPI.Simulation
             // - MaterialTask
             // - ProductionTask
             // - OrderTask
+            */
+
             if (OnDayAdvanced != null)
             {
                 _logger.LogInformation("📡 Triggering OnDayAdvanced event for day {DayNumber}", dayNumber);
@@ -65,6 +69,8 @@ namespace esAPI.Simulation
             }
             _logger.LogInformation("✅ Bank account setup completed");
 
+            // COMMENTED OUT: Startup cost planning for now
+            /*
             // _logger.LogInformation("💰 Generating startup cost plans");
             // var allPlans = await _costCalculator.GenerateAllPossibleStartupPlansAsync();
             // if (!allPlans.Any())
@@ -76,6 +82,7 @@ namespace esAPI.Simulation
 
             // var bestPlan = allPlans.OrderBy(p => p.TotalCost).First();
             // _logger.LogInformation("💡 Selected best startup plan with cost: {TotalCost}", bestPlan.TotalCost);
+            */
 
             _logger.LogInformation("🏦 Requesting loan for startup costs");
             const decimal loanAmount = 20000000m; // 20 million
