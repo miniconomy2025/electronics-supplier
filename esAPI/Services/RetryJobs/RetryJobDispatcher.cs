@@ -42,24 +42,57 @@ namespace esAPI.Services
                 {
                     try
                     {
-                        var root = JsonSerializer.Deserialize<JsonElement>(msg.Body);
-                        var typeKey = root.GetProperty("JobType").GetString();
-
-                        if (!_jobTypes.TryGetValue(typeKey!, out var jobType))
+                        if (string.IsNullOrWhiteSpace(msg.Body))
                         {
-                            _logger.LogWarning("❌ Unknown JobType: {Type}", typeKey);
+                            _logger.LogWarning("Received empty message body. Skipping.");
                             continue;
                         }
 
-                        var job = (IRetryJob)JsonSerializer.Deserialize(msg.Body, jobType)!;
+                        var root = JsonSerializer.Deserialize<JsonElement>(msg.Body);
+
+                        if (!root.TryGetProperty("JobType", out var jobTypeProperty))
+                        {
+                            _logger.LogWarning("Message does not contain 'JobType' property. Skipping.");
+                            continue;
+                        }
+
+                        var typeKey = jobTypeProperty.GetString();
+                        if (string.IsNullOrEmpty(typeKey))
+                        {
+                            _logger.LogWarning("JobType is null or empty. Skipping.");
+                            continue;
+                        }
+
+                        if (!_jobTypes.TryGetValue(typeKey, out var jobType))
+                        {
+                            _logger.LogWarning("Unknown JobType: {Type}", typeKey);
+                            continue;
+                        }
+
+                        var job = (IRetryJob?)JsonSerializer.Deserialize(msg.Body, jobType);
+                        if (job == null)
+                        {
+                            _logger.LogWarning("Failed to deserialize job of type {TypeKey}. Skipping.", typeKey);
+                            continue;
+                        }
 
                         using var scope = _serviceProvider.CreateScope();
                         var handlerType = typeof(IRetryHandler<>).MakeGenericType(jobType);
-                        var handler = scope.ServiceProvider.GetRequiredService(handlerType);
+                        var handler = scope.ServiceProvider.GetService(handlerType);
+                        if (handler == null)
+                        {
+                            _logger.LogWarning("Handler not found for job type {TypeKey}. Skipping.", typeKey);
+                            continue;
+                        }
+
                         var method = handlerType.GetMethod("HandleAsync");
+                        if (method == null)
+                        {
+                            _logger.LogWarning("HandleAsync method not found on handler for {TypeKey}. Skipping.", typeKey);
+                            continue;
+                        }
 
                         var handled = await (Task<bool>)method.Invoke(handler, new object[] { job, stoppingToken })!;
-
                         if (handled)
                         {
                             await _sqs.DeleteMessageAsync(_queueUrl, msg.ReceiptHandle, stoppingToken);
@@ -71,6 +104,7 @@ namespace esAPI.Services
                         _logger.LogError(ex, "❌ Failed to process retry job");
                     }
                 }
+
             }
         }
     }
