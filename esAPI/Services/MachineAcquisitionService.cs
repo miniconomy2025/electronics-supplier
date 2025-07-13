@@ -10,7 +10,7 @@ namespace esAPI.Services
         Task<bool> CheckTHOHForMachines();
         Task<(int? orderId, int quantity)> PurchaseMachineViaBank();
         Task QueryOrderDetailsFromTHOH();
-        Task<int> PlaceBulkLogisticsPickup(int thohOrderId, int quantity);
+        Task PlaceBulkLogisticsPickup(int thohOrderId, int quantity);
 
     }
 
@@ -101,22 +101,12 @@ namespace esAPI.Services
             
             
             // 6. Place pickup with Bulk Logistics
-            int pickupRequestId = await PlaceBulkLogisticsPickup(orderId.Value, toBuy);
-
-            // 7. Save pickupRequestId to DB
-            var orderEntity = await _context.MachineOrders
-                .FirstOrDefaultAsync(o => o.ExternalOrderId == orderId && o.Supplier.CompanyName.ToLower() == "thoh");
-
-            if (orderEntity != null)
-            {
-                orderEntity.PickupRequestId = pickupRequestId;
-                await _context.SaveChangesAsync();
-            }
+            await PlaceBulkLogisticsPickup(orderId.Value, toBuy);
 
             return (orderId, toBuy);
         }
 
-        public async Task<int> PlaceBulkLogisticsPickup(int thohOrderId, int quantity)
+        public async Task PlaceBulkLogisticsPickup(int thohOrderId, int quantity)
         {
             // 1. Place pickup request with Bulk Logistics
             var bulkClient = _httpClientFactory.CreateClient("bulk-logistics");
@@ -148,8 +138,19 @@ namespace esAPI.Services
                 $"Pickup {quantity} electronics_machine from THOH order {thohOrderId}"
             );
 
-            return pickupRequestId;
+            // 3. Store the pickup request in the pickup_requests table
+            var pickupRequest = new Models.PickupRequest
+            {
+                ExternalRequestId = thohOrderId,
+                Type = Models.Enums.PickupRequest.PickupType.MACHINE,
+                Quantity = quantity,
+                PlacedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+            };
+
+            _context.PickupRequests.Add(pickupRequest);
+            await _context.SaveChangesAsync();
         }
+
 
         public Task QueryOrderDetailsFromTHOH() => Task.CompletedTask;
     }

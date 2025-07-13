@@ -55,6 +55,7 @@ CREATE TABLE material_orders (
   pickup_request_id INT,
   material_id INT NOT NULL,
   remaining_amount INT NOT NULL,
+  total_amount INT NOT NULL,
   order_status INT NOT NULL DEFAULT 1,
   ordered_at NUMERIC(1000,3) NOT NULL,
   received_at NUMERIC(1000,3)
@@ -100,6 +101,7 @@ CREATE TABLE machine_orders (
   external_order_id INT,
   pickup_request_id INT,
   remaining_amount INT NOT NULL,
+  total_amount INT NOT NULL,
   order_status INT NOT NULL DEFAULT 1,
   placed_at NUMERIC(1000,3) NOT NULL,
   received_at NUMERIC(1000,3)
@@ -218,3 +220,14 @@ CREATE TABLE payments (
   order_id INT,
   CONSTRAINT fk_order FOREIGN KEY(order_id) REFERENCES electronics_orders(order_id)
 );
+
+CREATE TYPE request_type AS ENUM ('MACHINE', 'COPPER', 'SILICONE');
+
+CREATE TABLE pickup_requests (
+  request_id SERIAL PRIMARY KEY,
+  external_request_id INT NOT NULL,
+  type request_type NOT NULL,
+  quantity INT NOT NULL,  -- The amount of KGs or units
+  placed_at NUMERIC(1000, 3) NOT NULL
+);
+

@@ -122,6 +122,11 @@ namespace esAPI.Services
             var pickupResp = await _logisticsClient.ArrangePickupAsync(pickupReq);
             if (pickupResp == null || string.IsNullOrEmpty(pickupResp.BulkLogisticsBankAccountNumber)) return false;
 
+            var pickupRequest = await CreatePickupRequestAsync(order.OrderId, quantity, materialName);
+
+            if (pickupRequest == null)
+                return false;
+
             var paymentSuccess = await _bankClient.MakePaymentAsync(pickupResp.BulkLogisticsBankAccountNumber, "commercial-bank", pickupResp.Cost, $"Pickup for order {order.OrderId}");
 
             return paymentSuccess == string.Empty;
@@ -188,5 +193,33 @@ namespace esAPI.Services
 
             return 0;
         }
+
+        private async Task<PickupRequest?> CreatePickupRequestAsync(int externalOrderId, int quantity, string materialName)
+        {
+            Models.Enums.PickupRequest.PickupType pickupType;
+
+            // Map the materialName string to PickupType enum
+            if (materialName.Equals("copper", StringComparison.OrdinalIgnoreCase))
+                pickupType = Models.Enums.PickupRequest.PickupType.COPPER;
+            else if (materialName.Equals("silicone", StringComparison.OrdinalIgnoreCase))
+                pickupType = Models.Enums.PickupRequest.PickupType.SILICONE;
+            else
+                throw new ArgumentException($"Unsupported material name: {materialName}");
+
+            var pickupRequest = new PickupRequest
+            {
+                ExternalRequestId = externalOrderId,
+                Type = pickupType,
+                Quantity = quantity,
+                PlacedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+            };
+
+            _dbContext.PickupRequests.Add(pickupRequest);
+            await _dbContext.SaveChangesAsync();
+
+            return pickupRequest;
+        }
+
+
     }
 }

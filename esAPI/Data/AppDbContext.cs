@@ -22,6 +22,8 @@ namespace esAPI.Data
         public DbSet<ElectronicsOrder> ElectronicsOrders { get; set; }
         public DbSet<ElectronicsStatus> ElectronicsStatuses { get; set; }
 
+        public DbSet<PickupRequest> PickupRequests { get; set; }
+
         public DbSet<OrderStatus> OrderStatuses { get; set; }
         public DbSet<LookupValue> LookupValues { get; set; }
         public DbSet<SimulationModel> Simulations { get; set; }
