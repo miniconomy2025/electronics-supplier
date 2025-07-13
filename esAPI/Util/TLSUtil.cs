@@ -72,17 +72,49 @@ public class TLSUtil
 
     private static bool ValidateCertificateWithRoot(X509Certificate2 cert, X509Chain chain, SslPolicyErrors errors, X509Certificate2 rootCA)
     {
+        Console.WriteLine($"🔍 Certificate validation - Errors: {errors}");
+        Console.WriteLine($"🔍 Certificate subject: {cert?.Subject}");
+        Console.WriteLine($"🔍 Certificate issuer: {cert?.Issuer}");
+        Console.WriteLine($"🔍 Certificate thumbprint: {cert?.Thumbprint}");
+        Console.WriteLine($"🔍 Root CA thumbprint: {rootCA?.Thumbprint}");
+        
         if (errors != SslPolicyErrors.None)
+        {
+            Console.WriteLine($"❌ Certificate validation failed due to SSL policy errors: {errors}");
             return false;
+        }
 
-        chain.ChainPolicy.ExtraStore.Add(rootCA);
-        chain.ChainPolicy.VerificationFlags = X509VerificationFlags.AllowUnknownCertificateAuthority;
-        chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
+        try
+        {
+            chain.ChainPolicy.ExtraStore.Add(rootCA);
+            chain.ChainPolicy.VerificationFlags = X509VerificationFlags.AllowUnknownCertificateAuthority;
+            chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
 
-        var isValid = chain.Build(cert);
-        var actualRoot = chain.ChainElements[^1].Certificate;
-
-        return isValid && actualRoot.Thumbprint == rootCA.Thumbprint;
+            var isValid = chain.Build(cert);
+            Console.WriteLine($"🔍 Chain build result: {isValid}");
+            
+            if (chain.ChainElements.Count > 0)
+            {
+                var actualRoot = chain.ChainElements[^1].Certificate;
+                Console.WriteLine($"🔍 Actual root thumbprint: {actualRoot.Thumbprint}");
+                Console.WriteLine($"🔍 Expected root thumbprint: {rootCA.Thumbprint}");
+                
+                var thumbprintMatch = actualRoot.Thumbprint == rootCA.Thumbprint;
+                Console.WriteLine($"🔍 Thumbprint match: {thumbprintMatch}");
+                
+                return isValid && thumbprintMatch;
+            }
+            else
+            {
+                Console.WriteLine("❌ No chain elements found");
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Exception during certificate validation: {ex.Message}");
+            return false;
+        }
     }
 
     // Single method to create secure HttpClient: send our client cert, validate server cert with shared root
