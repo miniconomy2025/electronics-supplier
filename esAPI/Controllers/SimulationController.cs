@@ -301,15 +301,30 @@ namespace esAPI.Controllers
         {
             try
             {
-                // Store the account number in the database
-                // You might want to create a dedicated table for this or store it in an existing table
                 _logger.LogInformation("💾 Storing bank account number in database: {AccountNumber}", accountNumber);
                 
-                // For now, we'll just log it. You can implement the actual database storage as needed
-                // Example: await _context.BankAccounts.AddAsync(new BankAccount { AccountNumber = accountNumber });
-                // await _context.SaveChangesAsync();
+                // Parse the JSON response to extract the account number
+                var responseData = System.Text.Json.JsonSerializer.Deserialize<JsonElement>(accountNumber);
+                var actualAccountNumber = responseData.GetProperty("account_number").GetString();
                 
-                _logger.LogInformation("✅ Bank account number stored successfully");
+                if (string.IsNullOrWhiteSpace(actualAccountNumber))
+                {
+                    _logger.LogError("❌ No account number found in response");
+                    return;
+                }
+                
+                // Get the company record and update it
+                var company = await _context.Companies.FirstOrDefaultAsync(c => c.CompanyId == 1);
+                if (company == null)
+                {
+                    _logger.LogError("❌ Electronics Supplier company (ID=1) not found in database");
+                    return;
+                }
+                
+                company.BankAccountNumber = actualAccountNumber;
+                await _context.SaveChangesAsync();
+                
+                _logger.LogInformation("✅ Bank account number stored successfully in Company table: {AccountNumber}", actualAccountNumber);
             }
             catch (Exception ex)
             {
