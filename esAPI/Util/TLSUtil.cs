@@ -18,6 +18,24 @@ public class TLSUtil
 
     public TLSUtil(WebApplicationBuilder builder)
     {
+        Console.WriteLine($"🔧 TLSUtil: Loading certificates...");
+        Console.WriteLine($"🔧 TLSUtil: Root CA path: ../certs/root-ca.crt");
+        Console.WriteLine($"🔧 TLSUtil: Client cert path: ../certs/electronics-supplier-client.pfx");
+        Console.WriteLine($"🔧 TLSUtil: Server cert path: ../certs/electronics-supplier-server.pfx");
+        
+        try
+        {
+            Console.WriteLine($"🔧 TLSUtil: Root CA thumbprint: {SharedRootCA.Thumbprint}");
+            Console.WriteLine($"🔧 TLSUtil: Client cert thumbprint: {ClientCert.Thumbprint}");
+            Console.WriteLine($"🔧 TLSUtil: Server cert thumbprint: {ServerCert.Thumbprint}");
+            Console.WriteLine($"🔧 TLSUtil: Client cert subject: {ClientCert.Subject}");
+            Console.WriteLine($"🔧 TLSUtil: Client cert issuer: {ClientCert.Issuer}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ TLSUtil: Error loading certificates: {ex.Message}");
+        }
+        
         builder.WebHost.ConfigureKestrel(options =>
         {
             options.ConfigureHttpsDefaults(httpsOptions =>
@@ -70,6 +88,11 @@ public class TLSUtil
     // Single method to create secure HttpClient: send our client cert, validate server cert with shared root
     public void AddSecureHttpClient(IServiceCollection services, string name, string baseUrl)
     {
+        Console.WriteLine($"🔧 TLSUtil: Configuring HttpClient '{name}' for {baseUrl}");
+        Console.WriteLine($"🔧 TLSUtil: Client certificate thumbprint: {ClientCert.Thumbprint}");
+        Console.WriteLine($"🔧 TLSUtil: Client certificate subject: {ClientCert.Subject}");
+        Console.WriteLine($"🔧 TLSUtil: Client certificate issuer: {ClientCert.Issuer}");
+        
         services.AddHttpClient(name, client =>
         {
             client.BaseAddress = new Uri(baseUrl);
@@ -80,11 +103,20 @@ public class TLSUtil
 
             // Present our client cert when calling other APIs
             handler.ClientCertificates.Add(ClientCert);
+            Console.WriteLine($"🔧 TLSUtil: Added client certificate to handler for '{name}'");
+            Console.WriteLine($"🔧 TLSUtil: Handler client certificates count: {handler.ClientCertificates.Count}");
 
             // Validate server cert (their server cert) with shared root CA
             handler.ServerCertificateCustomValidationCallback = (msg, cert, chain, errors) =>
-                ValidateCertificateWithRoot(cert, chain, errors, SharedRootCA);
+            {
+                Console.WriteLine($"🔧 TLSUtil: Server certificate validation for {msg.RequestUri}");
+                Console.WriteLine($"🔧 TLSUtil: Server cert subject: {cert?.Subject}");
+                Console.WriteLine($"🔧 TLSUtil: Server cert issuer: {cert?.Issuer}");
+                Console.WriteLine($"🔧 TLSUtil: SSL errors: {errors}");
+                return ValidateCertificateWithRoot(cert, chain, errors, SharedRootCA);
+            };
 
+            Console.WriteLine($"🔧 TLSUtil: HttpClient handler configured for '{name}'");
             return handler;
         });
     }
