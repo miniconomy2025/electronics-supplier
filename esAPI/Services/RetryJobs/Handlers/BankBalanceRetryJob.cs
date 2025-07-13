@@ -1,10 +1,12 @@
+using System.Text.Json.Serialization;
+
 namespace esAPI.Services
 {
     public class BankBalanceRetryJob : IRetryJob
-{
-    public string JobType => "BankBalanceRetry";
-    public int RetryAttempt { get; set; }
-    public int SimulationDay { get; set; }
-}
-
+    {
+        [JsonPropertyName("JobType")]
+        public string JobType { get; set; } = "BankBalanceRetry";
+        public int RetryAttempt { get; set; }
+        public int SimulationDay { get; set; }
+    }
 }
