@@ -17,11 +17,41 @@ namespace esAPI.Clients
 
         public async Task<decimal> GetAccountBalanceAsync()
         {
+            Console.WriteLine($"🔧 CommercialBankClient: Checking account balance...");
             var response = await _client.GetAsync("api/account/me/balance");
-            response.EnsureSuccessStatusCode();
+            Console.WriteLine($"🔧 CommercialBankClient: Balance response status: {response.StatusCode}");
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"❌ CommercialBankClient: Failed to get balance. Status: {response.StatusCode}");
+                return 0m;
+            }
+            
             var content = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"🔧 CommercialBankClient: Balance response content: {content}");
+            
             using var doc = System.Text.Json.JsonDocument.Parse(content);
-            return doc.RootElement.TryGetProperty("balance", out var bal) ? bal.GetDecimal() : 0m;
+            
+            // Check if the response indicates success
+            if (doc.RootElement.TryGetProperty("success", out var successProp) && successProp.GetBoolean())
+            {
+                if (doc.RootElement.TryGetProperty("balance", out var balanceProp))
+                {
+                    var balance = balanceProp.GetDecimal();
+                    Console.WriteLine($"✅ CommercialBankClient: Account balance: {balance}");
+                    return balance;
+                }
+                else
+                {
+                    Console.WriteLine($"❌ CommercialBankClient: Success response but no balance found");
+                    return 0m;
+                }
+            }
+            else
+            {
+                Console.WriteLine($"❌ CommercialBankClient: Balance request failed - success field is false or missing");
+                return 0m;
+            }
         }
 
 

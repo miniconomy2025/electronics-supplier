@@ -57,26 +57,37 @@ namespace esAPI.Services
                 
                 _logger.LogInformation("✅ Bank account setup completed successfully");
                 
-                // Request loan immediately after bank account setup
-                _logger.LogInformation("💰 Requesting startup loan...");
-                const decimal initialLoanAmount = 20000000m; // 20 million
-                string? loanSuccess = await _bankClient.RequestLoanAsync(initialLoanAmount);
-                if (loanSuccess == null)
+                // Check current balance before requesting loan
+                _logger.LogInformation("💰 Checking current account balance...");
+                var currentBalance = await _bankClient.GetAccountBalanceAsync();
+                _logger.LogInformation("💰 Current account balance: {Balance}", currentBalance);
+                
+                if (currentBalance == 0)
                 {
-                    _logger.LogWarning("⚠️ Initial loan request failed, trying with smaller amount...");
-                    // Try with a smaller amount if the initial request fails
-                    const decimal fallbackLoanAmount = 10000000m; // 10 million
-                    loanSuccess = await _bankClient.RequestLoanAsync(fallbackLoanAmount);
+                    _logger.LogInformation("💰 Balance is 0, requesting startup loan...");
+                    const decimal initialLoanAmount = 20000000m; // 20 million
+                    string? loanSuccess = await _bankClient.RequestLoanAsync(initialLoanAmount);
                     if (loanSuccess == null)
                     {
-                        _logger.LogError("❌ Failed to request startup loan with both amounts");
-                        return (false, null, "Failed to request startup loan");
+                        _logger.LogWarning("⚠️ Initial loan request failed, trying with smaller amount...");
+                        // Try with a smaller amount if the initial request fails
+                        const decimal fallbackLoanAmount = 10000000m; // 10 million
+                        loanSuccess = await _bankClient.RequestLoanAsync(fallbackLoanAmount);
+                        if (loanSuccess == null)
+                        {
+                            _logger.LogError("❌ Failed to request startup loan with both amounts");
+                            return (false, null, "Failed to request startup loan");
+                        }
+                        _logger.LogInformation("✅ Startup loan requested successfully with fallback amount: {LoanNumber}", loanSuccess);
                     }
-                    _logger.LogInformation("✅ Startup loan requested successfully with fallback amount: {LoanNumber}", loanSuccess);
+                    else
+                    {
+                        _logger.LogInformation("✅ Startup loan requested successfully: {LoanNumber}", loanSuccess);
+                    }
                 }
                 else
                 {
-                    _logger.LogInformation("✅ Startup loan requested successfully: {LoanNumber}", loanSuccess);
+                    _logger.LogInformation("💰 Balance is {Balance}, no loan needed", currentBalance);
                 }
 
                 // Persist simulation start to the database
