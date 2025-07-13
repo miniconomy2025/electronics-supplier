@@ -14,11 +14,11 @@ namespace esAPI.Models
                 [Column("supplier_id")]
                 public int SupplierId { get; set; }
 
-        [Column("external_order_id")]
-        public int? ExternalOrderId { get; set; }
+                [Column("external_order_id")]
+                public int? ExternalOrderId { get; set; }
 
-        [Column("pickup_request_id")]
-        public int? PickupRequestId { get; set; }
+                [Column("pickup_request_id")]
+                public int? PickupRequestId { get; set; }
 
                 [Column("order_status")]
                 public int OrderStatusId { get; set; }

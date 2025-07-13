@@ -151,20 +151,6 @@ namespace esAPI.Services
                 throw new ProcurementStepFailedException($"Payment to supplier failed: {ex.Message}", "PAYMENT_FAILED", ex);
             }
 
-            var newOrder = new MaterialOrder
-            {
-                SupplierId = supplierCompanyId.Value,
-                MaterialId = materialId.Value,
-                ExternalOrderId = supplierResponse.OrderId,
-                RemainingAmount = quantity,
-                OrderStatusId = pendingStatusId,
-                OrderedAt = 1.0m,
-            };
-
-            _dbContext.MaterialOrders.Add(newOrder);
-            await _dbContext.SaveChangesAsync();
-
-            return newOrder;
         }
 
         private async Task ArrangeAndPayForLogisticsAsync(MaterialOrder localOrder, SupplierOrderResponse supplierOrder, string supplierName)
