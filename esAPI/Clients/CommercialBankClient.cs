@@ -4,11 +4,13 @@ namespace esAPI.Clients
     {
         Task<decimal> GetAccountBalanceAsync();
         Task<string?> CreateAccountAsync();
+        Task<HttpResponseMessage> CreateAccountAsync(object requestBody);
         Task<string> MakePaymentAsync(string toAccountNumber, string toBankName, decimal amount, string description);
         Task<string?> RequestLoanAsync(decimal amount);
 
         Task<bool> SetNotificationUrlAsync();
         Task<string?> GetAccountDetailsAsync();
+        Task<HttpResponseMessage> GetAccountAsync();
     }
 
     public class CommercialBankClient(IHttpClientFactory factory) : ICommercialBankClient
@@ -43,6 +45,11 @@ namespace esAPI.Clients
             var content = await response.Content.ReadAsStringAsync();
             using var doc = System.Text.Json.JsonDocument.Parse(content);
             return doc.RootElement.TryGetProperty("account_number", out var accNum) ? accNum.GetString() : null;
+        }
+
+        public async Task<HttpResponseMessage> CreateAccountAsync(object requestBody)
+        {
+            return await _client.PostAsJsonAsync("/account", requestBody);
         }
 
         public async Task<string?> RequestLoanAsync(decimal amount)
@@ -85,6 +92,11 @@ namespace esAPI.Clients
             var content = await response.Content.ReadAsStringAsync();
             using var doc = System.Text.Json.JsonDocument.Parse(content);
             return doc.RootElement.TryGetProperty("account_number", out var accNum) ? accNum.GetString() : null;
+        }
+
+        public async Task<HttpResponseMessage> GetAccountAsync()
+        {
+            return await _client.GetAsync("/account/me");
         }
     }
 }
