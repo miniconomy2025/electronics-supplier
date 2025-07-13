@@ -14,7 +14,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Configure TLS settings
 var tlsUtil = new TLSUtil(builder);
 
-tlsUtil.AddSecureHttpClient(builder.Services, "commercial-bank", "https://commerical-bank-api.projects.bbdgrad.com/api");
+tlsUtil.AddSecureHttpClient(builder.Services, "commercial-bank", "https://commercial-bank-api.projects.bbdgrad.com/api");
 tlsUtil.AddSecureHttpClient(builder.Services, "bulk-logistics", "https://bulk-logistics-api.projects.bbdgrad.com/api");
 tlsUtil.AddSecureHttpClient(builder.Services, "thoh", "https://thoh-api.projects.bbdgrad.com");
 tlsUtil.AddSecureHttpClient(builder.Services, "recycler", "https://recycler-api.projects.bbdgrad.com");
