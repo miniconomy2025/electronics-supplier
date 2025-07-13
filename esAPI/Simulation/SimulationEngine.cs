@@ -91,6 +91,10 @@ namespace esAPI.Simulation
             var machineTask = new MachineTask(_context);
             await machineTask.EnsureMachineAvailabilityAsync(dayNumber);
 
+            // Add other tasks here later:
+            // - MaterialTask
+            // - ProductionTask
+            // - OrderTask
             // 3. Run the main daily orchestration (acquiring materials, producing, etc.)
             await _dayOrchestrator.RunDayAsync(dayNumber);
         }
