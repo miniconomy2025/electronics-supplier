@@ -12,6 +12,7 @@ namespace esAPI.Services
         private readonly BankAccountService _bankAccountService;
         private readonly ISimulationStateService _stateService;
         private readonly OrderExpirationBackgroundService _orderExpirationBackgroundService;
+        private readonly ICommercialBankClient _bankClient;
         private readonly ILogger<SimulationStartupService> _logger;
 
         public SimulationStartupService(
@@ -19,12 +20,14 @@ namespace esAPI.Services
             BankAccountService bankAccountService,
             ISimulationStateService stateService,
             OrderExpirationBackgroundService orderExpirationBackgroundService,
+            ICommercialBankClient bankClient,
             ILogger<SimulationStartupService> logger)
         {
             _context = context;
             _bankAccountService = bankAccountService;
             _stateService = stateService;
             _orderExpirationBackgroundService = orderExpirationBackgroundService;
+            _bankClient = bankClient;
             _logger = logger;
         }
 
@@ -52,6 +55,17 @@ namespace esAPI.Services
                 }
                 
                 _logger.LogInformation("✅ Bank account setup completed successfully");
+                
+                // Request loan immediately after bank account setup
+                _logger.LogInformation("💰 Requesting startup loan...");
+                const decimal loanAmount = 20000000m; // 20 million
+                string? loanSuccess = await _bankClient.RequestLoanAsync(loanAmount);
+                if (loanSuccess == null)
+                {
+                    _logger.LogError("❌ Failed to request startup loan");
+                    return (false, null, "Failed to request startup loan");
+                }
+                _logger.LogInformation("✅ Startup loan requested successfully: {LoanNumber}", loanSuccess);
 
                 // Persist simulation start to the database
                 await PersistSimulationStartAsync();
