@@ -17,7 +17,7 @@ namespace esAPI.Clients
 
         public async Task<decimal> GetAccountBalanceAsync()
         {
-            var response = await _client.GetAsync("/api/account/me/balance");
+            var response = await _client.GetAsync("api/account/me/balance");
             response.EnsureSuccessStatusCode();
             var content = await response.Content.ReadAsStringAsync();
             using var doc = System.Text.Json.JsonDocument.Parse(content);
@@ -36,7 +36,7 @@ namespace esAPI.Clients
             try
             {
                 // Use the full URL directly to ensure it's correct
-                var fullUrl = $"{_client.BaseAddress}/api/account";
+                var fullUrl = $"{_client.BaseAddress}api/account";
                 Console.WriteLine($"🔧 CommercialBankClient: Using full URL: {fullUrl}");
                 
                 var request = new HttpRequestMessage(HttpMethod.Post, fullUrl);
