@@ -94,7 +94,7 @@ namespace esAPI.Clients
 
         public async Task<string?> GetAccountDetailsAsync()
         {
-            var response = await _client.GetAsync("/account/me");
+            var response = await _client.GetAsync("api/account/me");
             response.EnsureSuccessStatusCode();
             var content = await response.Content.ReadAsStringAsync();
             using var doc = System.Text.Json.JsonDocument.Parse(content);
@@ -103,7 +103,7 @@ namespace esAPI.Clients
 
         public async Task<HttpResponseMessage> GetAccountAsync()
         {
-            return await _client.GetAsync("/account/me");
+            return await _client.GetAsync("api/account/me");
         }
     }
 }
