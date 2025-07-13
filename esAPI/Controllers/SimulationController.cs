@@ -38,23 +38,7 @@ namespace esAPI.Controllers
                 return StatusCode(502, $"Failed to start simulation. Error: {result.Error}");
             }
             
-            return Ok(new { message = "Simulation started and bank account setup completed.", account_number = result.AccountNumber });
-        }
-
-        // POST /simulation/manual-backdoor - manually start the simulation with bank account setup
-        [HttpPost("manual-backdoor")]
-        public async Task<IActionResult> ManualStartSimulation()
-        {
-            _logger.LogInformation("🚀 ===== MANUAL BACKDOOR ENDPOINT CALLED =====");
-            
-            var result = await _simulationStartupService.StartSimulationAsync();
-            if (!result.Success)
-            {
-                _logger.LogError("❌ Failed to start simulation. Error: {Error}", result.Error);
-                return StatusCode(502, $"Failed to start simulation. Error: {result.Error}");
-            }
-            
-            return Ok(new { message = "Simulation started via manual backdoor with bank account setup completed.", account_number = result.AccountNumber });
+            return Ok(new { message = "Simulation started", account_number = result.AccountNumber });
         }
 
         // GET /simulation - get current simulation state
