@@ -69,12 +69,6 @@ namespace esAPI.Clients
             var response = await _client.PostAsJsonAsync("api/loan", requestBody);
             Console.WriteLine($"🔧 CommercialBankClient: Loan request response status: {response.StatusCode}");
             
-            if (!response.IsSuccessStatusCode)
-            {
-                Console.WriteLine($"❌ CommercialBankClient: Loan request failed with status: {response.StatusCode}");
-                return null;
-            }
-            
             var content = await response.Content.ReadAsStringAsync();
             Console.WriteLine($"🔧 CommercialBankClient: Loan response content: {content}");
             
@@ -97,7 +91,28 @@ namespace esAPI.Clients
             }
             else
             {
-                Console.WriteLine($"❌ CommercialBankClient: Loan request failed - success field is false or missing");
+                // Handle failure response with detailed error information
+                var errorMessage = "Unknown error";
+                var amountRemaining = 0m;
+                
+                if (doc.RootElement.TryGetProperty("error", out var errorProp))
+                {
+                    errorMessage = errorProp.GetString() ?? "Unknown error";
+                }
+                
+                if (doc.RootElement.TryGetProperty("amount_remaining", out var amountProp))
+                {
+                    amountRemaining = amountProp.GetDecimal();
+                }
+                
+                Console.WriteLine($"❌ CommercialBankClient: Loan request failed - Error: {errorMessage}, Amount remaining: {amountRemaining}");
+                
+                // If the loan was too large, we could potentially retry with the remaining amount
+                if (errorMessage == "loanTooLarge" && amountRemaining > 0)
+                {
+                    Console.WriteLine($"💡 CommercialBankClient: Loan was too large. Remaining amount available: {amountRemaining}");
+                }
+                
                 return null;
             }
         }
