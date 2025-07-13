@@ -28,10 +28,10 @@ namespace esAPI.Clients
 
         public async Task<HttpResponseMessage> CreateAccountAsync(object requestBody)
         {
-            Console.WriteLine($"🔧 CommercialBankClient: Making POST request to /account");
-            Console.WriteLine($"🔧 CommercialBankClient: Base address: {_client.BaseAddress}");
-            Console.WriteLine($"🔧 CommercialBankClient: Full URL: {_client.BaseAddress}/account");
-            Console.WriteLine($"🔧 CommercialBankClient: Request URI: {_client.BaseAddress}account");
+            // Console.WriteLine($"🔧 CommercialBankClient: Making POST request to /account");
+            // Console.WriteLine($"🔧 CommercialBankClient: Base address: {_client.BaseAddress}");
+            // Console.WriteLine($"🔧 CommercialBankClient: Full URL: {_client.BaseAddress}/account");
+            // Console.WriteLine($"🔧 CommercialBankClient: Request URI: {_client.BaseAddress}/account");
             
             try
             {
