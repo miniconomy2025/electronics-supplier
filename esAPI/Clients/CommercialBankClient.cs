@@ -37,9 +37,18 @@ namespace esAPI.Clients
             {
                 if (doc.RootElement.TryGetProperty("balance", out var balanceProp))
                 {
-                    var balance = balanceProp.GetDecimal();
-                    Console.WriteLine($"✅ CommercialBankClient: Account balance: {balance}");
-                    return balance;
+                    // Handle balance as string (e.g., "60000000.00") and parse to decimal
+                    var balanceString = balanceProp.GetString();
+                    if (decimal.TryParse(balanceString, out var balance))
+                    {
+                        Console.WriteLine($"✅ CommercialBankClient: Account balance: {balance}");
+                        return balance;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"❌ CommercialBankClient: Failed to parse balance string: {balanceString}");
+                        return 0m;
+                    }
                 }
                 else
                 {
