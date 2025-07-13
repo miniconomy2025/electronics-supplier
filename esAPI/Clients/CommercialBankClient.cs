@@ -49,7 +49,21 @@ namespace esAPI.Clients
 
         public async Task<HttpResponseMessage> CreateAccountAsync(object requestBody)
         {
-            return await _client.PostAsJsonAsync("/account", requestBody);
+            Console.WriteLine($"🔧 CommercialBankClient: Making POST request to /account");
+            Console.WriteLine($"🔧 CommercialBankClient: Base address: {_client.BaseAddress}");
+            Console.WriteLine($"🔧 CommercialBankClient: Full URL: {_client.BaseAddress}/account");
+            
+            try
+            {
+                var response = await _client.PostAsJsonAsync("/account", requestBody);
+                Console.WriteLine($"🔧 CommercialBankClient: Response status: {response.StatusCode}");
+                return response;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ CommercialBankClient: Exception during POST: {ex.GetType().Name}: {ex.Message}");
+                throw;
+            }
         }
 
         public async Task<string?> RequestLoanAsync(decimal amount)

@@ -235,7 +235,7 @@ namespace esAPI.Controllers
             return Ok(new { message = "Simulation stopped and all data deleted." });
         }
 
-        private async Task<(bool Success, string AccountNumber, string Error)> SetupBankAccountAsync()
+        private async Task<(bool Success, string? AccountNumber, string? Error)> SetupBankAccountAsync()
         {
             try
             {
@@ -247,6 +247,9 @@ namespace esAPI.Controllers
                     notification_url = "https://electronics-supplier-api.projects.bbdgrad.com/payments"
                 };
 
+                _logger.LogInformation("🏦 Request body: {@Request}", createAccountRequest);
+                _logger.LogInformation("🏦 About to make HTTP request to commercial bank...");
+                
                 var createResponse = await _bankClient.CreateAccountAsync(createAccountRequest);
                 
                 if (createResponse.IsSuccessStatusCode)
@@ -257,7 +260,7 @@ namespace esAPI.Controllers
                     // Store account number in database
                     await StoreBankAccountNumberAsync(accountNumber);
                     
-                    return (true, accountNumber, null);
+                    return (true, accountNumber, (string?)null);
                 }
                 else if (createResponse.StatusCode == System.Net.HttpStatusCode.Conflict)
                 {
@@ -273,24 +276,24 @@ namespace esAPI.Controllers
                         // Store account number in database
                         await StoreBankAccountNumberAsync(accountNumber);
                         
-                        return (true, accountNumber, null);
+                        return (true, accountNumber, (string?)null);
                     }
                     else
                     {
                         _logger.LogError("❌ Failed to retrieve existing account number. Status: {Status}", getResponse.StatusCode);
-                        return (false, null, $"Failed to retrieve existing account number. Status: {getResponse.StatusCode}");
+                        return (false, (string?)null, $"Failed to retrieve existing account number. Status: {getResponse.StatusCode}");
                     }
                 }
                 else
                 {
                     _logger.LogError("❌ Failed to create bank account. Status: {Status}", createResponse.StatusCode);
-                    return (false, null, $"Failed to create bank account. Status: {createResponse.StatusCode}");
+                    return (false, (string?)null, $"Failed to create bank account. Status: {createResponse.StatusCode}");
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ Exception during bank account setup");
-                return (false, null, ex.Message);
+                return (false, (string?)null, ex.Message);
             }
         }
 
