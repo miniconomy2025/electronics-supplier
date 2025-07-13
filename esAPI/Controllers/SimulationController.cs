@@ -68,6 +68,36 @@ namespace esAPI.Controllers
             return Ok("Simulation started and notification URL set.");
         }
 
+        // POST /simulation/manual-backdoor - manually start the simulation without any external API calls
+        [HttpPost("manual-backdoor")]
+        public async Task<IActionResult> ManualStartSimulation()
+        {
+            _stateService.Start();
+            _orderExpirationBackgroundService.StartAsync();
+
+            // Persist simulation start to the database
+            var sim = await _context.Simulations.FirstOrDefaultAsync();
+            if (sim == null)
+            {
+                sim = new Models.Simulation
+                {
+                    IsRunning = true,
+                    StartedAt = DateTime.UtcNow,
+                    DayNumber = 1
+                };
+                _context.Simulations.Add(sim);
+            }
+            else
+            {
+                sim.IsRunning = true;
+                sim.StartedAt = DateTime.UtcNow;
+                sim.DayNumber = 1;
+            }
+            await _context.SaveChangesAsync();
+
+            return StatusCode(201, new { message = "Simulation started via manual backdoor. No external API calls were made." });
+        }
+
         // GET /simulation - get current simulation state
         [HttpGet]
         public ActionResult<DTOs.SimulationStateDto> GetSimulation()
