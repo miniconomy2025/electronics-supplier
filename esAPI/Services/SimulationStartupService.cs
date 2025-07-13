@@ -34,6 +34,14 @@ namespace esAPI.Services
             {
                 _logger.LogInformation("🚀 Starting simulation startup process...");
                 
+                // Start simulation state service
+                _stateService.Start();
+                _logger.LogInformation("📊 Simulation state service started");
+
+                // Start order expiration background service
+                _orderExpirationBackgroundService.StartAsync();
+                _logger.LogInformation("⏰ Order expiration background service started");
+
                 // Set up bank account with commercial bank
                 _logger.LogInformation("🏦 Setting up bank account with commercial bank...");
                 var bankSetupResult = await _bankAccountService.SetupBankAccountAsync();
@@ -44,14 +52,6 @@ namespace esAPI.Services
                 }
                 
                 _logger.LogInformation("✅ Bank account setup completed successfully");
-                
-                // Start simulation state service
-                _stateService.Start();
-                _logger.LogInformation("📊 Simulation state service started");
-                
-                // Start order expiration background service
-                _orderExpirationBackgroundService.StartAsync();
-                _logger.LogInformation("⏰ Order expiration background service started");
 
                 // Persist simulation start to the database
                 await PersistSimulationStartAsync();

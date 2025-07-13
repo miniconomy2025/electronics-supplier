@@ -61,13 +61,45 @@ namespace esAPI.Clients
 
         public async Task<string?> RequestLoanAsync(decimal amount)
         {
-            var requestBody = new { Amount = amount };
+            var requestBody = new { amount = amount };
 
-            var response = await _client.PostAsJsonAsync("/loan", requestBody);
-            response.EnsureSuccessStatusCode();
+            Console.WriteLine($"🔧 CommercialBankClient: Requesting loan of {amount}");
+            Console.WriteLine($"🔧 CommercialBankClient: Request body: {System.Text.Json.JsonSerializer.Serialize(requestBody)}");
+            
+            var response = await _client.PostAsJsonAsync("api/loan", requestBody);
+            Console.WriteLine($"🔧 CommercialBankClient: Loan request response status: {response.StatusCode}");
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"❌ CommercialBankClient: Loan request failed with status: {response.StatusCode}");
+                return null;
+            }
+            
             var content = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"🔧 CommercialBankClient: Loan response content: {content}");
+            
             using var doc = System.Text.Json.JsonDocument.Parse(content);
-            return doc.RootElement.TryGetProperty("loan_number", out var loanNum) ? loanNum.GetString() : null;;
+            
+            // Check if the response indicates success
+            if (doc.RootElement.TryGetProperty("success", out var successProp) && successProp.GetBoolean())
+            {
+                if (doc.RootElement.TryGetProperty("loan_number", out var loanNum))
+                {
+                    var loanNumber = loanNum.GetString();
+                    Console.WriteLine($"✅ CommercialBankClient: Loan request successful! Loan number: {loanNumber}");
+                    return loanNumber;
+                }
+                else
+                {
+                    Console.WriteLine($"❌ CommercialBankClient: Success response but no loan_number found");
+                    return null;
+                }
+            }
+            else
+            {
+                Console.WriteLine($"❌ CommercialBankClient: Loan request failed - success field is false or missing");
+                return null;
+            }
         }
 
         public async Task<string> MakePaymentAsync(string toAccountNumber, string toBankName, decimal amount, string description)

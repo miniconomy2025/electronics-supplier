@@ -65,20 +65,21 @@ namespace esAPI.Simulation
             }
             _logger.LogInformation("✅ Bank account setup completed");
 
-            _logger.LogInformation("💰 Generating startup cost plans");
-            var allPlans = await _costCalculator.GenerateAllPossibleStartupPlansAsync();
-            if (!allPlans.Any())
-            {
-                _logger.LogError("❌ No startup cost plans generated");
-                return false;
-            }
-            _logger.LogInformation("✅ Generated {PlanCount} startup cost plans", allPlans.Count());
+            // _logger.LogInformation("💰 Generating startup cost plans");
+            // var allPlans = await _costCalculator.GenerateAllPossibleStartupPlansAsync();
+            // if (!allPlans.Any())
+            // {
+            //     _logger.LogError("❌ No startup cost plans generated");
+            //     return false;
+            // }
+            // _logger.LogInformation("✅ Generated {PlanCount} startup cost plans", allPlans.Count());
 
-            var bestPlan = allPlans.OrderBy(p => p.TotalCost).First();
-            _logger.LogInformation("💡 Selected best startup plan with cost: {TotalCost}", bestPlan.TotalCost);
+            // var bestPlan = allPlans.OrderBy(p => p.TotalCost).First();
+            // _logger.LogInformation("💡 Selected best startup plan with cost: {TotalCost}", bestPlan.TotalCost);
 
             _logger.LogInformation("🏦 Requesting loan for startup costs");
-            string? loanSuccess = await _bankClient.RequestLoanAsync(bestPlan.TotalCost);
+            const decimal loanAmount = 20000000m; // 20 million
+            string? loanSuccess = await _bankClient.RequestLoanAsync(loanAmount);
             if (loanSuccess == null)
             {
                 _logger.LogError("❌ Failed to request loan for startup costs");
