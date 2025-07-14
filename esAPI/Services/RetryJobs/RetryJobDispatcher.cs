@@ -18,7 +18,8 @@ namespace esAPI.Services
             { "LoanRequestRetry", typeof(LoanRequestRetryJob) },
             { "RecyclerOrderRetry", typeof(RecyclerOrderRetryJob) },
             { "PaymentRetry", typeof(PaymentRetryJob) },
-            { "RecyclerMaterialsFetchRetry", typeof(RecyclerMaterialsFetchRetryJob)}
+            { "RecyclerMaterialsFetchRetry", typeof(RecyclerMaterialsFetchRetryJob) },
+            { "ElectronicsMachineSyncRetry", typeof(ElectronicsMachineSyncRetryJob) }
             // add more here
         };
 

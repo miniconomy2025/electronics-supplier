@@ -17,6 +17,8 @@ namespace esAPI.Services
         private readonly ILogger<SimulationStartupService> _logger;
         private readonly ThohApiClient _thohApiClient;
         private readonly ElectronicsMachineDetailsService _machineDetailsService;
+        private readonly RetryQueuePublisher  _retryQueuePublisher;
+
 
         public SimulationStartupService(
             AppDbContext context,
@@ -26,7 +28,8 @@ namespace esAPI.Services
             ICommercialBankClient bankClient,
             ILogger<SimulationStartupService> logger,
             ThohApiClient thohApiClient,
-            ElectronicsMachineDetailsService machineDetailsService)
+            ElectronicsMachineDetailsService machineDetailsService,
+            RetryQueuePublisher retryQueuePublisher)
         {
             _context = context;
             _bankAccountService = bankAccountService;
@@ -36,6 +39,7 @@ namespace esAPI.Services
             _logger = logger;
             _thohApiClient = thohApiClient;
             _machineDetailsService = machineDetailsService;
+            _retryQueuePublisher = retryQueuePublisher;
         }
 
         public async Task<(bool Success, string? AccountNumber, string? Error)> StartSimulationAsync()
@@ -101,7 +105,14 @@ namespace esAPI.Services
                 var machineDetailsSynced = await _machineDetailsService.SyncElectronicsMachineDetailsAsync();
                 if (!machineDetailsSynced)
                 {
-                    _logger.LogWarning("⚠️ Could not sync electronics machine details from THOH. Continuing simulation startup.");
+                    _logger.LogWarning("⚠️ Could not sync electronics machine details from THOH. Enqueueing retry job.");
+
+                    var retryJob = new ElectronicsMachineSyncRetryJob
+                    {
+                        RetryAttempt = 1
+                    };
+
+                    await _retryQueuePublisher.PublishAsync(retryJob);
                 }
                 else
                 {
