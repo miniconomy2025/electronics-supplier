@@ -15,6 +15,8 @@ namespace esAPI.Services
         private readonly OrderExpirationBackgroundService _orderExpirationBackgroundService;
         private readonly ICommercialBankClient _bankClient;
         private readonly ILogger<SimulationStartupService> _logger;
+        private readonly ThohApiClient _thohApiClient;
+        private readonly ElectronicsMachineDetailsService _machineDetailsService;
 
         public SimulationStartupService(
             AppDbContext context,
@@ -22,7 +24,9 @@ namespace esAPI.Services
             ISimulationStateService stateService,
             OrderExpirationBackgroundService orderExpirationBackgroundService,
             ICommercialBankClient bankClient,
-            ILogger<SimulationStartupService> logger)
+            ILogger<SimulationStartupService> logger,
+            ThohApiClient thohApiClient,
+            ElectronicsMachineDetailsService machineDetailsService)
         {
             _context = context;
             _bankAccountService = bankAccountService;
@@ -30,6 +34,8 @@ namespace esAPI.Services
             _orderExpirationBackgroundService = orderExpirationBackgroundService;
             _bankClient = bankClient;
             _logger = logger;
+            _thohApiClient = thohApiClient;
+            _machineDetailsService = machineDetailsService;
         }
 
         public async Task<(bool Success, string? AccountNumber, string? Error)> StartSimulationAsync()
@@ -89,6 +95,11 @@ namespace esAPI.Services
                 {
                     _logger.LogInformation("💰 Balance is {Balance}, no loan needed", currentBalance);
                 }
+
+                // Query and sync electronics machine details
+                _logger.LogInformation("🔄 Syncing electronics machine details from THOH...");
+                await _machineDetailsService.SyncElectronicsMachineDetailsAsync();
+                _logger.LogInformation("✅ Electronics machine details synced.");
 
                 // Persist simulation start to the database
                 await PersistSimulationStartAsync();

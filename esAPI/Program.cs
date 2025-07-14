@@ -50,6 +50,7 @@ builder.Services.AddScoped<BankAccountService>();
 builder.Services.AddScoped<BankService>();
 builder.Services.AddScoped<InventoryService>();
 builder.Services.AddScoped<SimulationStartupService>();
+builder.Services.AddScoped<ElectronicsMachineDetailsService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
 builder.Services.AddScoped<IProductionService, ProductionService>();
 builder.Services.AddScoped<IMachineAcquisitionService, MachineAcquisitionService>();
@@ -57,8 +58,6 @@ builder.Services.AddScoped<IMachineAcquisitionService, MachineAcquisitionService
 builder.Services.AddScoped<IMaterialSourcingService, MaterialSourcingService>();
 builder.Services.AddScoped<IMaterialAcquisitionService, MaterialAcquisitionService>();
 
-builder.Services.AddScoped<IThohMachineApiClient, ThohApiClient>();
-builder.Services.AddScoped<ISupplierApiClient, ThohApiClient>();
 builder.Services.AddScoped<ISupplierApiClient, RecyclerApiClient>();
 
 builder.Services.AddScoped<IStartupCostCalculator, StartupCostCalculator>();
