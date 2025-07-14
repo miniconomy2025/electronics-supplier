@@ -77,6 +77,8 @@ builder.Services.AddHostedService<RetryJobDispatcher>();
 // Register all retry handlers
 builder.Services.AddScoped<IRetryHandler<BankAccountRetryJob>, BankAccountRetryHandler>();
 builder.Services.AddScoped<IRetryHandler<BankBalanceRetryJob>, BankBalanceRetryHandler>();
+builder.Services.AddScoped<IRetryHandler<LoanRequestRetryJob>, LoanRequestRetryHandler>();
+
 
 // builder.Services.AddHostedService<InventoryManagementService>(); // Disabled inventory management system temporarily
 builder.Services.AddHostedService<SimulationAutoAdvanceService>();

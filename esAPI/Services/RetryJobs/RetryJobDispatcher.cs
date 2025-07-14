@@ -14,7 +14,8 @@ namespace esAPI.Services
         private readonly Dictionary<string, Type> _jobTypes = new()
         {
             { "BankAccountRetry", typeof(BankAccountRetryJob) },
-            { "BankBalanceRetry", typeof(BankBalanceRetryJob) }
+            { "BankBalanceRetry", typeof(BankBalanceRetryJob) },
+            { "LoanRequestRetry", typeof(LoanRequestRetryJob) }
             // add more here
         };
 
