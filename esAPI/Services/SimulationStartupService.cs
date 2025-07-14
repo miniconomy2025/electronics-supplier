@@ -98,8 +98,15 @@ namespace esAPI.Services
 
                 // Query and sync electronics machine details
                 _logger.LogInformation("🔄 Syncing electronics machine details from THOH...");
-                await _machineDetailsService.SyncElectronicsMachineDetailsAsync();
-                _logger.LogInformation("✅ Electronics machine details synced.");
+                var machineDetailsSynced = await _machineDetailsService.SyncElectronicsMachineDetailsAsync();
+                if (!machineDetailsSynced)
+                {
+                    _logger.LogWarning("⚠️ Could not sync electronics machine details from THOH. Continuing simulation startup.");
+                }
+                else
+                {
+                    _logger.LogInformation("✅ Electronics machine details synced.");
+                }
 
                 // Persist simulation start to the database
                 await PersistSimulationStartAsync();
