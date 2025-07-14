@@ -21,7 +21,7 @@ namespace esAPI.Services
             _retryQueuePublisher = retryQueuePublisher;
         }
 
-        public async Task<bool> HandleAsync(RecyclerMaterialsFetchRetryJob job, CancellationToken cancellationToken)
+        public async Task<bool> HandleAsync(RecyclerMaterialsFetchRetryJob job, CancellationToken token)
         {
             _logger.LogInformation("🔄 Retry attempt {Attempt} for fetching recycler materials", job.RetryAttempt);
 

@@ -94,12 +94,6 @@ namespace esAPI.Simulation
                 };
                 await _retryQueuePublisher.PublishAsync(retryJob);
             }
-
-            foreach (var mat in recyclerMaterials)
-            {
-                _logger.LogInformation($"[Recycler] {mat.MaterialName}: AvailableQuantity={mat.AvailableQuantity}, PricePerKg={mat.PricePerKg}");
-            }
-
             // 3. Query our own copper and silicon stock
             var ownSupplies = _context.CurrentSupplies.ToList();
             int ownCopper = ownSupplies.FirstOrDefault(s => s.MaterialName.ToLower() == "copper")?.AvailableSupply ?? 0;
