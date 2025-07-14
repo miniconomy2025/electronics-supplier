@@ -82,15 +82,13 @@ namespace esAPI.Controllers
                 return BadRequest("Simulation has reached the maximum number of days (1 year).");
             }
 
-            _logger.LogInformation("⏭️ Advancing simulation from day {CurrentDay} to {NextDay}", 
-                _stateService.CurrentDay, _stateService.CurrentDay + 1);
+            _logger.LogInformation("⏭️ Running simulation logic for day {CurrentDay}", _stateService.CurrentDay);
 
             var engine = new SimulationEngine(_context, _bankService, _bankAccountService, _dayOrchestrator, _costCalculator, _bankClient, _loggerFactory.CreateLogger<SimulationEngine>());
             await engine.RunDayAsync(_stateService.CurrentDay);
             _logger.LogInformation("✅ Day {Day} simulation logic completed", _stateService.CurrentDay);
-            
-            _stateService.AdvanceDay();
-            _logger.LogInformation("📈 Simulation advanced to day {NewDay}", _stateService.CurrentDay);
+
+            // Do NOT increment the day counter here. Let the auto-advance service handle it after the interval.
 
             // Backup to DB
             _logger.LogInformation("💾 Updating simulation progress in database");
