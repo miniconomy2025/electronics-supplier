@@ -2,6 +2,7 @@ using System.Text.Json;
 using esAPI.Clients;
 using esAPI.Data;
 using Microsoft.EntityFrameworkCore;
+using esAPI.Interfaces;
 
 namespace esAPI.Services
 {
@@ -14,12 +15,13 @@ namespace esAPI.Services
 
     }
 
-    public class MachineAcquisitionService(IHttpClientFactory httpClientFactory, BankService bankService, ICommercialBankClient bankClient, AppDbContext context) : IMachineAcquisitionService
+    public class MachineAcquisitionService(IHttpClientFactory httpClientFactory, BankService bankService, ICommercialBankClient bankClient, AppDbContext context, ISimulationStateService stateService) : IMachineAcquisitionService
     {
         private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
         private readonly BankService _bankService = bankService;
         private readonly ICommercialBankClient _bankClient = bankClient;
         private readonly AppDbContext _context = context;
+        private readonly ISimulationStateService _stateService = stateService;
 
         // Returns true if 'electronics_machine' is available
         public async Task<bool> CheckTHOHForMachines()
@@ -44,7 +46,7 @@ namespace esAPI.Services
         public async Task<(int? orderId, int quantity)> PurchaseMachineViaBank()
         {
             // 1. Get current bank balance
-            var balance = await _bankService.GetAndStoreBalance(0); // dayNumber not needed for logic
+            var balance = await _bankService.GetAndStoreBalance(_stateService.CurrentDay);
             var budget = balance * 0.2m;
 
             // 2. Get machine price and available quantity from THOH

@@ -32,7 +32,7 @@ namespace esAPI.Clients
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    
+                    Console.WriteLine($"External API error response (Status {(int)response.StatusCode}): {errorContent}");
                     return default;
                 }
                 return await response.Content.ReadFromJsonAsync<TResponse>();

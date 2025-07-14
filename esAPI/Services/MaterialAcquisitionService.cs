@@ -24,10 +24,11 @@ namespace esAPI.Services
         private readonly BankService _bankService;
         private readonly ICommercialBankClient _bankClient;
         private readonly AppDbContext _dbContext;
+        private readonly ISimulationStateService _stateService;
 
         private static ConcurrentDictionary<string, int> _statusIdCache = new();
 
-        public MaterialAcquisitionService(IHttpClientFactory httpClientFactory, AppDbContext dbContext, BankService bankService, ICommercialBankClient bankClient, IMaterialSourcingService sourcingService, IBulkLogisticsClient logisticsClient)
+        public MaterialAcquisitionService(IHttpClientFactory httpClientFactory, AppDbContext dbContext, BankService bankService, ICommercialBankClient bankClient, IMaterialSourcingService sourcingService, IBulkLogisticsClient logisticsClient, ISimulationStateService stateService)
         {
             _httpClientFactory = httpClientFactory;
             _bankService = bankService;
@@ -37,6 +38,7 @@ namespace esAPI.Services
             _bankClient = bankClient;
             _logisticsClient = logisticsClient;
             _dbContext = dbContext;
+            _stateService = stateService;
         }
 
         public async Task ExecutePurchaseStrategyAsync()
@@ -44,7 +46,7 @@ namespace esAPI.Services
             await PurchaseWithStrategy("copper", sourcedInfo => Task.FromResult(sourcedInfo.MaterialDetails.AvailableQuantity / 2));
             await PurchaseWithStrategy("silicon", async sourcedInfo =>
             {
-                var balance = await _bankService.GetAndStoreBalance(0);
+                var balance = await _bankService.GetAndStoreBalance(_stateService.CurrentDay);
                 var budget = balance * 0.3m;
                 int qty = (int)Math.Floor(budget / sourcedInfo.MaterialDetails.PricePerKg);
                 return Math.Min(qty, sourcedInfo.MaterialDetails.AvailableQuantity);

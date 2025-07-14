@@ -48,12 +48,12 @@ namespace esAPI.Models
 [Keyless]
 public class CurrentSupply
 {
-        [Column("material_id")]
-        public int MaterialId { get; set; }
+    [Column("materialId")]
+    public int MaterialId { get; set; }
 
-        [Column("material_name")]
-        public required string MaterialName { get; set; }
+    [Column("materialName")]
+    public required string MaterialName { get; set; }
 
-        [Column("available_supply")]
-        public int AvailableSupply { get; set; }
+    [Column("availableSupply")]
+    public int AvailableSupply { get; set; }
 }

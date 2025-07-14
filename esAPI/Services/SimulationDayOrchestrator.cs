@@ -1,141 +1,117 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
 using System.Threading.Tasks;
+using esAPI.Clients;
+using esAPI.Data;
+using esAPI.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using System.Linq;
-using esAPI.DTOs;
 
 namespace esAPI.Services
 {
-    public class SimulationDayOrchestrator(
-        BankService bankService,
-        IInventoryService inventoryService,
-        IMachineAcquisitionService machineAcquisitionService,
-        IMaterialAcquisitionService materialAcquisitionService,
-        IProductionService productionService,
-        ILogger<SimulationDayOrchestrator> logger)
+    public class SimulationDayOrchestrator
     {
-        private readonly BankService _bankService = bankService;
-        private readonly IInventoryService _inventoryService = inventoryService;
-        private readonly IMachineAcquisitionService _machineAcquisitionService = machineAcquisitionService;
-        private readonly IMaterialAcquisitionService _materialAcquisitionService = materialAcquisitionService;
-        private readonly IProductionService _productionService = productionService;
-        private readonly ILogger<SimulationDayOrchestrator> _logger = logger;
+        private readonly ICommercialBankClient _bankClient;
+        private readonly AppDbContext _db;
+        private readonly HttpClient _client;
+        private readonly ILogger<SimulationDayOrchestrator> _logger;
 
-        public async Task RunDayAsync(int dayNumber)
+        public SimulationDayOrchestrator(
+            ICommercialBankClient bankClient,
+            AppDbContext db,
+            IHttpClientFactory httpClientFactory,
+            ILogger<SimulationDayOrchestrator> logger)
         {
-            _logger.LogInformation($"--- Simulation Day {dayNumber} Start ---");
-
-            // storing financial state
-            await StoreFinancialState(dayNumber);
-
-            var inventory = await _inventoryService.GetAndStoreInventory();
-
-            // checking our current machine inventory, if we need more machines, purchase through bank
-            if (NeedToBuyMachine(inventory))
-                await TryAcquireMachine();
-
-            // logistics will then call our logistics endpoint when delivering it, this will then fill our machine table
-
-            // checking our current material inventory, if we need more mats, purchase through bank
-            if (NeedToRestockMaterials(inventory))
-                await _materialAcquisitionService.ExecutePurchaseStrategyAsync();
-
-            // logistics will then call our logistics endpoint when delivering it, this will then fill our supply table
-
-            // Given that we have machines, and a good amount of stock, it will automatically create electronics when supplies are added
-            await ProduceElectronics();
-
-            _logger.LogInformation($"--- Simulation Day {dayNumber} End ---");
+            _bankClient = bankClient;
+            _db = db;
+            _client = httpClientFactory.CreateClient("commercial-bank");
+            _logger = logger;
         }
 
-        private async Task StoreFinancialState(int dayNumber)
+        public class OrchestratorResult
         {
-            var bankBalance = await _bankService.GetAndStoreBalance(dayNumber);
-            decimal spendingCap = bankBalance * 0.8m;
-            _logger.LogInformation($"Bank Balance: {bankBalance}, Spending Cap: {spendingCap}");
+            public bool Success { get; set; }
+            public string? AccountNumber { get; set; }
+            public string? Error { get; set; }
         }
 
-        private bool NeedToBuyMachine(InventorySummaryDto inventory)
+        public async Task<OrchestratorResult> OrchestrateAsync()
         {
-            return inventory.Machines.InUse == 0;
-        }
-
-        private async Task TryAcquireMachine()
-        {
-            if (!await _machineAcquisitionService.CheckTHOHForMachines())
+            _logger.LogInformation("Starting simulation orchestration");
+            var accountResult = await CreateBankAccountAsync();
+            if (!accountResult.Success && accountResult.Error != "accountAlreadyExists")
             {
-                _logger.LogInformation("No machines available at THOH.");
+                _logger.LogError("Failed to create bank account: {Error}", accountResult.Error);
+                return accountResult;
+            }
+
+            _logger.LogInformation("Simulation orchestration completed successfully. AccountNumber: {AccountNumber}", accountResult.AccountNumber);
+            return new OrchestratorResult
+            {
+                Success = true,
+                AccountNumber = accountResult.AccountNumber,
+                Error = accountResult.Error
+            };
+        }
+
+        private async Task<OrchestratorResult> CreateBankAccountAsync()
+        {
+            _logger.LogInformation("Attempting to create a new bank account via Commercial Bank API.");
+            var accountResponse = await _client.PostAsync("/account", null);
+            if (accountResponse.StatusCode == HttpStatusCode.Created)
+            {
+                var content = await accountResponse.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(content);
+                var accountNumber = doc.RootElement.GetProperty("account_number").GetString();
+                _logger.LogInformation("Bank account created successfully. AccountNumber: {AccountNumber}", accountNumber);
+                await StoreAccountNumberInDbAsync(accountNumber);
+                return new OrchestratorResult { Success = true, AccountNumber = accountNumber };
+            }
+            else if (accountResponse.StatusCode == HttpStatusCode.Conflict)
+            {
+                _logger.LogWarning("Bank account already exists (409). Retrieving existing account details.");
+                var existingAccountNumber = await _bankClient.GetAccountDetailsAsync();
+                if (!string.IsNullOrEmpty(existingAccountNumber))
+                {
+                    _logger.LogInformation("Retrieved existing account number: {AccountNumber}", existingAccountNumber);
+                    await StoreAccountNumberInDbAsync(existingAccountNumber);
+                    return new OrchestratorResult { Success = false, Error = "accountAlreadyExists", AccountNumber = existingAccountNumber };
+                }
+                else
+                {
+                    _logger.LogError("Failed to retrieve existing account details.");
+                    return new OrchestratorResult { Success = false, Error = "Failed to retrieve existing account details" };
+                }
+            }
+            else
+            {
+                var content = await accountResponse.Content.ReadAsStringAsync();
+                _logger.LogError("Unexpected response from Commercial Bank API: {StatusCode} {Content}", accountResponse.StatusCode, content);
+                return new OrchestratorResult { Success = false, Error = content };
+            }
+        }
+
+        private async Task StoreAccountNumberInDbAsync(string? accountNumber)
+        {
+            if (string.IsNullOrEmpty(accountNumber))
+            {
+                _logger.LogWarning("No account number provided to store in DB.");
                 return;
             }
-
-            var (orderId, quantity) = await _machineAcquisitionService.PurchaseMachineViaBank();
-            await _machineAcquisitionService.QueryOrderDetailsFromTHOH();
-
-            if (orderId.HasValue && quantity > 0)
+            var company = await _db.Companies.FirstOrDefaultAsync(c => c.CompanyId == 1);
+            if (company != null)
             {
-                await _machineAcquisitionService.PlaceBulkLogisticsPickup(orderId.Value, quantity);
-                _logger.LogInformation($"Ordered {quantity} machines (Order ID: {orderId}).");
+                company.BankAccountNumber = accountNumber;
+                await _db.SaveChangesAsync();
+                _logger.LogInformation("Stored account number {AccountNumber} in database for CompanyId=1.", accountNumber);
+            }
+            else
+            {
+                _logger.LogWarning("Company with ID=1 not found. Could not store account number.");
             }
         }
 
-        private bool NeedToRestockMaterials(InventorySummaryDto inventory)
-        {
-            bool HasMaterial(string name) =>
-                inventory.MaterialsInStock.Any(m => m.MaterialName.Equals(name, StringComparison.OrdinalIgnoreCase) && m.Quantity > 0);
 
-            return !HasMaterial("copper") || !HasMaterial("silicon");
-        }
-
-        private async Task ProduceElectronics()
-        {
-            var (created, materialsUsed) = await _productionService.ProduceElectronics();
-            var used = string.Join(", ", materialsUsed.Select(kv => $"{kv.Key}: {kv.Value}"));
-            _logger.LogInformation($"Produced {created} electronics. Materials used: {used}");
-        }
-
-        // public async Task RunDayAsync(int dayNumber)
-        // {
-        //     _logger.LogInformation($"--- Simulation Day {dayNumber} Start ---");
-
-        //     // 1. Check and store bank balance
-        //     var bankBalance = await _bankService.GetAndStoreBalance(dayNumber);
-        //     decimal spendingCap = bankBalance * 0.8m;
-        //     _logger.LogInformation($"Bank Balance: {bankBalance}, Spending Cap: {spendingCap}");
-
-        //     // 2. Check and store inventory
-        //     var inventory = await _inventoryService.GetAndStoreInventory();
-        //     var machinesInUse = inventory.Machines.InUse;
-
-        //     // 3. If no working machines, try to buy one
-        //     if (inventory.Machines.InUse == 0)
-        //     {
-        //         var machineAvailable = await _machineAcquisitionService.CheckTHOHForMachines();
-        //         if (machineAvailable)
-        //         {
-        //             var (orderId, quantity) = await _machineAcquisitionService.PurchaseMachineViaBank();
-        //             await _machineAcquisitionService.QueryOrderDetailsFromTHOH();
-        //             if (orderId.HasValue && quantity > 0)
-        //             {
-        //                 await _machineAcquisitionService.PlaceBulkLogisticsPickup(orderId.Value, quantity);
-        //             }
-        //         }
-        //     }
-
-        //     // 4. Check raw materials
-        //     bool hasCopper = inventory.MaterialsInStock.Any(m => m.MaterialName.ToLower() == "copper" && m.Quantity > 0);
-        //     bool hasSilicon = inventory.MaterialsInStock.Any(m => m.MaterialName.ToLower() == "silicon" && m.Quantity > 0);
-        //     if (!hasCopper || !hasSilicon)
-        //     {
-        //         await _materialAcquisitionService.PurchaseMaterialsViaBank();
-        //         // await _materialAcquisitionService.PlaceBulkLogisticsPickup(); // No longer needed, handled inside service
-        //     }
-
-        //     // 5. Bulk logistics delivery is handled by /logistics endpoint
-
-        //     // 6. Produce electronics
-        //     var (created, materialsUsed) = await _productionService.ProduceElectronics();
-        //     _logger.LogInformation($"Produced {created} electronics. Materials used: {string.Join(", ", materialsUsed.Select(kv => $"{kv.Key}: {kv.Value}"))}");
-
-        //     _logger.LogInformation($"--- Simulation Day {dayNumber} End ---");
-        // }
     }
 }
