@@ -28,6 +28,33 @@ namespace esAPI.Simulation
                 _logger.LogInformation("🎬 Executing startup sequence for day 1");
                 await ExecuteStartupSequence();
             }
+            else
+            {
+                // Loan logic at the start of the day (not on day 1)
+                try
+                {
+                    var balance = await _bankService.GetAndStoreBalance(dayNumber);
+                    _logger.LogInformation("💰 Current bank balance at start of day {DayNumber}: {Balance}", dayNumber, balance);
+                    if (balance <= 10000m)
+                    {
+                        _logger.LogInformation("🏦 Bank balance is low (<= 10,000). Attempting to request a loan...");
+                        const decimal loanAmount = 20000000m; // 20 million
+                        string? loanSuccess = await _bankClient.RequestLoanAsync(loanAmount);
+                        if (loanSuccess == null)
+                        {
+                            _logger.LogWarning("❌ Failed to request loan for day {DayNumber}. Will retry next day if still low.", dayNumber);
+                        }
+                        else
+                        {
+                            _logger.LogInformation("✅ Loan requested successfully for day {DayNumber}: {LoanNumber}", dayNumber, loanSuccess);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ Error while checking balance or requesting loan at start of day {DayNumber}", dayNumber);
+                }
+            }
             
             _logger.LogInformation("📊 Running simulation logic for Day {DayNumber}", dayNumber);
 
