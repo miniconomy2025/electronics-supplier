@@ -31,15 +31,13 @@ namespace esAPI.Controllers
         {
             _logger.LogInformation("🚀 ===== MAIN SIMULATION ENDPOINT CALLED =====");
             
-            // var result = await _simulationStartupService.StartSimulationAsync();
-            // if (!result.Success)
-            // {
-            //     _logger.LogError("❌ Failed to start simulation. Error: {Error}", result.Error);
-            //     return StatusCode(502, $"Failed to start simulation. Error: {result.Error}");
-            // }
+            var result = await _simulationStartupService.StartSimulationAsync();
+            if (!result.Success)
+            {
+                _logger.LogError("❌ Failed to start simulation. Error: {Error}", result.Error);
+                return StatusCode(502, $"Failed to start simulation. Error: {result.Error}");
+            }
 
-            _simulationStartupService.StartSimulationAsync();
-            
             return Ok(new { message = "Simulation started" });
         }
 
