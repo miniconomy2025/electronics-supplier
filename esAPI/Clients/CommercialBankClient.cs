@@ -18,29 +18,6 @@ namespace esAPI.Clients
 
         public async Task<decimal> GetAccountBalanceAsync()
         {
-            var balanceResponse = await GetAsync<BankBalanceResponse>("/account/me/balance");
-            return balanceResponse.Balance;
-
-        }
-
-        public async Task<bool> SetNotificationUrlAsync()
-        {
-            var requestBody = new BankNotificationRequest { NotificationUrl = "https://electronics-supplier-api.projects.bbdgrad.com/payments" };
-
-            try
-            {
-                var response = await _client.PostAsJsonAsync("/account/me/notify", requestBody);
-                if (!response.IsSuccessStatusCode)
-                {
-                    await HandleErrorResponse(response);
-                }
-                var notifyResponse = await response.Content.ReadFromJsonAsync<BankNotifyResponse>();
-                return notifyResponse?.Success ?? false;
-            }
-            catch (Exception ex) when (ex is not ApiClientException)
-            {
-                throw;
-            }
             Console.WriteLine($"🔧 CommercialBankClient: Checking account balance...");
             var response = await _client.GetAsync("api/account/me/balance");
             Console.WriteLine($"🔧 CommercialBankClient: Balance response status: {response.StatusCode}");
@@ -87,28 +64,6 @@ namespace esAPI.Clients
             }
         }
 
-        public async Task<string?> CreateAccountAsync()
-        {
-            try
-            {
-                var response = await _client.PostAsync("/account", null);
-                if (!response.IsSuccessStatusCode)
-                {
-                    await HandleErrorResponse(response);
-                }
-                var accountResponse = await response.Content.ReadFromJsonAsync<BankAccountResponse>();
-                if (string.IsNullOrEmpty(accountResponse?.AccountNumber))
-                {
-                    throw new ApiResponseParseException("Bank API created an account but did not return an account number.");
-                }
-                return accountResponse.AccountNumber;
-            }
-            catch (Exception ex) when (ex is not ApiClientException)
-            {
-                throw;
-            }
-
-
         public async Task<HttpResponseMessage> CreateAccountAsync(object requestBody)
         {
             // Console.WriteLine($"🔧 CommercialBankClient: Making POST request to /account");
@@ -145,12 +100,12 @@ namespace esAPI.Clients
         public async Task<string?> RequestLoanAsync(decimal amount)
         {
             var requestBody = new BankLoanRequest { Amount = amount };
-            var loanResponse = await PostAsync<BankLoanRequest, BankLoanResponse>("/loan", requestBody);
-if (doc.RootElement.TryGetProperty("success", out var successProp) && successProp.GetBoolean())
+            var loanResponse = await PostAsync<BankLoanRequest, BankLoanResponse>("api/loan", requestBody);
+            if (loanResponse.Success)
             {
-                if (doc.RootElement.TryGetProperty("loan_number", out var loanNum))
+                if (loanResponse.LoanNumber != null)
                 {
-                    var loanNumber = loanNum.GetString();
+                    var loanNumber = loanResponse.LoanNumber;
                     Console.WriteLine($"✅ CommercialBankClient: Loan request successful! Loan number: {loanNumber}");
                     return loanNumber;
                 }
@@ -163,18 +118,8 @@ if (doc.RootElement.TryGetProperty("success", out var successProp) && successPro
             else
             {
                 // Handle failure response with detailed error information
-                var errorMessage = "Unknown error";
-                var amountRemaining = 0m;
-
-                if (doc.RootElement.TryGetProperty("error", out var errorProp))
-                {
-                    errorMessage = errorProp.GetString() ?? "Unknown error";
-                }
-
-                if (doc.RootElement.TryGetProperty("amount_remaining", out var amountProp))
-                {
-                    amountRemaining = amountProp.GetDecimal();
-                }
+                var errorMessage = loanResponse.Error ?? "Unknown error";
+                var amountRemaining = loanResponse.AmountRemaining ?? 0;
 
                 Console.WriteLine($"❌ CommercialBankClient: Loan request failed - Error: {errorMessage}, Amount remaining: {amountRemaining}");
 
@@ -186,7 +131,7 @@ if (doc.RootElement.TryGetProperty("success", out var successProp) && successPro
 
                 return null;
             }
-            return loanResponse?.LoanNumber;
+           
         }
 
         public async Task<string> MakePaymentAsync(string toAccountNumber, string toBankName, decimal amount, string description)
