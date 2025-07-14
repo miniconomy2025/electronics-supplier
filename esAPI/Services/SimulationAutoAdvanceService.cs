@@ -70,7 +70,8 @@ namespace esAPI.Services
                         using var dbScope = _serviceProvider.CreateScope();
                         var db = dbScope.ServiceProvider.GetRequiredService<AppDbContext>();
                         var logger = dbScope.ServiceProvider.GetRequiredService<ILogger<SimulationEngine>>();
-                        var engine = new SimulationEngine(db, bankService, bankAccountService, dayOrchestrator, startupCostCalculator, bankClient, logger);
+                        var recyclerClient = dbScope.ServiceProvider.GetRequiredService<RecyclerApiClient>();
+                        var engine = new SimulationEngine(db, bankService, bankAccountService, dayOrchestrator, startupCostCalculator, bankClient, recyclerClient, logger);
                         await engine.RunDayAsync(stateService.CurrentDay);
                     }
                 }

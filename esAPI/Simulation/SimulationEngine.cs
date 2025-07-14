@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace esAPI.Simulation
 {
-    public class SimulationEngine(AppDbContext context, BankService bankService, BankAccountService bankAccountService, SimulationDayOrchestrator dayOrchestrator, IStartupCostCalculator costCalculator, ICommercialBankClient bankClient, ILogger<SimulationEngine> logger)
+    public class SimulationEngine(AppDbContext context, BankService bankService, BankAccountService bankAccountService, SimulationDayOrchestrator dayOrchestrator, IStartupCostCalculator costCalculator, ICommercialBankClient bankClient, RecyclerApiClient recyclerClient, ILogger<SimulationEngine> logger)
     {
         private readonly AppDbContext _context = context;
         private readonly BankAccountService _bankAccountService = bankAccountService;
@@ -14,13 +14,14 @@ namespace esAPI.Simulation
         private readonly IStartupCostCalculator _costCalculator = costCalculator;
         private readonly BankService _bankService = bankService;
         private readonly ICommercialBankClient _bankClient = bankClient;
+        private readonly RecyclerApiClient _recyclerClient = recyclerClient;
         private readonly ILogger<SimulationEngine> _logger = logger;
 
         public static event Func<int, Task>? OnDayAdvanced;
 
         public async Task RunDayAsync(int dayNumber)
         {
-            _logger.LogInformation("🏃‍♂️ Starting simulation day {DayNumber}", dayNumber);
+            _logger.LogInformation("\n =============== 🏃‍♂️ Starting simulation day {DayNumber} ===============\n", dayNumber);
             
             if (dayNumber == 1)
             {
@@ -43,19 +44,18 @@ namespace esAPI.Simulation
                 // Continue with simulation even if bank balance fails
             }
 
-            // COMMENTED OUT: Other business logic for now
-            /*
-            // 2. Check machine inventory and buy if none
-            _logger.LogInformation("🔧 Checking machine availability for day {DayNumber}", dayNumber);
-            var machineTask = new MachineTask(_context);
-            await machineTask.EnsureMachineAvailabilityAsync(dayNumber);
-            _logger.LogInformation("✅ Machine availability check completed for day {DayNumber}", dayNumber);
-
-            // Add other tasks here later:
-            // - MaterialTask
-            // - ProductionTask
-            // - OrderTask
-            */
+            // 2. Query recycler for copper and silicon stock, place orders for half, and pay
+            var recyclerOrders = await _recyclerClient.PlaceHalfStockOrdersAsync();
+            foreach (var order in recyclerOrders)
+            {
+                _logger.LogInformation($"[Recycler] Placed order for {order.MaterialName}: OrderId={order.OrderId}, Total={order.Total}, Account={order.AccountNumber}");
+                if (!string.IsNullOrEmpty(order.AccountNumber) && order.Total > 0)
+                {
+                    _logger.LogInformation($"[Recycler] Paying {order.Total} to {order.AccountNumber} for order {order.OrderId}");
+                    await _bankClient.MakePaymentAsync(order.AccountNumber, "commercial-bank", order.Total, order.OrderId.ToString());
+                    _logger.LogInformation($"[Recycler] Payment sent for order {order.OrderId}");
+                }
+            }
 
             if (OnDayAdvanced != null)
             {
