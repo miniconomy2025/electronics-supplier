@@ -1,4 +1,5 @@
 using esAPI.Clients;
+using esAPI.Data;
 using Microsoft.Extensions.Logging;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,9 +10,11 @@ namespace esAPI.Services
     {
         private readonly ICommercialBankClient _bankClient;
         private readonly ILogger<LoanRequestRetryHandler> _logger;
+        private readonly AppDbContext _db;
 
-        public LoanRequestRetryHandler(ICommercialBankClient bankClient, ILogger<LoanRequestRetryHandler> logger)
+        public LoanRequestRetryHandler(AppDbContext db, ICommercialBankClient bankClient, ILogger<LoanRequestRetryHandler> logger)
         {
+            _db = db;
             _bankClient = bankClient;
             _logger = logger;
         }
@@ -22,6 +25,13 @@ namespace esAPI.Services
 
             try
             {
+                   var company = _db.Companies.FirstOrDefault(c => c.CompanyId == 1);
+                    if (company == null || string.IsNullOrWhiteSpace(company.BankAccountNumber))
+                    {
+                        _logger.LogWarning("🏦 Loan retry skipped — bank account not ready.");
+                        return false; // Will be retried again
+                    }
+
                 var loanNumber = await _bankClient.RequestLoanAsync(job.Amount);
 
                 if (loanNumber != null)

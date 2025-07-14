@@ -79,6 +79,9 @@ builder.Services.AddHostedService<RetryJobDispatcher>();
 builder.Services.AddScoped<IRetryHandler<BankAccountRetryJob>, BankAccountRetryHandler>();
 builder.Services.AddScoped<IRetryHandler<BankBalanceRetryJob>, BankBalanceRetryHandler>();
 builder.Services.AddScoped<IRetryHandler<LoanRequestRetryJob>, LoanRequestRetryHandler>();
+builder.Services.AddScoped<IRetryHandler<PaymentRetryJob>, PaymentRetryHandler>();
+builder.Services.AddScoped<IRetryHandler<RecyclerOrderRetryJob>, RecyclerOrderRetryHandler>();
+builder.Services.AddScoped<IRetryHandler<RecyclerMaterialsFetchRetryJob>, RecyclerMaterialsFetchRetryHandler>();
 
 
 // builder.Services.AddHostedService<InventoryManagementService>(); // Disabled inventory management system temporarily

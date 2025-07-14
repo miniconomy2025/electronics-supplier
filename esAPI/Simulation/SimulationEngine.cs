@@ -3,6 +3,7 @@ using esAPI.Simulation.Tasks;
 using esAPI.Services;
 using esAPI.Clients;
 using Microsoft.Extensions.Logging;
+using esAPI.DTOs;
 
 namespace esAPI.Simulation
 {
@@ -59,7 +60,41 @@ namespace esAPI.Simulation
             }
 
             // 2. Query recycler for copper and silicon stock
-            var recyclerMaterials = await _recyclerClient.GetAvailableMaterialsAsync();
+            List<SupplierMaterialInfo> recyclerMaterials = new List<SupplierMaterialInfo>();
+
+            try
+            {
+                recyclerMaterials = await _recyclerClient.GetAvailableMaterialsAsync();
+
+                if (recyclerMaterials == null || recyclerMaterials.Count == 0)
+                {
+                    _logger.LogWarning("⚠️ Recycler materials fetch returned empty. Enqueueing retry job.");
+
+                    var retryJob = new RecyclerMaterialsFetchRetryJob
+                    {
+                        RetryAttempt = 1
+                    };
+                    await _retryQueuePublisher.PublishAsync(retryJob);
+                }
+                else
+                {
+                    foreach (var mat in recyclerMaterials)
+                    {
+                        _logger.LogInformation($"[Recycler] {mat.MaterialName}: AvailableQuantity={mat.AvailableQuantity}, PricePerKg={mat.PricePerKg}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Failed to fetch recycler materials. Enqueueing retry job.");
+
+                var retryJob = new RecyclerMaterialsFetchRetryJob
+                {
+                    RetryAttempt = 1
+                };
+                await _retryQueuePublisher.PublishAsync(retryJob);
+            }
+
             foreach (var mat in recyclerMaterials)
             {
                 _logger.LogInformation($"[Recycler] {mat.MaterialName}: AvailableQuantity={mat.AvailableQuantity}, PricePerKg={mat.PricePerKg}");
@@ -91,13 +126,43 @@ namespace esAPI.Simulation
                         if (!string.IsNullOrEmpty(accountNumber) && total > 0)
                         {
                             _logger.LogInformation($"[Payment] Paying recycler {total} for order {orderId}");
-                            await _bankClient.MakePaymentAsync(accountNumber, "commercial-bank", total, orderId.ToString());
+                            try
+                            {
+                                await _bankClient.MakePaymentAsync(accountNumber, "commercial-bank", total, orderId.ToString());
+                                _logger.LogInformation($"[Payment] Payment sent for recycler order {orderId}");
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, $"❌ Payment failed for order {orderId}. Enqueueing payment retry.");
+
+                                var paymentRetryJob = new PaymentRetryJob
+                                {
+                                    RetryAttempt = 1,
+                                    ToAccountNumber = accountNumber,
+                                    ToBankName = "commercial-bank",
+                                    Amount = total,
+                                    Description = orderId.ToString()
+                                };
+
+                                await _retryQueuePublisher.PublishAsync(paymentRetryJob);
+                            }
                             _logger.LogInformation($"[Payment] Payment sent for recycler order {orderId}");
                         }
                     }
                     else
                     {
-                        _logger.LogWarning($"[Order] Failed to place recycler order for {mat.MaterialName}");
+                        _logger.LogWarning($"[Order] Failed to place recycler order for {mat.MaterialName}, enqueueing retry job.");
+
+                        // Enqueue retry job for failed order
+                        var retryJob = new RecyclerOrderRetryJob
+                        {
+                            JobType = "RecyclerOrderRetry", // set this string accordingly
+                            RetryAttempt = 1,
+                            MaterialName = mat.MaterialName,
+                            QuantityInKg = orderQty
+                        };
+                        await _retryQueuePublisher.PublishAsync(retryJob);
+                                    
                     }
                 }
                 else
@@ -119,36 +184,14 @@ namespace esAPI.Simulation
         {
             _logger.LogInformation("🏦 Setting up bank account");
             var bankSetupResult = await _bankAccountService.SetupBankAccountAsync();
+
+            const decimal loanAmount = 20000000m; // 20 million
+
             if (!bankSetupResult.Success)
             {
-                _logger.LogWarning("⏳ Bank account setup failed, but retry job has been scheduled. Continuing simulation when ready.");
-                return true; // Not a fatal failure – just means try again tomorrow
-            }
-            _logger.LogInformation("✅ Bank account setup completed");
+                _logger.LogWarning("⏳ Bank account setup failed. Retry job has been scheduled. Will retry later.");
 
-            // COMMENTED OUT: Startup cost planning for now
-            /*
-            // _logger.LogInformation("💰 Generating startup cost plans");
-            // var allPlans = await _costCalculator.GenerateAllPossibleStartupPlansAsync();
-            // if (!allPlans.Any())
-            // {
-            //     _logger.LogError("❌ No startup cost plans generated");
-            //     return false;
-            // }
-            // _logger.LogInformation("✅ Generated {PlanCount} startup cost plans", allPlans.Count());
-
-            // var bestPlan = allPlans.OrderBy(p => p.TotalCost).First();
-            // _logger.LogInformation("💡 Selected best startup plan with cost: {TotalCost}", bestPlan.TotalCost);
-            */
-
-            _logger.LogInformation("🏦 Requesting loan for startup costs");
-            const decimal loanAmount = 20000000m; // 20 million
-            string? loanSuccess = await _bankClient.RequestLoanAsync(loanAmount);
-            if (loanSuccess == null)
-            {
-                _logger.LogWarning("❌ Initial loan request failed. Publishing retry job.");
-
-                // Publish retry job with initial attempt = 1
+                // 🔁 Still queue the loan retry job
                 var retryJob = new LoanRequestRetryJob
                 {
                     RetryAttempt = 1,
@@ -156,13 +199,33 @@ namespace esAPI.Simulation
                 };
                 await _retryQueuePublisher.PublishAsync(retryJob);
 
-                // Return false or true depending on whether you want to halt startup here or continue waiting for retry
                 return true;
             }
-            _logger.LogInformation("✅ Loan requested successfully: {LoanNumber}", loanSuccess);
 
+            _logger.LogInformation("✅ Bank account setup completed");
+
+            _logger.LogInformation("🏦 Requesting loan for startup costs");
+            string? loanSuccess = await _bankClient.RequestLoanAsync(loanAmount);
+
+            if (loanSuccess == null)
+            {
+                _logger.LogWarning("❌ Initial loan request failed. Publishing retry job.");
+
+                var retryJob = new LoanRequestRetryJob
+                {
+                    RetryAttempt = 1,
+                    Amount = loanAmount
+                };
+                await _retryQueuePublisher.PublishAsync(retryJob);
+
+                return true;
+            }
+
+            _logger.LogInformation("✅ Loan requested successfully: {LoanNumber}", loanSuccess);
             _logger.LogInformation("✅ Startup sequence completed successfully");
+
             return true;
         }
+
     }
 } 
