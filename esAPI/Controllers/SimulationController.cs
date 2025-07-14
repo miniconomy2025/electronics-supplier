@@ -12,7 +12,7 @@ namespace esAPI.Controllers
 {
     [ApiController]
     [Route("simulation")]
-    public class SimulationController(SimulationStartupService simulationStartupService, SimulationDayOrchestrator dayOrchestrator, ISimulationStateService stateService, IStartupCostCalculator costCalculator, ICommercialBankClient bankClient, AppDbContext context, BankService bankService, BankAccountService bankAccountService, RecyclerApiClient recyclerClient, ILogger<SimulationController> logger, ILoggerFactory loggerFactory) : ControllerBase
+    public class SimulationController(SimulationStartupService simulationStartupService, SimulationDayOrchestrator dayOrchestrator, ISimulationStateService stateService, IStartupCostCalculator costCalculator, ICommercialBankClient bankClient, AppDbContext context, BankService bankService, BankAccountService bankAccountService, RecyclerApiClient recyclerClient, ILogger<SimulationController> logger, ILoggerFactory loggerFactory, RetryQueuePublisher retryQueuePublisher) : ControllerBase
     {
         private readonly SimulationStartupService _simulationStartupService = simulationStartupService;
         private readonly SimulationDayOrchestrator _dayOrchestrator = dayOrchestrator;
@@ -25,6 +25,7 @@ namespace esAPI.Controllers
         private readonly RecyclerApiClient _recyclerClient = recyclerClient;
         private readonly ILogger<SimulationController> _logger = logger;
         private readonly ILoggerFactory _loggerFactory = loggerFactory;
+        private readonly RetryQueuePublisher _retryQueuePublisher = retryQueuePublisher;
 
         // POST /simulation - start the simulation
         [HttpPost]
@@ -81,7 +82,7 @@ namespace esAPI.Controllers
             _logger.LogInformation("⏭️ Advancing simulation from day {CurrentDay} to {NextDay}", 
                 _stateService.CurrentDay, _stateService.CurrentDay + 1);
 
-            var engine = new SimulationEngine(_context, _bankService, _bankAccountService, _dayOrchestrator, _costCalculator, _bankClient, _recyclerClient, _loggerFactory.CreateLogger<SimulationEngine>());
+            var engine = new SimulationEngine(_context, _bankService, _bankAccountService, _dayOrchestrator, _costCalculator, _bankClient, _recyclerClient, _loggerFactory.CreateLogger<SimulationEngine>(), _retryQueuePublisher);
             await engine.RunDayAsync(_stateService.CurrentDay);
             _logger.LogInformation("✅ Day {Day} simulation logic completed", _stateService.CurrentDay);
             

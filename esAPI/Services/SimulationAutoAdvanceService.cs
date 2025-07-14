@@ -71,7 +71,8 @@ namespace esAPI.Services
                         var db = dbScope.ServiceProvider.GetRequiredService<AppDbContext>();
                         var logger = dbScope.ServiceProvider.GetRequiredService<ILogger<SimulationEngine>>();
                         var recyclerClient = dbScope.ServiceProvider.GetRequiredService<RecyclerApiClient>();
-                        var engine = new SimulationEngine(db, bankService, bankAccountService, dayOrchestrator, startupCostCalculator, bankClient, recyclerClient, logger);
+                        var retryQueuePublisher = dbScope.ServiceProvider.GetRequiredService<RetryQueuePublisher>();
+                        var engine = new SimulationEngine(db, bankService, bankAccountService, dayOrchestrator, startupCostCalculator, bankClient, recyclerClient, logger, retryQueuePublisher);
                         await engine.RunDayAsync(stateService.CurrentDay);
                     }
                 }

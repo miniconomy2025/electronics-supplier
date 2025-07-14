@@ -2,6 +2,7 @@ using esAPI.Clients;
 using esAPI.Data;
 using esAPI.Interfaces;
 using esAPI.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace esAPI.Services
 {
@@ -34,6 +35,16 @@ namespace esAPI.Services
                 Balance = balance,
                 Timestamp = job.SimulationDay // Use the day number as timestamp
             };
+
+            var alreadyStored = await _db.BankBalanceSnapshots
+                .AnyAsync(s => s.SimulationDay == job.SimulationDay);
+
+            if (alreadyStored)
+            {
+                _logger.LogInformation("📦 Snapshot already exists for day {Day}, skipping retry.", job.SimulationDay);
+                return true;
+            }
+
             _db.BankBalanceSnapshots.Add(snapshot);
             await _db.SaveChangesAsync(token);
 

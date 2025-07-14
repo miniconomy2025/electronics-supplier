@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace esAPI.Simulation
 {
-    public class SimulationEngine(AppDbContext context, BankService bankService, BankAccountService bankAccountService, SimulationDayOrchestrator dayOrchestrator, IStartupCostCalculator costCalculator, ICommercialBankClient bankClient, RecyclerApiClient recyclerClient, ILogger<SimulationEngine> logger)
+    public class SimulationEngine(AppDbContext context, BankService bankService, BankAccountService bankAccountService, SimulationDayOrchestrator dayOrchestrator, IStartupCostCalculator costCalculator, ICommercialBankClient bankClient, RecyclerApiClient recyclerClient, ILogger<SimulationEngine> logger, RetryQueuePublisher retryQueuePublisher)
     {
         private readonly AppDbContext _context = context;
         private readonly BankAccountService _bankAccountService = bankAccountService;
@@ -16,6 +16,7 @@ namespace esAPI.Simulation
         private readonly ICommercialBankClient _bankClient = bankClient;
         private readonly RecyclerApiClient _recyclerClient = recyclerClient;
         private readonly ILogger<SimulationEngine> _logger = logger;
+        private readonly RetryQueuePublisher _retryQueuePublisher = retryQueuePublisher;
 
         public static event Func<int, Task>? OnDayAdvanced;
 
@@ -23,12 +24,26 @@ namespace esAPI.Simulation
         {
             _logger.LogInformation("\n =============== 🏃‍♂️ Starting simulation day {DayNumber} ===============\n", dayNumber);
             
+
             if (dayNumber == 1)
             {
                 _logger.LogInformation("🎬 Executing startup sequence for day 1");
                 await ExecuteStartupSequence();
             }
-            
+        // ✅ Step 0: Ensure bank account is created before running sim logic
+            var company = _context.Companies.FirstOrDefault(c => c.CompanyId == 1);
+            if (company == null)
+            {
+                _logger.LogError("❌ Company not found in database. Simulation halted.");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(company.BankAccountNumber))
+            {
+                _logger.LogWarning("⏸️ Bank account not yet created. Skipping simulation day {DayNumber}. Retry will be handled separately.", dayNumber);
+                return;
+            }
+           
             _logger.LogInformation("📊 Running simulation logic for Day {DayNumber}", dayNumber);
 
             // 1. Query bank and store our balance
@@ -106,8 +121,8 @@ namespace esAPI.Simulation
             var bankSetupResult = await _bankAccountService.SetupBankAccountAsync();
             if (!bankSetupResult.Success)
             {
-                _logger.LogError("❌ Failed to set up bank account: {Error}", bankSetupResult.Error);
-                return false;
+                _logger.LogWarning("⏳ Bank account setup failed, but retry job has been scheduled. Continuing simulation when ready.");
+                return true; // Not a fatal failure – just means try again tomorrow
             }
             _logger.LogInformation("✅ Bank account setup completed");
 
@@ -131,8 +146,18 @@ namespace esAPI.Simulation
             string? loanSuccess = await _bankClient.RequestLoanAsync(loanAmount);
             if (loanSuccess == null)
             {
-                _logger.LogError("❌ Failed to request loan for startup costs");
-                return false;
+                _logger.LogWarning("❌ Initial loan request failed. Publishing retry job.");
+
+                // Publish retry job with initial attempt = 1
+                var retryJob = new LoanRequestRetryJob
+                {
+                    RetryAttempt = 1,
+                    Amount = loanAmount
+                };
+                await _retryQueuePublisher.PublishAsync(retryJob);
+
+                // Return false or true depending on whether you want to halt startup here or continue waiting for retry
+                return true;
             }
             _logger.LogInformation("✅ Loan requested successfully: {LoanNumber}", loanSuccess);
 
