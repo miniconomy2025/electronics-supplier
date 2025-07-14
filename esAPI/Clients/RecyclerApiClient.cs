@@ -6,7 +6,7 @@ namespace esAPI.Clients;
 public class RecyclerApiClient : BaseClient, ISupplierApiClient
 {
     private const string ClientName = "recycler";
-    private const string OurCompanyName = "electronics-supplier";
+    private const string OurCompanyName = "electronics_supplier";
 
     public RecyclerApiClient(IHttpClientFactory httpClientFactory)
         : base(httpClientFactory, ClientName) { }
