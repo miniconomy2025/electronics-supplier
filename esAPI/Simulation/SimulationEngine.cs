@@ -3,6 +3,7 @@ using esAPI.Simulation.Tasks;
 using esAPI.Services;
 using esAPI.Clients;
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 
 namespace esAPI.Simulation
 {
@@ -100,6 +101,38 @@ namespace esAPI.Simulation
                         var total = orderResponse.Data.Total;
                         var accountNumber = orderResponse.Data.AccountNumber;
                         _logger.LogInformation($"[Order] Recycler order placed: OrderId={orderId}, Total={total}, Account={accountNumber}");
+                        // Insert into material_orders
+                        try
+                        {
+                            var recyclerCompany = await _context.Companies.FirstOrDefaultAsync(c => c.CompanyName.ToLower() == "recycler");
+                            var material = await _context.Materials.FirstOrDefaultAsync(m => m.MaterialName.ToLower() == mat.MaterialName.ToLower());
+                            if (recyclerCompany != null && material != null)
+                            {
+                                var sim = _context.Simulations.FirstOrDefault(s => s.IsRunning);
+                                var orderedAt = sim != null ? sim.DayNumber : dayNumber;
+                                var newOrder = new Models.MaterialOrder
+                                {
+                                    SupplierId = recyclerCompany.CompanyId,
+                                    MaterialId = material.MaterialId,
+                                    ExternalOrderId = orderId,
+                                    RemainingAmount = orderQty,
+                                    TotalAmount = orderQty,
+                                    OrderStatusId = 1, // Pending
+                                    OrderedAt = orderedAt,
+                                };
+                                _context.MaterialOrders.Add(newOrder);
+                                await _context.SaveChangesAsync();
+                                _logger.LogInformation($"[DB] Inserted material order for recycler: Material={mat.MaterialName}, Qty={orderQty}, OrderId={orderId}");
+                            }
+                            else
+                            {
+                                _logger.LogWarning($"[DB] Could not insert material order for recycler: missing company or material. Material={mat.MaterialName}");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, $"[DB] Exception inserting material order for recycler: Material={mat.MaterialName}");
+                        }
                         if (!string.IsNullOrEmpty(accountNumber) && total > 0)
                         {
                             _logger.LogInformation($"[Payment] Paying recycler {total} for order {orderId}");
