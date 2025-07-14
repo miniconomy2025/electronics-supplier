@@ -37,7 +37,9 @@ VALUES
   ('COMPLETED'),
   ('IN_TRANSIT'),
   ('DISASTER'),
-  ('EXPIRED');
+  ('EXPIRED'), 
+  ('PAYMENT_FAILED'), 
+  ('LOGISTICS_FAILED');
 
 -- Table: materials
 -- The raw materials we order to convert into electronics
