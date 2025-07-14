@@ -41,19 +41,53 @@ namespace esAPI.Simulation
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ Bank balance retrieval failed for day {DayNumber}, but simulation will continue", dayNumber);
-                // Continue with simulation even if bank balance fails
             }
 
-            // 2. Query recycler for copper and silicon stock, place orders for half, and pay
-            var recyclerOrders = await _recyclerClient.PlaceHalfStockOrdersAsync();
-            foreach (var order in recyclerOrders)
+            // 2. Query recycler for copper and silicon stock
+            var recyclerMaterials = await _recyclerClient.GetAvailableMaterialsAsync();
+            foreach (var mat in recyclerMaterials)
             {
-                _logger.LogInformation($"[Recycler] Placed order for {order.MaterialName}: OrderId={order.OrderId}, Total={order.Total}, Account={order.AccountNumber}");
-                if (!string.IsNullOrEmpty(order.AccountNumber) && order.Total > 0)
+                _logger.LogInformation($"[Recycler] {mat.MaterialName}: AvailableQuantity={mat.AvailableQuantity}, PricePerKg={mat.PricePerKg}");
+            }
+
+            // 3. Query our own copper and silicon stock
+            var ownSupplies = _context.CurrentSupplies.ToList();
+            int ownCopper = ownSupplies.FirstOrDefault(s => s.MaterialName.ToLower() == "copper")?.AvailableSupply ?? 0;
+            int ownSilicon = ownSupplies.FirstOrDefault(s => s.MaterialName.ToLower() == "silicon")?.AvailableSupply ?? 0;
+            _logger.LogInformation($"[Stock] Our Copper: {ownCopper}, Our Silicon: {ownSilicon}");
+
+            // 4. Place orders and pay if our stock is low
+            foreach (var mat in recyclerMaterials)
+            {
+                int ownStock = mat.MaterialName.ToLower() == "copper" ? ownCopper :
+                                mat.MaterialName.ToLower() == "silicon" ? ownSilicon : 0;
+                if (ownStock < 1000 && mat.AvailableQuantity > 0)
                 {
-                    _logger.LogInformation($"[Recycler] Paying {order.Total} to {order.AccountNumber} for order {order.OrderId}");
-                    await _bankClient.MakePaymentAsync(order.AccountNumber, "commercial-bank", order.Total, order.OrderId.ToString());
-                    _logger.LogInformation($"[Recycler] Payment sent for order {order.OrderId}");
+                    int orderQty = mat.AvailableQuantity / 2;
+                    if (orderQty == 0) continue;
+                    _logger.LogInformation($"[Order] Placing recycler order for {orderQty} kg of {mat.MaterialName} (our stock: {ownStock})");
+                    var orderResponse = await _recyclerClient.PlaceRecyclerOrderAsync(mat.MaterialName, orderQty);
+                    if (orderResponse?.IsSuccess == true && orderResponse.Data != null)
+                    {
+                        var orderId = orderResponse.Data.OrderId;
+                        var total = orderResponse.Data.Total;
+                        var accountNumber = orderResponse.Data.AccountNumber;
+                        _logger.LogInformation($"[Order] Recycler order placed: OrderId={orderId}, Total={total}, Account={accountNumber}");
+                        if (!string.IsNullOrEmpty(accountNumber) && total > 0)
+                        {
+                            _logger.LogInformation($"[Payment] Paying recycler {total} for order {orderId}");
+                            await _bankClient.MakePaymentAsync(accountNumber, "commercial-bank", total, orderId.ToString());
+                            _logger.LogInformation($"[Payment] Payment sent for recycler order {orderId}");
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"[Order] Failed to place recycler order for {mat.MaterialName}");
+                    }
+                }
+                else
+                {
+                    _logger.LogInformation($"[Order] No order placed for {mat.MaterialName} (our stock: {ownStock}, recycler available: {mat.AvailableQuantity})");
                 }
             }
 
