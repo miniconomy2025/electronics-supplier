@@ -165,7 +165,7 @@ namespace esAPI.Clients
                 amount,
                 description
             };
-            var response = await _client.PostAsJsonAsync("/transaction", paymentReq);
+            var response = await _client.PostAsJsonAsync("api/transaction", paymentReq);
             response.EnsureSuccessStatusCode();
             var content = await response.Content.ReadAsStringAsync();
             using var doc = System.Text.Json.JsonDocument.Parse(content);
