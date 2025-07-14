@@ -50,6 +50,10 @@ namespace esAPI.Services
                     var startupCostCalculator = scope.ServiceProvider.GetRequiredService<IStartupCostCalculator>();
                     var bankService = scope.ServiceProvider.GetRequiredService<BankService>();
                     var bankClient = scope.ServiceProvider.GetRequiredService<ICommercialBankClient>();
+                    var bulkLogisticsClient = scope.ServiceProvider.GetRequiredService<IBulkLogisticsClient>();
+                    var electronicsService = scope.ServiceProvider.GetRequiredService<IElectronicsService>();
+                    var httpClientFactory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
+                    var thohApiClient = scope.ServiceProvider.GetRequiredService<ThohApiClient>();
 
                     var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
                     var autoAdvanceEnabled = config.GetValue<bool>("Simulation:AutoAdvanceEnabled");
@@ -71,7 +75,7 @@ namespace esAPI.Services
                         var db = dbScope.ServiceProvider.GetRequiredService<AppDbContext>();
                         var logger = dbScope.ServiceProvider.GetRequiredService<ILogger<SimulationEngine>>();
                         var recyclerClient = dbScope.ServiceProvider.GetRequiredService<RecyclerApiClient>();
-                        var engine = new SimulationEngine(db, bankService, bankAccountService, dayOrchestrator, startupCostCalculator, bankClient, recyclerClient, logger);
+                        var engine = new SimulationEngine(db, bankService, bankAccountService, dayOrchestrator, startupCostCalculator, bankClient, recyclerClient, bulkLogisticsClient, stateService, electronicsService, httpClientFactory, thohApiClient, logger);
                         await engine.RunDayAsync(stateService.CurrentDay);
                     }
                 }

@@ -38,7 +38,9 @@ builder.Services.AddControllers();
 
 builder.Services.AddHttpClient(); 
 
+// Ensure all SimulationEngine dependencies are registered for DI
 builder.Services.AddScoped<IElectronicsService, ElectronicsService>();
+builder.Services.AddScoped<IBulkLogisticsClient, BulkLogisticsClient>();
 builder.Services.AddScoped<IMaterialOrderService, MaterialOrderService>();
 builder.Services.AddScoped<ISupplyService, SupplyService>();
 builder.Services.AddScoped<ICommercialBankClient, CommercialBankClient>();

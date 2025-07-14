@@ -53,5 +53,13 @@ namespace esAPI.Clients
             }
             return result;
         }
+
+        // Place a material order with THOH (if supported by their API)
+        public async Task<SupplierOrderResponse?> PlaceOrderAsync(SupplierOrderRequest request)
+        {
+            // TODO: Replace with actual THOH material order endpoint if available
+            // For now, simulate a failed response to allow fallback to Recycler
+            return null;
+        }
     }
 }

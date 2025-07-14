@@ -7,12 +7,13 @@ using esAPI.Services;
 using esAPI.Simulation;
 using esAPI.Interfaces;
 using esAPI.Clients;
+using System.Net.Http;
 
 namespace esAPI.Controllers
 {
     [ApiController]
     [Route("simulation")]
-    public class SimulationController(SimulationStartupService simulationStartupService, SimulationDayOrchestrator dayOrchestrator, ISimulationStateService stateService, IStartupCostCalculator costCalculator, ICommercialBankClient bankClient, AppDbContext context, BankService bankService, BankAccountService bankAccountService, RecyclerApiClient recyclerClient, ILogger<SimulationController> logger, ILoggerFactory loggerFactory) : ControllerBase
+    public class SimulationController(SimulationStartupService simulationStartupService, SimulationDayOrchestrator dayOrchestrator, ISimulationStateService stateService, IStartupCostCalculator costCalculator, ICommercialBankClient bankClient, AppDbContext context, BankService bankService, BankAccountService bankAccountService, RecyclerApiClient recyclerClient, IBulkLogisticsClient bulkLogisticsClient, IElectronicsService electronicsService, IHttpClientFactory httpClientFactory, ThohApiClient thohApiClient, ILogger<SimulationController> logger, ILoggerFactory loggerFactory) : ControllerBase
     {
         private readonly SimulationStartupService _simulationStartupService = simulationStartupService;
         private readonly SimulationDayOrchestrator _dayOrchestrator = dayOrchestrator;
@@ -23,6 +24,10 @@ namespace esAPI.Controllers
         private readonly BankService _bankService = bankService;
         private readonly BankAccountService _bankAccountService = bankAccountService;
         private readonly RecyclerApiClient _recyclerClient = recyclerClient;
+        private readonly IBulkLogisticsClient _bulkLogisticsClient = bulkLogisticsClient;
+        private readonly IElectronicsService _electronicsService = electronicsService;
+        private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
+        private readonly ThohApiClient _thohApiClient = thohApiClient;
         private readonly ILogger<SimulationController> _logger = logger;
         private readonly ILoggerFactory _loggerFactory = loggerFactory;
 
@@ -81,7 +86,7 @@ namespace esAPI.Controllers
             _logger.LogInformation("⏭️ Advancing simulation from day {CurrentDay} to {NextDay}", 
                 _stateService.CurrentDay, _stateService.CurrentDay + 1);
 
-            var engine = new SimulationEngine(_context, _bankService, _bankAccountService, _dayOrchestrator, _costCalculator, _bankClient, _recyclerClient, _loggerFactory.CreateLogger<SimulationEngine>());
+            var engine = new SimulationEngine(_context, _bankService, _bankAccountService, _dayOrchestrator, _costCalculator, _bankClient, _recyclerClient, _bulkLogisticsClient, _stateService, _electronicsService, _httpClientFactory, _thohApiClient, _loggerFactory.CreateLogger<SimulationEngine>());
             await engine.RunDayAsync(_stateService.CurrentDay);
             _logger.LogInformation("✅ Day {Day} simulation logic completed", _stateService.CurrentDay);
             
