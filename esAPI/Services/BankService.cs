@@ -50,7 +50,9 @@ namespace esAPI.Services
 
                 await _retryQueuePublisher.PublishAsync(retryJob);
 
-                throw; // or return a sentinel value to indicate failure if you prefer
+                // Return a sentinel value instead of throwing to allow simulation to continue
+                _logger.LogWarning("⚠️ Returning sentinel balance value (-1) to allow simulation to continue");
+                return -1m;
             }
         }
     }

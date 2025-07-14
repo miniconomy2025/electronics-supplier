@@ -32,8 +32,16 @@ namespace esAPI.Simulation
 
             // 1. Query bank and store our balance
             _logger.LogInformation("🏦 Querying bank balance for day {DayNumber}", dayNumber);
-            await _bankService.GetAndStoreBalance(dayNumber);
-            _logger.LogInformation("✅ Bank balance stored for day {DayNumber}", dayNumber);
+            try
+            {
+                var balance = await _bankService.GetAndStoreBalance(dayNumber);
+                _logger.LogInformation("✅ Bank balance stored for day {DayNumber}: {Balance}", dayNumber, balance);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Bank balance retrieval failed for day {DayNumber}, but simulation will continue", dayNumber);
+                // Continue with simulation even if bank balance fails
+            }
 
             // COMMENTED OUT: Other business logic for now
             /*
