@@ -27,6 +27,7 @@ namespace esAPI.Services
         private readonly AppDbContext _dbContext;
         private readonly ILogger<MaterialAcquisitionService> _logger;
         private readonly IPaymentRetryHandler _paymentRetryHandler;
+        private readonly ISimulationStateService _stateService;
 
         private static ConcurrentDictionary<string, int> _statusIdCache = new();
 
@@ -41,7 +42,8 @@ namespace esAPI.Services
             IMaterialSourcingService sourcingService,
             IBulkLogisticsClient logisticsClient,
             ILogger<MaterialAcquisitionService> logger,
-            IPaymentRetryHandler paymentRetryHandler)
+            IPaymentRetryHandler paymentRetryHandler,
+            ISimulationStateService stateService)
         {
             _httpClientFactory = httpClientFactory;
             _bankService = bankService;
@@ -52,6 +54,7 @@ namespace esAPI.Services
             _dbContext = dbContext;
             _logger = logger;
             _paymentRetryHandler = paymentRetryHandler;
+            _stateService = stateService;
         }
 
         public async Task ExecutePurchaseStrategyAsync()
@@ -61,7 +64,7 @@ namespace esAPI.Services
                 await PurchaseWithStrategy("copper", sourcedInfo => Task.FromResult(sourcedInfo.MaterialDetails.AvailableQuantity / 2));
                 await PurchaseWithStrategy("silicon", async sourcedInfo =>
                 {
-                    var balance = await _bankService.GetAndStoreBalance(0);
+                    var balance = await _bankService.GetAndStoreBalance(_stateService.CurrentDay);
                     var budget = balance * 0.3m;
                     int qty = (int)Math.Floor(budget / sourcedInfo.MaterialDetails.PricePerKg);
                     return Math.Min(qty, sourcedInfo.MaterialDetails.AvailableQuantity);
@@ -71,7 +74,6 @@ namespace esAPI.Services
             {
                 _logger.LogError(ex, "A critical error occurred during the material purchase strategy execution.");
             }
-
         }
 
         private async Task PurchaseWithStrategy(string materialName, Func<SourcedSupplier, Task<int>> quantityStrategy)

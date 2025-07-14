@@ -10,7 +10,6 @@ using esAPI.Interfaces;
 using esAPI.Configuration;
 using Amazon.SQS;
 using esAPI.Services.ElectronicsSQS;
-using FactoryApi.Services;
 using esAPI.Services.PaymentRetry;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,7 +18,7 @@ var builder = WebApplication.CreateBuilder(args);
 var tlsUtil = new TLSUtil(builder);
 
 tlsUtil.AddSecureHttpClient(builder.Services, "commercial-bank", "https://commercial-bank-api.projects.bbdgrad.com");
-tlsUtil.AddSecureHttpClient(builder.Services, "bulk-logistics", "https://bulk-logistics-api.projects.bbdgrad.com");
+tlsUtil.AddSecureHttpClient(builder.Services, "bulk-logistics", "https://bulk-logistics-api.projects.bbdgrad.com/api");
 tlsUtil.AddSecureHttpClient(builder.Services, "thoh", "https://thoh-api.projects.bbdgrad.com");
 tlsUtil.AddSecureHttpClient(builder.Services, "recycler", "https://recycler-api.projects.bbdgrad.com");
 
@@ -52,6 +51,7 @@ builder.Services.AddScoped<IBulkLogisticsClient, BulkLogisticsClient>();
 builder.Services.AddScoped<BankAccountService>();
 builder.Services.AddScoped<BankService>();
 builder.Services.AddScoped<InventoryService>();
+builder.Services.AddScoped<SimulationStartupService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
 builder.Services.AddScoped<IProductionService, ProductionService>();
 builder.Services.AddScoped<IMachineAcquisitionService, MachineAcquisitionService>();
@@ -73,9 +73,18 @@ builder.Services.Configure<InventoryConfig>(
 builder.Services.AddScoped<SimulationDayOrchestrator>();
 builder.Services.AddSingleton<ISimulationStateService, SimulationStateService>();
 
-builder.Services.AddHostedService<InventoryManagementService>();
+builder.Services.AddDefaultAWSOptions(builder.Configuration.GetAWSOptions());
+builder.Services.AddAWSService<IAmazonSQS>();
+builder.Services.AddSingleton<RetryQueuePublisher>();
+builder.Services.AddHostedService<RetryJobDispatcher>();
+
+// Register all retry handlers
+builder.Services.AddScoped<IRetryHandler<BankAccountRetryJob>, BankAccountRetryHandler>();
+builder.Services.AddScoped<IRetryHandler<BankBalanceRetryJob>, BankBalanceRetryHandler>();
+
+// builder.Services.AddHostedService<InventoryManagementService>(); // Disabled inventory management system temporarily
 builder.Services.AddHostedService<SimulationAutoAdvanceService>();
-builder.Services.AddHostedService<OrderExpirationBackgroundService>();
+builder.Services.AddSingleton<OrderExpirationBackgroundService>();
 
 
 builder.Services.AddScoped<IElectronicsOrderPublisher, SqsElectronicsOrderPublisher>();
@@ -108,16 +117,28 @@ app.UseHttpsRedirection();
 
 app.Use(async (context, next) =>
 {
-    var cert = await context.Connection.GetClientCertificateAsync();
-    if (cert != null)
+    // Check for client certificate info from ALB headers
+    var clientCertHeader = context.Request.Headers["X-Forwarded-Client-Cert"].FirstOrDefault();
+    if (!string.IsNullOrEmpty(clientCertHeader))
     {
-        Console.WriteLine("Client cert CN: " + cert.GetNameInfo(X509NameType.SimpleName, false));
-        Console.WriteLine("Issuer: " + cert.Issuer);
-        Console.WriteLine("Thumbprint: " + cert.Thumbprint);
+        Console.WriteLine("🔧 ALB Client cert header: " + clientCertHeader);
+        // Parse the certificate info from the header
+        // ALB forwards the certificate in a specific format
     }
     else
     {
-        Console.WriteLine("❌ No client cert received.");
+        // Fallback to direct connection (for development)
+        var cert = await context.Connection.GetClientCertificateAsync();
+        if (cert != null)
+        {
+            Console.WriteLine("Client cert CN: " + cert.GetNameInfo(X509NameType.SimpleName, false));
+            Console.WriteLine("Issuer: " + cert.Issuer);
+            Console.WriteLine("Thumbprint: " + cert.Thumbprint);
+        }
+        else
+        {
+            Console.WriteLine("❌ No client cert received (direct connection).");
+        }
     }
 
     await next();
