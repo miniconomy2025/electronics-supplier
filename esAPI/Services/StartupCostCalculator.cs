@@ -7,7 +7,7 @@ namespace esAPI.Services;
 
 public class StartupCostCalculator : IStartupCostCalculator
 {
-    private readonly IThohMachineApiClient _machineSupplier;
+    private readonly ThohApiClient _thohClient;
     private readonly ISupplierApiClient _materialSupplier;
 
     private const int InitialProductionCyclesToStock = 2;
@@ -19,10 +19,10 @@ public class StartupCostCalculator : IStartupCostCalculator
     };
 
     public StartupCostCalculator(
-        IThohMachineApiClient machineSupplier,
+        ThohApiClient thohClient,
         ISupplierApiClient materialSupplier)
     {
-        _machineSupplier = machineSupplier;
+        _thohClient = thohClient;
         _materialSupplier = materialSupplier;
     }
 
@@ -30,7 +30,7 @@ public class StartupCostCalculator : IStartupCostCalculator
     {
         var allStartupPlans = new List<StartupPlan>();
 
-        var availableMachines = await _machineSupplier.GetAvailableMachinesAsync();
+        var availableMachines = await _thohClient.GetAvailableMachinesAsync();
         if (!availableMachines.Any())
         {
             return allStartupPlans;
@@ -43,20 +43,22 @@ public class StartupCostCalculator : IStartupCostCalculator
         {
             if (machineInfo.Price <= 0) continue;
 
-            var requiredMaterials = ParseMaterialRatio(machineInfo.InputRatio);
-
-            if (requiredMaterials == null)
+            var requiredMaterials = machineInfo.InputRatio;
+            if (requiredMaterials == null || requiredMaterials.Count == 0)
             {
                 continue;
             }
-
-            if (machineInfo.Price <= 0) continue;
 
             decimal totalMaterialCost = 0;
             bool canFulfillAllMaterials = true;
 
             foreach (var (materialName, ratio) in requiredMaterials)
             {
+                if (!_ourCoreMaterials.Contains(materialName))
+                {
+                    canFulfillAllMaterials = false;
+                    break;
+                }
                 if (!supplierInventoryDict.TryGetValue(materialName, out var materialInfoFromSupplier))
                 {
                     canFulfillAllMaterials = false;
@@ -78,30 +80,5 @@ public class StartupCostCalculator : IStartupCostCalculator
         }
 
         return allStartupPlans;
-    }
-
-    private Dictionary<string, int>? ParseMaterialRatio(MachineInputRatioDto ratioDto)
-    {
-        var requiredMaterials = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-
-        if (ratioDto.Copper.HasValue && ratioDto.Copper > 0) requiredMaterials.Add("copper", ratioDto.Copper.Value);
-        if (ratioDto.Silicon.HasValue && ratioDto.Silicon > 0) requiredMaterials.Add("silicon", ratioDto.Silicon.Value);
-
-
-        if ((ratioDto.Plastic.HasValue && ratioDto.Plastic > 0) || (ratioDto.Gold.HasValue && ratioDto.Gold > 0))
-        {
-            return null;
-        }
-
-        foreach (var materialName in requiredMaterials.Keys)
-        {
-            if (!_ourCoreMaterials.Contains(materialName))
-            {
-                return null;
-            }
-        }
-
-        return requiredMaterials;
-
     }
 }

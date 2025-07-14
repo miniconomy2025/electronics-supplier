@@ -14,6 +14,6 @@ namespace esAPI.Models
                 public string MaterialName { get; set; } = string.Empty;
 
                 [Column("price_per_kg")]
-                public decimal PricePerKg { get; set; }
+                public decimal? PricePerKg { get; set; }
         }
 }

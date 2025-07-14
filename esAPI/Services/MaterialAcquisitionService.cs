@@ -76,7 +76,27 @@ namespace esAPI.Services
             Console.WriteLine("Try buying " + materialName);
 
             var orderRequest = new SupplierOrderRequest { MaterialName = materialName, WeightQuantity = quantityToBuy };
-            var orderResponse = await sourcedInfo.Client.PlaceOrderAsync(orderRequest);
+            SupplierOrderResponse? orderResponse = null;
+            if (sourcedInfo.Client is ISupplierApiClient supplierClient)
+            {
+                orderResponse = await supplierClient.PlaceOrderAsync(orderRequest);
+            }
+            else if (sourcedInfo.Client is RecyclerApiClient recyclerClient)
+            {
+                orderResponse = await recyclerClient.PlaceOrderAsync(orderRequest);
+            }
+            else if (sourcedInfo.Client is ThohApiClient thohClient)
+            {
+                // If ThohApiClient supports PlaceOrderAsync, call it here. Otherwise, log or throw.
+                // orderResponse = await thohClient.PlaceOrderAsync(orderRequest);
+                Console.WriteLine("PlaceOrderAsync not implemented for ThohApiClient");
+                return false;
+            }
+            else
+            {
+                Console.WriteLine($"Unknown supplier client type: {sourcedInfo.Client.GetType().Name}");
+                return false;
+            }
             if (orderResponse == null || string.IsNullOrEmpty(orderResponse.BankAccount)) return false;
 
             var localOrder = await CreateLocalOrderRecordAsync(sourcedInfo, quantityToBuy, orderResponse);

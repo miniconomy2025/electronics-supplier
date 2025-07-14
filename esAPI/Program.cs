@@ -38,7 +38,9 @@ builder.Services.AddControllers();
 
 builder.Services.AddHttpClient(); 
 
+// Ensure all SimulationEngine dependencies are registered for DI
 builder.Services.AddScoped<IElectronicsService, ElectronicsService>();
+builder.Services.AddScoped<IBulkLogisticsClient, BulkLogisticsClient>();
 builder.Services.AddScoped<IMaterialOrderService, MaterialOrderService>();
 builder.Services.AddScoped<ISupplyService, SupplyService>();
 builder.Services.AddScoped<ICommercialBankClient, CommercialBankClient>();
@@ -50,6 +52,7 @@ builder.Services.AddScoped<BankAccountService>();
 builder.Services.AddScoped<BankService>();
 builder.Services.AddScoped<InventoryService>();
 builder.Services.AddScoped<SimulationStartupService>();
+builder.Services.AddScoped<ElectronicsMachineDetailsService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
 builder.Services.AddScoped<IProductionService, ProductionService>();
 builder.Services.AddScoped<IMachineAcquisitionService, MachineAcquisitionService>();
@@ -57,8 +60,6 @@ builder.Services.AddScoped<IMachineAcquisitionService, MachineAcquisitionService
 builder.Services.AddScoped<IMaterialSourcingService, MaterialSourcingService>();
 builder.Services.AddScoped<IMaterialAcquisitionService, MaterialAcquisitionService>();
 
-builder.Services.AddScoped<IThohMachineApiClient, ThohApiClient>();
-builder.Services.AddScoped<ISupplierApiClient, ThohApiClient>();
 builder.Services.AddScoped<ISupplierApiClient, RecyclerApiClient>();
 
 builder.Services.AddScoped<IStartupCostCalculator, StartupCostCalculator>();
@@ -126,10 +127,10 @@ app.Use(async (context, next) =>
             Console.WriteLine("Issuer: " + cert.Issuer);
             Console.WriteLine("Thumbprint: " + cert.Thumbprint);
         }
-        else
-        {
-            Console.WriteLine("❌ No client cert received (direct connection).");
-        }
+        // else
+        // {
+        //     Console.WriteLine("❌ No client cert received (direct connection).");
+        // }
     }
 
     await next();

@@ -27,7 +27,7 @@ namespace esAPI.Services
                 var snapshot = new BankBalanceSnapshot
                 {
                     SimulationDay = simulationDay,
-                    Balance = balance,
+                    Balance = (double)balance,
                     Timestamp = simulationDay // Use the day number as timestamp
                 };
                 _db.BankBalanceSnapshots.Add(snapshot);
