@@ -130,10 +130,10 @@ app.Use(async (context, next) =>
             Console.WriteLine("Issuer: " + cert.Issuer);
             Console.WriteLine("Thumbprint: " + cert.Thumbprint);
         }
-        else
-        {
-            Console.WriteLine("❌ No client cert received (direct connection).");
-        }
+        // else
+        // {
+        //     Console.WriteLine("❌ No client cert received (direct connection).");
+        // }
     }
 
     await next();

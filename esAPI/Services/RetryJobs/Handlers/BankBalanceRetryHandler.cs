@@ -32,7 +32,7 @@ namespace esAPI.Services
             var snapshot = new BankBalanceSnapshot
             {
                 SimulationDay = job.SimulationDay,
-                Balance = balance,
+                Balance = (double)balance,
                 Timestamp = job.SimulationDay // Use the day number as timestamp
             };
 

@@ -4,6 +4,7 @@ using esAPI.Services;
 using esAPI.Clients;
 using Microsoft.Extensions.Logging;
 using esAPI.DTOs;
+using Microsoft.EntityFrameworkCore;
 
 namespace esAPI.Simulation
 {
@@ -31,20 +32,34 @@ namespace esAPI.Simulation
                 _logger.LogInformation("🎬 Executing startup sequence for day 1");
                 await ExecuteStartupSequence();
             }
-        // ✅ Step 0: Ensure bank account is created before running sim logic
-            var company = _context.Companies.FirstOrDefault(c => c.CompanyId == 1);
-            if (company == null)
+            else
             {
-                _logger.LogError("❌ Company not found in database. Simulation halted.");
-                return;
+                // Loan logic at the start of the day (not on day 1)
+                try
+                {
+                    var balance = await _bankService.GetAndStoreBalance(dayNumber);
+                    _logger.LogInformation("💰 Current bank balance at start of day {DayNumber}: {Balance}", dayNumber, balance);
+                    if (balance <= 10000m)
+                    {
+                        _logger.LogInformation("🏦 Bank balance is low (<= 10,000). Attempting to request a loan...");
+                        const decimal loanAmount = 20000000m; // 20 million
+                        string? loanSuccess = await _bankClient.RequestLoanAsync(loanAmount);
+                        if (loanSuccess == null)
+                        {
+                            _logger.LogWarning("❌ Failed to request loan for day {DayNumber}. Will retry next day if still low.", dayNumber);
+                        }
+                        else
+                        {
+                            _logger.LogInformation("✅ Loan requested successfully for day {DayNumber}: {LoanNumber}", dayNumber, loanSuccess);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ Error while checking balance or requesting loan at start of day {DayNumber}", dayNumber);
+                }
             }
-
-            if (string.IsNullOrWhiteSpace(company.BankAccountNumber))
-            {
-                _logger.LogWarning("⏸️ Bank account not yet created. Skipping simulation day {DayNumber}. Retry will be handled separately.", dayNumber);
-                return;
-            }
-           
+            
             _logger.LogInformation("📊 Running simulation logic for Day {DayNumber}", dayNumber);
 
             // 1. Query bank and store our balance
@@ -117,6 +132,38 @@ namespace esAPI.Simulation
                         var total = orderResponse.Data.Total;
                         var accountNumber = orderResponse.Data.AccountNumber;
                         _logger.LogInformation($"[Order] Recycler order placed: OrderId={orderId}, Total={total}, Account={accountNumber}");
+                        // Insert into material_orders
+                        try
+                        {
+                            var recyclerCompany = await _context.Companies.FirstOrDefaultAsync(c => c.CompanyName.ToLower() == "recycler");
+                            var material = await _context.Materials.FirstOrDefaultAsync(m => m.MaterialName.ToLower() == mat.MaterialName.ToLower());
+                            if (recyclerCompany != null && material != null)
+                            {
+                                var sim = _context.Simulations.FirstOrDefault(s => s.IsRunning);
+                                var orderedAt = sim != null ? sim.DayNumber : dayNumber;
+                                var newOrder = new Models.MaterialOrder
+                                {
+                                    SupplierId = recyclerCompany.CompanyId,
+                                    MaterialId = material.MaterialId,
+                                    ExternalOrderId = orderId,
+                                    RemainingAmount = orderQty,
+                                    TotalAmount = orderQty,
+                                    OrderStatusId = 1, // Pending
+                                    OrderedAt = orderedAt,
+                                };
+                                _context.MaterialOrders.Add(newOrder);
+                                await _context.SaveChangesAsync();
+                                _logger.LogInformation($"[DB] Inserted material order for recycler: Material={mat.MaterialName}, Qty={orderQty}, OrderId={orderId}");
+                            }
+                            else
+                            {
+                                _logger.LogWarning($"[DB] Could not insert material order for recycler: missing company or material. Material={mat.MaterialName}");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, $"[DB] Exception inserting material order for recycler: Material={mat.MaterialName}");
+                        }
                         if (!string.IsNullOrEmpty(accountNumber) && total > 0)
                         {
                             _logger.LogInformation($"[Payment] Paying recycler {total} for order {orderId}");

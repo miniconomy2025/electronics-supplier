@@ -240,3 +240,5 @@ CREATE TABLE bank_balance_snapshots (
 
 -- Add index for efficient querying by simulation day
 CREATE INDEX idx_bank_balance_snapshots_simulation_day ON bank_balance_snapshots(simulation_day); 
+
+INSERT INTO materials (material_name) VALUES ('copper'), ('silicon');
