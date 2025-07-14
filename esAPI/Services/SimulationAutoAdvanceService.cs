@@ -72,10 +72,17 @@ namespace esAPI.Services
                         var logger = dbScope.ServiceProvider.GetRequiredService<ILogger<SimulationEngine>>();
                         var engine = new SimulationEngine(db, bankService, bankAccountService, dayOrchestrator, startupCostCalculator, bankClient, logger);
                         await engine.RunDayAsync(stateService.CurrentDay);
-                        stateService.AdvanceDay();
                     }
                 }
+                // Wait for the interval to elapse
                 await Task.Delay(TimeSpan.FromMinutes(MinutesPerSimDay), stoppingToken);
+                // Now increment the day
+                using (var scope = _serviceProvider.CreateScope())
+                {
+                    var stateService = scope.ServiceProvider.GetRequiredService<ISimulationStateService>();
+                    if (stateService.IsRunning)
+                        stateService.AdvanceDay();
+                }
             }
         }
     }
