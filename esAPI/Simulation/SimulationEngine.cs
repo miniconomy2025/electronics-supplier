@@ -97,9 +97,10 @@ namespace esAPI.Simulation
             {
                 int totalMachines = await _context.Machines.CountAsync(m => m.RemovedAt == null);
                 int brokenMachines = await _context.Machines.CountAsync(m => m.MachineStatusId == (int)Models.Enums.Machine.Status.Broken && m.RemovedAt == null);
-                if (totalMachines > 0 && totalMachines == brokenMachines)
+                // FIX: Order machines if we have zero or all are broken
+                if (totalMachines == 0 || totalMachines == brokenMachines)
                 {
-                    _logger.LogInformation($"[Machine] All machines are broken. Attempting to buy 2 new machines from THOH.");
+                    _logger.LogInformation($"[Machine] No working machines. Attempting to buy 2 new machines from THOH.");
                     try
                     {
                         var thohHttpClient = _httpClientFactory.CreateClient("thoh");
@@ -264,18 +265,31 @@ namespace esAPI.Simulation
                                 }
                             }
                         }
+                        else
+                        {
+                            _logger.LogInformation($"[Order] THOH has no available {materialName} or zero quantity. Will attempt Recycler fallback.");
+                        }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, $"[Order] Exception during THOH order for {materialName}");
+                        _logger.LogError(ex, $"[Order] Exception during THOH order for {materialName}. Will attempt Recycler fallback.");
                     }
-                    if (orderedFromThoh) continue; // Skip Recycler if THOH order succeeded
+                    if (orderedFromThoh)
+                    {
+                        _logger.LogInformation($"[Order] Successfully ordered {materialName} from THOH. Skipping Recycler.");
+                        continue; // Skip Recycler if THOH order succeeded
+                    }
                     // --- Recycler fallback ---
+                    _logger.LogInformation($"[Order] Attempting Recycler fallback for {materialName}.");
                     var mat = recyclerMaterials.FirstOrDefault(m => m.MaterialName.ToLower() == materialName);
                     if (mat != null && mat.AvailableQuantity > 0)
                     {
                         int orderQty = mat.AvailableQuantity / 2;
-                        if (orderQty == 0) continue;
+                        if (orderQty == 0)
+                        {
+                            _logger.LogInformation($"[Order] Recycler available quantity for {materialName} is zero after division. Skipping order.");
+                            continue;
+                        }
                         _logger.LogInformation($"[Order] Placing recycler order for {orderQty} kg of {mat.MaterialName} (our stock: {ownStock})");
                         var orderResponse = await _recyclerClient.PlaceRecyclerOrderAsync(mat.MaterialName, orderQty);
                         if (orderResponse?.IsSuccess == true && orderResponse.Data != null)
@@ -381,7 +395,7 @@ namespace esAPI.Simulation
                     }
                     else
                     {
-                        _logger.LogInformation($"[Order] No order placed for {materialName} (our stock: {ownStock}, recycler available: {mat?.AvailableQuantity ?? 0})");
+                        _logger.LogInformation($"[Order] No order placed for {materialName} (our stock: {ownStock}, recycler available: {(mat?.AvailableQuantity ?? 0)})");
                     }
                 }
             }
