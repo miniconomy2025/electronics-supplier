@@ -5,35 +5,41 @@ namespace esAPI.Services;
 
 public class MaterialSourcingService : IMaterialSourcingService
 {
-    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IEnumerable<ISupplierApiClient> _supplierClients;
+    private readonly ILogger<MaterialSourcingService> _logger;
 
 
-    public MaterialSourcingService(IHttpClientFactory httpClientFactory)
+    public MaterialSourcingService(
+        IEnumerable<ISupplierApiClient> supplierClients,
+        ILogger<MaterialSourcingService> logger)
     {
-        _httpClientFactory = httpClientFactory;
+        _supplierClients = supplierClients;
+        _logger = logger;
     }
 
     public async Task<SourcedSupplier?> FindBestSupplierAsync(string materialName)
     {
 
-        var suppliersToQuery = new Dictionary<string, Func<ISupplierApiClient>>
-        {
-
-            { "thoh", () => new ThohApiClient(_httpClientFactory) },
-            { "recycler", () => new RecyclerApiClient(_httpClientFactory) }
-        };
-
         var quotes = new List<SourcedSupplier>();
 
-        foreach (var (name, clientFactory) in suppliersToQuery)
+        foreach (var client in _supplierClients)
         {
-            var client = clientFactory();
-            var materials = await client.GetAvailableMaterialsAsync();
-            var materialInfo = materials?.FirstOrDefault(m => m.MaterialName.Equals(materialName, StringComparison.OrdinalIgnoreCase));
 
-            if (materialInfo != null && materialInfo.AvailableQuantity > 0)
+            try
             {
-                quotes.Add(new SourcedSupplier(name, client, materialInfo));
+                var materials = await client.GetAvailableMaterialsAsync();
+                var materialInfo = materials?.FirstOrDefault(m => m.MaterialName.Equals(materialName, StringComparison.OrdinalIgnoreCase));
+
+                if (materialInfo != null && materialInfo.AvailableQuantity > 0)
+                {
+                    var clientName = client.GetType().Name.Replace("ApiClient", "").ToLowerInvariant();
+                    quotes.Add(new SourcedSupplier(clientName, client, materialInfo));
+                }
+            }
+            catch (Exception ex)
+            {
+                var clientName = client.GetType().Name;
+                _logger.LogError(ex, "Failed to get material data from supplier client '{ClientName}'.", clientName);
             }
         }
 

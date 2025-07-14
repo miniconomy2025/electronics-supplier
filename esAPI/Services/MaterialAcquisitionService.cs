@@ -6,14 +6,15 @@ using esAPI.Data;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Concurrent;
 using esAPI.Interfaces;
+using esAPI.Exceptions;
+using esAPI.Services.PaymentRetry;
 
 namespace esAPI.Services
 {
     public interface IMaterialAcquisitionService
     {
         Task ExecutePurchaseStrategyAsync();
-        // Task PurchaseMaterialsViaBank();
-        // Task PlaceBulkLogisticsPickup(int orderId, string itemName, int quantity, string supplier);
+
     }
 
     public class MaterialAcquisitionService : IMaterialAcquisitionService
@@ -24,112 +25,194 @@ namespace esAPI.Services
         private readonly BankService _bankService;
         private readonly ICommercialBankClient _bankClient;
         private readonly AppDbContext _dbContext;
+        private readonly ILogger<MaterialAcquisitionService> _logger;
+        private readonly IPaymentRetryHandler _paymentRetryHandler;
+        private readonly ISimulationStateService _stateService;
 
         private static ConcurrentDictionary<string, int> _statusIdCache = new();
 
-        public MaterialAcquisitionService(IHttpClientFactory httpClientFactory, AppDbContext dbContext, BankService bankService, ICommercialBankClient bankClient, IMaterialSourcingService sourcingService, IBulkLogisticsClient logisticsClient)
+        private const string OurCompanyId = "electronics-supplier";
+        private const string LogisticsProviderName = "bulk-logistics";
+
+        public MaterialAcquisitionService(
+            IHttpClientFactory httpClientFactory,
+            AppDbContext dbContext,
+            BankService bankService,
+            ICommercialBankClient bankClient,
+            IMaterialSourcingService sourcingService,
+            IBulkLogisticsClient logisticsClient,
+            ILogger<MaterialAcquisitionService> logger,
+            IPaymentRetryHandler paymentRetryHandler,
+            ISimulationStateService stateService)
         {
             _httpClientFactory = httpClientFactory;
             _bankService = bankService;
             _bankClient = bankClient;
 
             _sourcingService = sourcingService;
-            _bankClient = bankClient;
             _logisticsClient = logisticsClient;
             _dbContext = dbContext;
+            _logger = logger;
+            _paymentRetryHandler = paymentRetryHandler;
+            _stateService = stateService;
         }
 
         public async Task ExecutePurchaseStrategyAsync()
         {
-            await PurchaseWithStrategy("copper", sourcedInfo => Task.FromResult(sourcedInfo.MaterialDetails.AvailableQuantity / 2));
-            await PurchaseWithStrategy("silicon", async sourcedInfo =>
+            try
             {
-                var balance = await _bankService.GetAndStoreBalance(0);
-                var budget = balance * 0.3m;
-                int qty = (int)Math.Floor(budget / sourcedInfo.MaterialDetails.PricePerKg);
-                return Math.Min(qty, sourcedInfo.MaterialDetails.AvailableQuantity);
-            });
+                await PurchaseWithStrategy("copper", sourcedInfo => Task.FromResult(sourcedInfo.MaterialDetails.AvailableQuantity / 2));
+                await PurchaseWithStrategy("silicon", async sourcedInfo =>
+                {
+                    var balance = await _bankService.GetAndStoreBalance(_stateService.CurrentDay);
+                    var budget = balance * 0.3m;
+                    int qty = (int)Math.Floor(budget / sourcedInfo.MaterialDetails.PricePerKg);
+                    return Math.Min(qty, sourcedInfo.MaterialDetails.AvailableQuantity);
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "A critical error occurred during the material purchase strategy execution.");
+            }
         }
 
         private async Task PurchaseWithStrategy(string materialName, Func<SourcedSupplier, Task<int>> quantityStrategy)
         {
             var sourcedInfo = await _sourcingService.FindBestSupplierAsync(materialName);
-            Console.WriteLine(sourcedInfo);
-            if (sourcedInfo == null) return;
+            if (sourcedInfo == null)
+            {
+                _logger.LogInformation("No available supplier for {Material}. Skipping purchase.", materialName);
+                return;
+            }
 
             int quantityToBuy = await quantityStrategy(sourcedInfo);
             Console.WriteLine(quantityToBuy);
             if (quantityToBuy <= 0)
             {
+                _logger.LogInformation("Strategy for {Material} resulted in zero quantity. Skipping purchase.", materialName);
                 return;
             }
-
-            await ProcureAndPayAsync(sourcedInfo, quantityToBuy);
+            await ProcureMaterialWorkflowAsync(sourcedInfo, quantityToBuy);
         }
 
-        private async Task<bool> ProcureAndPayAsync(SourcedSupplier sourcedInfo, int quantityToBuy)
+        private async Task ProcureMaterialWorkflowAsync(SourcedSupplier sourcedInfo, int quantityToBuy)
         {
-            var materialName = sourcedInfo.MaterialDetails.MaterialName;
-
-            Console.WriteLine("Try buying " + materialName);
-
-            var orderRequest = new SupplierOrderRequest { MaterialName = materialName, WeightQuantity = quantityToBuy };
-            var orderResponse = await sourcedInfo.Client.PlaceOrderAsync(orderRequest);
-            if (orderResponse == null || string.IsNullOrEmpty(orderResponse.BankAccount)) return false;
-
-            var localOrder = await CreateLocalOrderRecordAsync(sourcedInfo, quantityToBuy, orderResponse);
-            if (localOrder == null)
+            MaterialOrder? localOrder = null;
+            try
             {
-                return false;
-            }
+                var supplierOrderResponse = await PlaceSupplierOrderAsync(sourcedInfo, quantityToBuy);
+                localOrder = await CreateLocalOrderRecordAsync(sourcedInfo, quantityToBuy, supplierOrderResponse);
 
-            // --- Attempt to Pay the Supplier ---
-            var paymentSuccess = await _bankClient.MakePaymentAsync(orderResponse.BankAccount, sourcedInfo.Name, orderResponse.Price, $"Order {orderResponse.OrderId}");
-            if (paymentSuccess == string.Empty)
+                await PaySupplierAsync(localOrder, supplierOrderResponse, sourcedInfo.Name);
+                await UpdateOrderStatusAsync(localOrder.OrderId, "ACCEPTED");
+
+                await ArrangeAndPayForLogisticsAsync(localOrder, supplierOrderResponse, sourcedInfo.Name);
+                await UpdateOrderStatusAsync(localOrder.OrderId, "IN_TRANSIT");
+
+                _logger.LogInformation("Successfully completed procurement workflow for local order {OrderId}.", localOrder.OrderId);
+            }
+            catch (ProcurementStepFailedException ex)
             {
-                await UpdateOrderStatusAsync(localOrder.OrderId, "REJECTED");
-                return false;
+                _logger.LogError(ex, "Procurement workflow failed for {Material} from {Supplier}.", sourcedInfo.MaterialDetails.MaterialName, sourcedInfo.Name);
+                if (localOrder != null)
+                {
+                    await UpdateOrderStatusAsync(localOrder.OrderId, ex.FailureStatus);
+                }
             }
-
-            // --- Update Order Status to 'ACCEPTED' ---
-            await UpdateOrderStatusAsync(localOrder.OrderId, "ACCEPTED");
-
-            // --- Arrange and Pay for Logistics ---
-            var logisticsSuccess = await ArrangeLogisticsAsync(orderResponse, materialName, quantityToBuy, sourcedInfo.Name);
-
-            if (!logisticsSuccess)
+            catch (Exception ex)
             {
-                await UpdateOrderStatusAsync(localOrder.OrderId, "DISASTER");
-                return false;
+                _logger.LogCritical(ex, "An unexpected critical error occurred during procurement workflow.");
+                if (localOrder != null)
+                {
+                    // A critical, unexpected error is a disaster.
+                    await UpdateOrderStatusAsync(localOrder.OrderId, "DISASTER");
+                }
             }
-
-            // --- Final Status Update to 'IN_TRANSIT' ---
-            await UpdateOrderStatusAsync(localOrder.OrderId, "IN_TRANSIT");
-
-            return true;
         }
 
-        private async Task<bool> ArrangeLogisticsAsync(SupplierOrderResponse order, string materialName, int quantity, string supplierName)
+        private async Task<SupplierOrderResponse> PlaceSupplierOrderAsync(SourcedSupplier sourcedInfo, int quantityToBuy)
+        {
+            var orderRequest = new SupplierOrderRequest { MaterialName = sourcedInfo.MaterialDetails.MaterialName, WeightQuantity = quantityToBuy };
+            var orderResponse = await sourcedInfo.Client.PlaceOrderAsync(orderRequest);
+            if (orderResponse == null)
+            {
+                throw new ProcurementStepFailedException("Order placement with supplier failed.", "REJECTED");
+            }
+            return orderResponse;
+        }
+
+        private async Task PaySupplierAsync(MaterialOrder localOrder, SupplierOrderResponse supplierOrder, string supplierName)
+        {
+            if (string.IsNullOrEmpty(supplierOrder.BankAccount))
+            {
+                throw new ProcurementStepFailedException("Supplier response missing bank account.", "REJECTED");
+            }
+
+            try
+            {
+                await _bankClient.MakePaymentAsync(supplierOrder.BankAccount, "commercial-bank", supplierOrder.Price, $"Order {supplierOrder.OrderId}");
+            }
+            catch (ApiCallFailedException ex)
+            {
+                _logger.LogWarning(ex, "Payment to supplier failed for local order {OrderId}. Queuing for durable retry.", localOrder.OrderId); _logger.LogWarning(ex, "Payment to supplier failed for local order {OrderId}. Queuing for durable retry.", localOrder.OrderId);
+
+                var retryEvent = new PaymentRetryEvent
+                {
+                    LocalOrderId = localOrder.OrderId,
+                    RecipientBankAccount = supplierOrder.BankAccount,
+                    RecipientName = supplierName,
+                    Amount = supplierOrder.Price,
+                    Reference = $"Order {supplierOrder.OrderId}"
+                };
+
+                await _paymentRetryHandler.QueuePaymentForRetryAsync(retryEvent);
+
+                throw new ProcurementStepFailedException($"Payment to supplier failed: {ex.Message}", "PAYMENT_FAILED", ex);
+            }
+
+        }
+
+        private async Task ArrangeAndPayForLogisticsAsync(MaterialOrder localOrder, SupplierOrderResponse supplierOrder, string supplierName)
         {
             var pickupReq = new LogisticsPickupRequest
             {
-                OriginalExternalOrderId = order.OrderId.ToString(),
+                OriginalExternalOrderId = supplierOrder.OrderId.ToString(),
                 OriginCompanyId = supplierName,
-                DestinationCompanyId = "1",
-                Items = [new LogisticsItem { Name = materialName, Quantity = quantity }]
+                DestinationCompanyId = OurCompanyId,
+                Items = [new LogisticsItem { Name = localOrder.Material!.MaterialName, Quantity = localOrder.RemainingAmount }]
             };
 
-            var pickupResp = await _logisticsClient.ArrangePickupAsync(pickupReq);
-            if (pickupResp == null || string.IsNullOrEmpty(pickupResp.BulkLogisticsBankAccountNumber)) return false;
-
-            var pickupRequest = await CreatePickupRequestAsync(order.OrderId, quantity, materialName);
+            var pickupRequest = await CreatePickupRequestAsync(localOrder.ExternalOrderId!.Value, localOrder.RemainingAmount, localOrder.Material!.MaterialName);
 
             if (pickupRequest == null)
-                return false;
+                throw new ProcurementStepFailedException("Arranging pickup with Bulk Logistics failed.", "LOGISTICS_FAILED");
 
-            var paymentSuccess = await _bankClient.MakePaymentAsync(pickupResp.BulkLogisticsBankAccountNumber, "commercial-bank", pickupResp.Cost, $"Pickup for order {order.OrderId}");
+            var pickupResp = await _logisticsClient.ArrangePickupAsync(pickupReq);
+            if (pickupResp == null || string.IsNullOrEmpty(pickupResp.BulkLogisticsBankAccountNumber))
+            {
+                throw new ProcurementStepFailedException("Arranging pickup with Bulk Logistics failed.", "LOGISTICS_FAILED");
+            }
 
-            return paymentSuccess == string.Empty;
+
+            try
+            {
+                await _bankClient.MakePaymentAsync(pickupResp.BulkLogisticsBankAccountNumber, "commercial-bank", pickupResp.Cost, $"Pickup for order {supplierOrder.OrderId}");
+            }
+            catch (ApiCallFailedException ex)
+            {
+                var retryEvent = new PaymentRetryEvent
+                {
+                    LocalOrderId = localOrder.OrderId,
+                    RecipientBankAccount = pickupResp.BulkLogisticsBankAccountNumber,
+                    RecipientName = supplierName,
+                    Amount = supplierOrder.Price,
+                    Reference = $"Pickup for order {supplierOrder.OrderId}"
+                };
+
+                await _paymentRetryHandler.QueuePaymentForRetryAsync(retryEvent);
+
+                throw new ProcurementStepFailedException($"Payment to logistics failed: {ex.Message}", "PAYMENT_FAILED", ex);
+            }
         }
 
         private async Task<MaterialOrder?> CreateLocalOrderRecordAsync(SourcedSupplier sourcedInfo, int quantity, SupplierOrderResponse supplierResponse)

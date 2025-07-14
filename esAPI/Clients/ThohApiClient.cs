@@ -28,8 +28,8 @@ public class ThohApiClient(IHttpClientFactory httpClientFactory) : BaseClient(ht
     public async Task<List<ThohMachineInfo>> GetAvailableMachinesAsync()
     {
         var response = await GetAsync<ThohMachineListResponse>("/machines");
-        
-        return response?.Machines ?? new List<ThohMachineInfo>();
+
+        return response.Machines;
     }
 
     public async Task<List<SupplierMaterialInfo>> GetAvailableMaterialsAsync()
