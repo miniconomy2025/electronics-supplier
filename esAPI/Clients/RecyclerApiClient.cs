@@ -49,7 +49,7 @@ public class RecyclerApiClient : BaseClient, ISupplierApiClient
                 }
             }
         };
-
+        Console.WriteLine("Sending recycler order: " + System.Text.Json.JsonSerializer.Serialize(recyclerRequest));
         return await PostAsync<RecyclerOrderRequestDto, SupplierOrderResponse>("/orders", recyclerRequest);
     }
 
@@ -67,6 +67,7 @@ public class RecyclerApiClient : BaseClient, ISupplierApiClient
                 }
             }
         };
+        Console.WriteLine("Sending recycler order: " + System.Text.Json.JsonSerializer.Serialize(recyclerRequest));
         return await PostAsync<RecyclerOrderRequestDto, RecyclerOrderResponseWrapper>("/orders", recyclerRequest);
     }
 
