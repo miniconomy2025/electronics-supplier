@@ -57,8 +57,6 @@ builder.Services.AddScoped<IMachineAcquisitionService, MachineAcquisitionService
 builder.Services.AddScoped<IMaterialSourcingService, MaterialSourcingService>();
 builder.Services.AddScoped<IMaterialAcquisitionService, MaterialAcquisitionService>();
 
-builder.Services.AddScoped<IThohMachineApiClient, ThohApiClient>();
-builder.Services.AddScoped<ISupplierApiClient, ThohApiClient>();
 builder.Services.AddScoped<ISupplierApiClient, RecyclerApiClient>();
 
 builder.Services.AddScoped<IStartupCostCalculator, StartupCostCalculator>();

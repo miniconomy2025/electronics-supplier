@@ -1,5 +1,24 @@
 using System.Text.Json.Serialization;
 
+namespace esAPI.DTOs.Thoh
+{
+    public class ThohMachineDto
+    {
+        public string MachineName { get; set; } = string.Empty;
+        public string Inputs { get; set; } = string.Empty;
+        public int Quantity { get; set; }
+        public Dictionary<string, int> InputRatio { get; set; } = new();
+        public int ProductionRate { get; set; }
+        public int Price { get; set; }
+    }
+
+    public class ThohMachinesResponse
+    {
+        public List<ThohMachineDto> Machines { get; set; } = new();
+    }
+}
+
+
 public class MachineInputRatioDto
 {
     [JsonPropertyName("copper")]
