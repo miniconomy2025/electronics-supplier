@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Amazon.SQS;
 using Amazon.SQS.Model;
+using esAPI.Interfaces;
 
 namespace esAPI.Services
 {
@@ -9,6 +10,7 @@ namespace esAPI.Services
         private readonly IAmazonSQS _sqs;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<RetryJobDispatcher> _logger;
+        private readonly ISimulationStateService _stateService;
         private readonly Dictionary<string, Type> _jobTypes = new()
         {
             { "BankAccountRetry", typeof(BankAccountRetryJob) },
@@ -19,11 +21,12 @@ namespace esAPI.Services
         private readonly string _queueUrl;
         
 
-        public RetryJobDispatcher(IAmazonSQS sqs, IServiceProvider serviceProvider, ILogger<RetryJobDispatcher> logger, IConfiguration config)
+        public RetryJobDispatcher(IAmazonSQS sqs, IServiceProvider serviceProvider, ILogger<RetryJobDispatcher> logger, IConfiguration config, ISimulationStateService stateService)
         {
             _sqs = sqs;
             _serviceProvider = serviceProvider;
             _logger = logger;
+            _stateService = stateService;
             _queueUrl = config["Retry:QueueUrl"] ?? throw new ArgumentNullException("Retry:QueueUrl not configured");
         }
 
@@ -31,6 +34,14 @@ namespace esAPI.Services
         {
             while (!stoppingToken.IsCancellationRequested)
             {
+                // Only process retry jobs when simulation is running
+                if (!_stateService.IsRunning)
+                {
+                    _logger.LogDebug("🔄 Simulation not running, skipping retry job processing");
+                    await Task.Delay(5000, stoppingToken); // Wait 5 seconds before checking again
+                    continue;
+                }
+
                 try
                 {
                     var response = await _sqs.ReceiveMessageAsync(new ReceiveMessageRequest
