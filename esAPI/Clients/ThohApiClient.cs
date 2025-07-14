@@ -13,10 +13,9 @@ namespace esAPI.Clients
     public class ThohApiClient
     {
         private readonly HttpClient _client;
-        public ThohApiClient(HttpClient client)
+        public ThohApiClient(IHttpClientFactory factory)
         {
-            _client = client;
-            _client.BaseAddress = new System.Uri("https://thoh-api.projects.bbdgrad.com");
+            _client = factory.CreateClient("thoh");
         }
 
         public async Task<ThohMachineDto?> GetElectronicsMachineAsync()
