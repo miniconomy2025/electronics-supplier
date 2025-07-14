@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using esAPI.Services;
 
 namespace esAPI.DTOs.Orders
@@ -12,5 +13,17 @@ namespace esAPI.DTOs.Orders
 
         // Simulation timestamp conversions
         public DateTime OrderedAtSimTimestamp => OrderedAt.ToCanonicalTime();
+    }
+
+    public class ElectronicsOrderReceivedEvent
+    {
+        [JsonPropertyName("customerId")]
+        public int CustomerId { get; set; }
+
+        [JsonPropertyName("amount")]
+        public int Amount { get; set; }
+
+        [JsonPropertyName("orderReceivedAtUtc")]
+        public DateTime OrderReceivedAtUtc { get; set; }
     }
 }

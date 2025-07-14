@@ -8,6 +8,10 @@ using esAPI.Clients;
 using esAPI.Services;
 using esAPI.Interfaces;
 using esAPI.Configuration;
+using Amazon.SQS;
+using esAPI.Services.ElectronicsSQS;
+using FactoryApi.Services;
+using esAPI.Services.PaymentRetry;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -36,7 +40,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
 
 builder.Services.AddHttpClient(); 
-
+builder.Services.AddAWSService<IAmazonSQS>();
 builder.Services.AddScoped<IElectronicsService, ElectronicsService>();
 builder.Services.AddScoped<IMaterialOrderService, MaterialOrderService>();
 builder.Services.AddScoped<ISupplyService, SupplyService>();
@@ -72,6 +76,13 @@ builder.Services.AddSingleton<ISimulationStateService, SimulationStateService>()
 builder.Services.AddHostedService<InventoryManagementService>();
 builder.Services.AddHostedService<SimulationAutoAdvanceService>();
 builder.Services.AddHostedService<OrderExpirationBackgroundService>();
+
+
+builder.Services.AddScoped<IElectronicsOrderPublisher, SqsElectronicsOrderPublisher>();
+builder.Services.AddHostedService<ElectronicsOrderProcessor>();
+
+builder.Services.AddScoped<IPaymentRetryHandler, SqsPaymentRetryHandler>();
+builder.Services.AddHostedService<PaymentRetryWorker>();
 
 // Add CORS services
 builder.Services.AddCors(options =>

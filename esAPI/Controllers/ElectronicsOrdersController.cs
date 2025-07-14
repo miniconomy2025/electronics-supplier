@@ -6,16 +6,27 @@ using esAPI.Interfaces;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using esAPI.Services.ElectronicsSQS;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Cryptography.X509Certificates;
 
 namespace esAPI.Controllers
 {
     [ApiController]
     [Route("orders")]
-    public class ElectronicsOrdersController(AppDbContext context, IElectronicsService electronicsService, ISimulationStateService stateService, OrderExpirationService orderExpirationService) : BaseController(context)
+    public class ElectronicsOrdersController(
+        AppDbContext context,
+        IElectronicsService electronicsService,
+        ISimulationStateService stateService,
+        OrderExpirationService orderExpirationService,
+        IElectronicsOrderPublisher orderPublisher,
+        ILogger<ElectronicsOrdersController> logger) : BaseController(context)
     {
         private readonly IElectronicsService _electronicsService = electronicsService;
         private readonly ISimulationStateService _stateService = stateService;
         private readonly OrderExpirationService _orderExpirationService = orderExpirationService;
+        private readonly IElectronicsOrderPublisher _orderPublisher = orderPublisher;
+        private readonly ILogger<ElectronicsOrdersController> _logger = logger;
 
         [HttpPost]
         public async Task<IActionResult> CreateOrder([FromBody] ElectronicsOrderRequest dto)
@@ -36,10 +47,16 @@ namespace esAPI.Controllers
             if (dto == null || dto.Quantity <= 0)
                 return BadRequest("Invalid order data.");
 
-            // Check available electronics (not reserved, not sold)
+            var orderEvent = new ElectronicsOrderReceivedEvent
+            {
+                CustomerId = manufacturer.CompanyId,
+                Amount = dto.Quantity,
+                OrderReceivedAtUtc = DateTime.UtcNow
+            };
+
+
+
             var availableStock = await _orderExpirationService.GetAvailableElectronicsCountAsync();
-            if (availableStock < dto.Quantity)
-                return BadRequest($"Insufficient stock available. Available: {availableStock}, Requested: {dto.Quantity}");
 
             var order = new Models.ElectronicsOrder
             {
@@ -50,44 +67,22 @@ namespace esAPI.Controllers
                 TotalAmount = dto.Quantity
             };
 
-            _context.ElectronicsOrders.Add(order);
+            bool success = await _orderPublisher.PublishOrderReceivedEventAsync(orderEvent);
 
-            try
+            if (success)
             {
-                await _context.SaveChangesAsync();
-
-                // Reserve electronics for this order
-                var reservationSuccess = await _orderExpirationService.ReserveElectronicsForOrderAsync(order.OrderId, dto.Quantity);
-                if (!reservationSuccess)
-                {
-                    // If reservation failed, delete the order
-                    _context.ElectronicsOrders.Remove(order);
-                    await _context.SaveChangesAsync();
-                    return BadRequest("Failed to reserve electronics for the order. Please try again.");
-                }
+                return Accepted(
+                    new
+                    {
+                        Message = "Order received and has been queued for processing. You can check its status via the GET /orders/{id} endpoint later."
+                    });
             }
-            catch (DbUpdateException ex)
+            else
             {
-                return StatusCode(500, "An error occurred while saving the order." + ex);
+                _logger.LogError("Failed to publish new electronics order event to the queue.");
+                return StatusCode(500, new { Error = "The system could not accept your order at this time. Please try again later." });
             }
 
-            var bankNumber = await _context.Companies.
-                Where(c => c.CompanyId == 1) // 1 is us
-                .Select(c => c.BankAccountNumber)
-                .FirstOrDefaultAsync();
-
-            // Get current electronics details for pricing
-            var currentStock = await _electronicsService.GetElectronicsDetailsAsync();
-
-            var readDto = new ElectronicsOrderResponseDto
-            {
-                OrderId = order.OrderId,
-                Quantity = order.RemainingAmount,
-                AmountDue = currentStock?.PricePerUnit * order.RemainingAmount ?? 0,
-                BankNumber = bankNumber,
-            };
-
-            return CreatedAtAction(nameof(GetOrderById), new { orderId = order.OrderId }, readDto);
         }
 
         [HttpGet]

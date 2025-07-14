@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Collections.Concurrent;
 using esAPI.Interfaces;
 using esAPI.Exceptions;
+using esAPI.Services.PaymentRetry;
 
 namespace esAPI.Services
 {
@@ -25,6 +26,7 @@ namespace esAPI.Services
         private readonly ICommercialBankClient _bankClient;
         private readonly AppDbContext _dbContext;
         private readonly ILogger<MaterialAcquisitionService> _logger;
+        private readonly IPaymentRetryHandler _paymentRetryHandler;
 
         private static ConcurrentDictionary<string, int> _statusIdCache = new();
 
@@ -38,7 +40,8 @@ namespace esAPI.Services
             ICommercialBankClient bankClient,
             IMaterialSourcingService sourcingService,
             IBulkLogisticsClient logisticsClient,
-            ILogger<MaterialAcquisitionService> logger)
+            ILogger<MaterialAcquisitionService> logger,
+            IPaymentRetryHandler paymentRetryHandler)
         {
             _httpClientFactory = httpClientFactory;
             _bankService = bankService;
@@ -48,6 +51,7 @@ namespace esAPI.Services
             _logisticsClient = logisticsClient;
             _dbContext = dbContext;
             _logger = logger;
+            _paymentRetryHandler = paymentRetryHandler;
         }
 
         public async Task ExecutePurchaseStrategyAsync()
@@ -144,10 +148,23 @@ namespace esAPI.Services
 
             try
             {
-                await _bankClient.MakePaymentAsync(supplierOrder.BankAccount, supplierName, supplierOrder.Price, $"Order {supplierOrder.OrderId}");
+                await _bankClient.MakePaymentAsync(supplierOrder.BankAccount, "commercial-bank", supplierOrder.Price, $"Order {supplierOrder.OrderId}");
             }
             catch (ApiCallFailedException ex)
             {
+                _logger.LogWarning(ex, "Payment to supplier failed for local order {OrderId}. Queuing for durable retry.", localOrder.OrderId); _logger.LogWarning(ex, "Payment to supplier failed for local order {OrderId}. Queuing for durable retry.", localOrder.OrderId);
+
+                var retryEvent = new PaymentRetryEvent
+                {
+                    LocalOrderId = localOrder.OrderId,
+                    RecipientBankAccount = supplierOrder.BankAccount,
+                    RecipientName = supplierName,
+                    Amount = supplierOrder.Price,
+                    Reference = $"Order {supplierOrder.OrderId}"
+                };
+
+                await _paymentRetryHandler.QueuePaymentForRetryAsync(retryEvent);
+
                 throw new ProcurementStepFailedException($"Payment to supplier failed: {ex.Message}", "PAYMENT_FAILED", ex);
             }
 
@@ -163,27 +180,36 @@ namespace esAPI.Services
                 Items = [new LogisticsItem { Name = localOrder.Material!.MaterialName, Quantity = localOrder.RemainingAmount }]
             };
 
+            var pickupRequest = await CreatePickupRequestAsync(localOrder.ExternalOrderId!.Value, localOrder.RemainingAmount, localOrder.Material!.MaterialName);
+
+            if (pickupRequest == null)
+                throw new ProcurementStepFailedException("Arranging pickup with Bulk Logistics failed.", "LOGISTICS_FAILED");
+
             var pickupResp = await _logisticsClient.ArrangePickupAsync(pickupReq);
             if (pickupResp == null || string.IsNullOrEmpty(pickupResp.BulkLogisticsBankAccountNumber))
             {
                 throw new ProcurementStepFailedException("Arranging pickup with Bulk Logistics failed.", "LOGISTICS_FAILED");
             }
 
-            var pickupRequest = await CreatePickupRequestAsync(order.OrderId, quantity, materialName);
 
-            if (pickupRequest == null)
-                return false;
-
-            var paymentSuccess = await _bankClient.MakePaymentAsync(pickupResp.BulkLogisticsBankAccountNumber, "commercial-bank", pickupResp.Cost, $"Pickup for order {order.OrderId}");
-
-            return paymentSuccess == string.Empty;
             try
             {
-                await _bankClient.MakePaymentAsync(pickupResp.BulkLogisticsBankAccountNumber, LogisticsProviderName, pickupResp.Cost, $"Pickup for order {supplierOrder.OrderId}");
+                await _bankClient.MakePaymentAsync(pickupResp.BulkLogisticsBankAccountNumber, "commercial-bank", pickupResp.Cost, $"Pickup for order {supplierOrder.OrderId}");
             }
             catch (ApiCallFailedException ex)
             {
-                throw new ProcurementStepFailedException($"Payment to logistics failed: {ex.Message}", "LOGISTICS_FAILED", ex);
+                var retryEvent = new PaymentRetryEvent
+                {
+                    LocalOrderId = localOrder.OrderId,
+                    RecipientBankAccount = pickupResp.BulkLogisticsBankAccountNumber,
+                    RecipientName = supplierName,
+                    Amount = supplierOrder.Price,
+                    Reference = $"Pickup for order {supplierOrder.OrderId}"
+                };
+
+                await _paymentRetryHandler.QueuePaymentForRetryAsync(retryEvent);
+
+                throw new ProcurementStepFailedException($"Payment to logistics failed: {ex.Message}", "PAYMENT_FAILED", ex);
             }
         }
 
