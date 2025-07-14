@@ -22,17 +22,14 @@ public class RecyclerOrderRequestDto
 
 public class RecyclerMaterialDto
 {
-    [JsonPropertyName("id")]
-    public int Id { get; set; }
-
     [JsonPropertyName("name")]
     public required string Name { get; set; }
 
-    [JsonPropertyName("available_quantity_in_kg")]
+    [JsonPropertyName("availableQuantityInKg")]
     public int AvailableQuantityInKg { get; set; }
 
-    [JsonPropertyName("price")]
-    public decimal Price { get; set; }
+    [JsonPropertyName("pricePerKg")]
+    public decimal PricePerKg { get; set; }
 }
 
 public class RecyclerApiResponseDto

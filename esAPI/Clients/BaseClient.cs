@@ -18,8 +18,9 @@ namespace esAPI.Clients
             {
                 return await _client.GetFromJsonAsync<TResponse>(requestUri);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Console.WriteLine($"Exception during GET {requestUri}: {ex}");
                 return default;
             }
         }
@@ -32,13 +33,14 @@ namespace esAPI.Clients
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    
+                    Console.WriteLine($"POST {requestUri} failed: {response.StatusCode} - {errorContent}");
                     return default;
                 }
                 return await response.Content.ReadFromJsonAsync<TResponse>();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Console.WriteLine($"Exception during POST {requestUri}: {ex}");
                 return default;
             }
         }

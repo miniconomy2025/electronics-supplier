@@ -27,7 +27,7 @@ public class RecyclerApiClient : BaseClient, ISupplierApiClient
             {
                 MaterialName = m.Name,
                 AvailableQuantity = m.AvailableQuantityInKg,
-                PricePerKg = m.Price
+                PricePerKg = m.PricePerKg
             })
             .ToList();
 
