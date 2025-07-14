@@ -82,13 +82,15 @@ namespace esAPI.Controllers
                 return BadRequest("Simulation has reached the maximum number of days (1 year).");
             }
 
-            _logger.LogInformation("⏭️ Running simulation logic for day {CurrentDay}", _stateService.CurrentDay);
+            _logger.LogInformation("⏭️ Advancing simulation from day {CurrentDay} to {NextDay}", 
+                _stateService.CurrentDay, _stateService.CurrentDay + 1);
 
             var engine = new SimulationEngine(_context, _bankService, _bankAccountService, _dayOrchestrator, _costCalculator, _bankClient, _loggerFactory.CreateLogger<SimulationEngine>());
             await engine.RunDayAsync(_stateService.CurrentDay);
             _logger.LogInformation("✅ Day {Day} simulation logic completed", _stateService.CurrentDay);
-
-            // Do NOT increment the day counter here. Let the auto-advance service handle it after the interval.
+            
+            _stateService.AdvanceDay();
+            _logger.LogInformation("📈 Simulation advanced to day {NewDay}", _stateService.CurrentDay);
 
             // Backup to DB
             _logger.LogInformation("💾 Updating simulation progress in database");
@@ -139,7 +141,7 @@ namespace esAPI.Controllers
 
             // Truncate all tables except views and migration history
             _logger.LogInformation("🗑️ Truncating all simulation data tables");
-            await _context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE material_supplies, material_orders, machines, machine_orders, machine_ratios, machine_statuses, machine_details, electronics, electronics_orders, lookup_values, simulation, disasters RESTART IDENTITY CASCADE;");
+            await _context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE material_supplies, material_orders, machines, machine_orders, machine_ratios, machine_details, electronics, electronics_orders, lookup_values, simulation, disasters RESTART IDENTITY CASCADE;");
             _logger.LogInformation("✅ All simulation data cleared from database");
 
             return Ok(new { message = "Simulation stopped and all data deleted." });
