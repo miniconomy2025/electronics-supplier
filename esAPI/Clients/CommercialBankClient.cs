@@ -1,19 +1,13 @@
+using Microsoft.Extensions.Options;
+using esAPI.Configuration;
+
 namespace esAPI.Clients
 {
-    public interface ICommercialBankClient
-    {
-        Task<decimal> GetAccountBalanceAsync();
-        Task<string?> CreateAccountAsync();
-        Task<string> MakePaymentAsync(string toAccountNumber, string toBankName, decimal amount, string description);
-        Task<string?> RequestLoanAsync(decimal amount);
-
-        Task<bool> SetNotificationUrlAsync();
-    }
-
-    public class CommercialBankClient(IHttpClientFactory factory) : ICommercialBankClient
+    public class CommercialBankClient(IHttpClientFactory factory, IOptions<BankConfig> bankConfigOptions) : ICommercialBankClient
     {
         private readonly IHttpClientFactory _factory = factory;
         private readonly HttpClient _client = factory.CreateClient("commercial-bank");
+        private readonly string _notificationUrl = bankConfigOptions.Value.NotificationUrl;
 
         public async Task<decimal> GetAccountBalanceAsync()
         {
@@ -26,7 +20,7 @@ namespace esAPI.Clients
 
         public async Task<bool> SetNotificationUrlAsync()
         {
-            var requestBody = new { notification_url = "https://electronics-supplier-api.projects.bbdgrad.com/payments" };
+            var requestBody = new { notification_url = _notificationUrl };
 
             var response = await _client.PostAsJsonAsync("/account/me/notify", requestBody);
             response.EnsureSuccessStatusCode();

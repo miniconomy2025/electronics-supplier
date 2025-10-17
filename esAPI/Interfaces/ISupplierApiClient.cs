@@ -10,7 +10,4 @@ ISupplierApiClient
 
 }
 
-public interface IBulkLogisticsClient
-{
-    Task<LogisticsPickupResponse?> ArrangePickupAsync(LogisticsPickupRequest request);
-}
+// moved to IBulkLogisticsClient.cs

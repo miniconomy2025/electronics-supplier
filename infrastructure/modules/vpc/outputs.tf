@@ -3,11 +3,11 @@ output "vpc_id" {
 }
 
 output "public_subnet_id" {
-  value = aws_subnet.public.id
+  value = aws_subnet.public[0].id
 }
 
 output "private_subnet_ids" {
-  value = [aws_subnet.private.id]
+  value = [for s in aws_subnet.private : s.id]
 }
 
 output "default_security_group_id" {

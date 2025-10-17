@@ -1,16 +1,13 @@
 using System.Text.Json;
 using esAPI.DTOs;
+using esAPI.Interfaces;
 
 namespace esAPI.Services
 {
-    public interface IInventoryService
-    {
-        Task<InventorySummaryDto> GetAndStoreInventory();
-    }
-
-    public class InventoryService(IHttpClientFactory httpClientFactory) : IInventoryService
+    public class InventoryService(IHttpClientFactory httpClientFactory, IConfiguration configuration) : IInventoryService
     {
         private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
+        private readonly string _selfBaseUrl = configuration.GetValue<string>("SelfApi:BaseUrl") ?? "http://localhost:5062";
 
         public Task<InventorySummaryDto> GetAndStoreInventory()
         {
@@ -19,7 +16,8 @@ namespace esAPI.Services
 
         private async Task<InventorySummaryDto> GetAndStoreInventoryImpl()
         {
-            var client = _httpClientFactory.CreateClient(); // Default client, since it's our own API
+            var client = _httpClientFactory.CreateClient();
+            client.BaseAddress = new Uri(_selfBaseUrl);
             var response = await client.GetAsync("/inventory");
             response.EnsureSuccessStatusCode();
             var content = await response.Content.ReadAsStringAsync();
