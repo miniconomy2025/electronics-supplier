@@ -1,4 +1,6 @@
 using esAPI.DTOs;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace esAPI.Interfaces;
 
@@ -9,5 +11,3 @@ ISupplierApiClient
     Task<SupplierOrderResponse?> PlaceOrderAsync(SupplierOrderRequest request);
 
 }
-
-// moved to IBulkLogisticsClient.cs

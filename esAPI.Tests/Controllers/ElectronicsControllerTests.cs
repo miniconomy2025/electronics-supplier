@@ -4,6 +4,7 @@ using Moq;
 using esAPI.Controllers;
 using esAPI.DTOs.Electronics;
 using esAPI.Interfaces;
+using Xunit;
 
 namespace esAPI.Tests.Controllers
 {

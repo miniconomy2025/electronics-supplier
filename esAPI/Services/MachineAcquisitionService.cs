@@ -1,5 +1,6 @@
 using System.Text.Json;
 using esAPI.Clients;
+using esAPI.Interfaces;
 using esAPI.Data;
 using Microsoft.EntityFrameworkCore;
 

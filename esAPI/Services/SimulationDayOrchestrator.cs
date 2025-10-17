@@ -2,6 +2,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using System.Linq;
 using esAPI.DTOs;
+using esAPI.Interfaces;
 
 namespace esAPI.Services
 {

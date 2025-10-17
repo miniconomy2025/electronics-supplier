@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using esAPI.Configuration;
+using esAPI.Interfaces;
 
 namespace esAPI.Clients
 {
