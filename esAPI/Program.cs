@@ -14,22 +14,26 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddHttpClient("commercial-bank", client =>
 {
     client.BaseAddress = new Uri("https://commercial-bank-api.projects.bbdgrad.com");
+     client.DefaultRequestHeaders.Add("X-Client-Id", "electronics-supplier");
 })
 // Basic resiliency policies (timeouts handled by HttpClient default; retry few times)
 ;
 builder.Services.AddHttpClient("bulk-logistics", client =>
 {
     client.BaseAddress = new Uri("https://bulk-logistics-api.projects.bbdgrad.com");
+     client.DefaultRequestHeaders.Add("X-Client-Id", "electronics-supplier");
 })
 ;
 builder.Services.AddHttpClient("thoh", client =>
 {
     client.BaseAddress = new Uri("https://thoh-api.projects.bbdgrad.com");
+     client.DefaultRequestHeaders.Add("X-Client-Id", "electronics-supplier");
 })
 ;
 builder.Services.AddHttpClient("recycler", client =>
 {
     client.BaseAddress = new Uri("https://recycler-api.projects.bbdgrad.com");
+     client.DefaultRequestHeaders.Add("X-Client-Id", "electronics-supplier");
 })
 ;
 
