@@ -89,6 +89,7 @@ builder.Services.AddScoped<SimulationDayOrchestrator>();
 builder.Services.AddSingleton<ISimulationStateService, SimulationStateService>();
 
 // Configure AWS services only if credentials are available
+var awsServicesEnabled = false;
 try 
 {
     // Check if we have AWS configuration
@@ -97,29 +98,65 @@ try
     
     if (!string.IsNullOrEmpty(queueUrl) && !string.IsNullOrEmpty(region))
     {
-        builder.Services.AddDefaultAWSOptions(builder.Configuration.GetAWSOptions());
-        builder.Services.AddAWSService<IAmazonSQS>();
-        builder.Services.AddSingleton<RetryQueuePublisher>();
-        builder.Services.AddHostedService<RetryJobDispatcher>();
-
-        // Register all retry handlers
-        builder.Services.AddScoped<IRetryHandler<BankAccountRetryJob>, BankAccountRetryHandler>();
-        builder.Services.AddScoped<IRetryHandler<BankBalanceRetryJob>, BankBalanceRetryHandler>();
+        // Try to check for AWS credentials before registering services
+        var credentialsAvailable = CheckAWSCredentialsAvailable();
         
-        Console.WriteLine("✅ AWS SQS services configured successfully");
+        if (credentialsAvailable)
+        {
+            builder.Services.AddDefaultAWSOptions(builder.Configuration.GetAWSOptions());
+            builder.Services.AddAWSService<IAmazonSQS>();
+            builder.Services.AddSingleton<RetryQueuePublisher>();
+            builder.Services.AddHostedService<RetryJobDispatcher>();
+
+            // Register all retry handlers
+            builder.Services.AddScoped<IRetryHandler<BankAccountRetryJob>, BankAccountRetryHandler>();
+            builder.Services.AddScoped<IRetryHandler<BankBalanceRetryJob>, BankBalanceRetryHandler>();
+            
+            awsServicesEnabled = true;
+            Console.WriteLine("✅ AWS SQS services configured successfully");
+        }
+        else
+        {
+            Console.WriteLine("⚠️ AWS credentials not available, running without retry services");
+        }
     }
     else
     {
-        // Register a null/no-op implementation for services that depend on retry functionality
-        builder.Services.AddSingleton<RetryQueuePublisher>(provider => null!);
         Console.WriteLine("⚠️ AWS SQS configuration not found, running without retry services");
     }
 }
 catch (Exception ex)
 {
-    // Register a null implementation for graceful degradation
-    builder.Services.AddSingleton<RetryQueuePublisher>(provider => null!);
     Console.WriteLine($"⚠️ AWS services not available, running without retry functionality: {ex.Message}");
+}
+
+// Register null implementation if AWS services are not enabled
+if (!awsServicesEnabled)
+{
+    builder.Services.AddSingleton<RetryQueuePublisher>(provider => null!);
+}
+
+static bool CheckAWSCredentialsAvailable()
+{
+    // Check environment variables
+    if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID")) &&
+        !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY")))
+    {
+        return true;
+    }
+    
+    // Check if running on EC2 with IAM role
+    try
+    {
+        var client = new HttpClient();
+        client.Timeout = TimeSpan.FromSeconds(2);
+        var response = client.GetAsync("http://169.254.169.254/latest/meta-data/iam/security-credentials/").Result;
+        return response.IsSuccessStatusCode;
+    }
+    catch
+    {
+        return false;
+    }
 }
 
 // builder.Services.AddHostedService<InventoryManagementService>(); // Disabled inventory management system temporarily
