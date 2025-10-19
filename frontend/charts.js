@@ -1,7 +1,7 @@
 const rawMaterialsChartCtx = document.getElementById('rawMaterialsChart').getContext('2d');
 
 async function fetchCurrentSupply() {
-  const response = await fetch('https://electronics-supplier-api.projects.bbdgrad.com:444/Dashboard/current-supply');
+  const response = await fetch('https://electronics-supplier.tevlen.co.za/Dashboard/current-supply');
   const data = await response.json();
 
   return {
@@ -48,7 +48,7 @@ async function initRawMaterialsChart() {
 }
 
 async function fetchMachinesStatus() {
-  const response = await fetch('https://electronics-supplier-api.projects.bbdgrad.com:444/Dashboard/machines-status');
+  const response = await fetch('https://electronics-supplier.tevlen.co.za/Dashboard/machines-status');
   const data = await response.json();
 
   return {
@@ -86,18 +86,18 @@ async function initMachinesStatusChart() {
 }
 
 async function fetchEarnings() {
-  const response = await fetch('https://electronics-supplier-api.projects.bbdgrad.com:444/Dashboard/total-earnings');
+  const response = await fetch('https://electronics-supplier.tevlen.co.za/Dashboard/total-earnings');
   const data = await response.json();
   return data.totalEarnings ?? 0;
 }
 
 async function fetchElectronicsStock() {
-  const response = await fetch('https://electronics-supplier-api.projects.bbdgrad.com:444/Dashboard/electronics-stock');
+  const response = await fetch('https://electronics-supplier.tevlen.co.za/Dashboard/electronics-stock');
   return await response.json();
 }
 
 async function fetchMachinesStatusRaw() {
-  const response = await fetch('https://electronics-supplier-api.projects.bbdgrad.com:444/Dashboard/machines-status');
+  const response = await fetch('https://electronics-supplier.tevlen.co.za/Dashboard/machines-status');
   return await response.json();
 }
 
@@ -110,7 +110,7 @@ async function updateDashboardSummary() {
 
   // Fetch and update bank balance
   try {
-    const response = await fetch('https://electronics-supplier-api.projects.bbdgrad.com:444/Dashboard/bank-balance');
+    const response = await fetch('https://electronics-supplier.tevlen.co.za/Dashboard/bank-balance');
     const data = await response.json();
     document.getElementById('bankBalanceValue').textContent = data.balance.toLocaleString('en-ZA', {
       style: 'currency',
@@ -139,7 +139,7 @@ async function updateDashboardSummary() {
 }
 
 async function fetchOrders() {
-  const response = await fetch('https://electronics-supplier-api.projects.bbdgrad.com:444/Dashboard/orders');
+  const response = await fetch('https://electronics-supplier.tevlen.co.za/Dashboard/orders');
   return await response.json();
 }
 
@@ -203,7 +203,7 @@ function convertToDate(decimalTimestamp) {
 }
 
 async function fetchBankBalanceHistory() {
-  const response = await fetch('https://electronics-supplier-api.projects.bbdgrad.com:444/Dashboard/payments');
+  const response = await fetch('https://electronics-supplier.tevlen.co.za/Dashboard/payments');
   const data = await response.json();
 
   return {
@@ -272,7 +272,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 async function updateSimulationStatus() {
   try {
-    const response = await fetch('https://electronics-supplier-api.projects.bbdgrad.com:444/simulation');
+    const response = await fetch('https://electronics-supplier.tevlen.co.za/simulation');
     const sim = await response.json();
     const statusText = sim.isRunning ? 'Running' : 'Stopped';
     document.getElementById('simulationStatus').textContent = statusText;

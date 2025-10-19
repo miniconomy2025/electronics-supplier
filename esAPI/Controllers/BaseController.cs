@@ -2,37 +2,32 @@ using esAPI.Data;
 using esAPI.Models;
 
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-
-using System.Text.RegularExpressions;
 
 #nullable enable
 namespace esAPI.Controllers
 {
     public partial class BaseController(AppDbContext context) : ControllerBase
     {
-
         protected readonly AppDbContext _context = context;
 
-        protected async Task<Company?> GetOrganizationalUnitFromCertificateAsync()
+        /// <summary>
+        /// Gets the current company based on the Client-Id header.
+        /// This information is populated by the ClientIdentificationMiddleware.
+        /// </summary>
+        /// <returns>The company associated with the current request, or null if not found.</returns>
+        protected Company? GetCurrentCompany()
         {
-            var cert = await HttpContext.Connection.GetClientCertificateAsync();
-            if (cert == null)
-                return null;
-
-            var dn = new System.Security.Cryptography.X509Certificates.X500DistinguishedName(cert.SubjectName.RawData);
-            var dnString = dn.Format(true);
-
-            var match = OrganizationalUnitRegex().Match(dnString);
-            var organizationalUnit = match.Success ? match.Groups[1].Value.Trim() : null;
-
-            if (organizationalUnit == null)
-                return null;
-
-            return await _context.Companies.FirstOrDefaultAsync(c => c.CompanyName == organizationalUnit);
+            return HttpContext.Items["CurrentCompany"] as Company;
         }
 
-        [GeneratedRegex(@"OU=([^,\r\n]+)")]
-        private static partial Regex OrganizationalUnitRegex();
+        /// <summary>
+        /// Gets the Client-Id from the current request.
+        /// This information is populated by the ClientIdentificationMiddleware.
+        /// </summary>
+        /// <returns>The Client-Id header value, or null if not found.</returns>
+        protected string? GetClientId()
+        {
+            return HttpContext.Items["ClientId"] as string;
+        }
     }
 }

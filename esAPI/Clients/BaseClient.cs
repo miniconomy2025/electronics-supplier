@@ -10,6 +10,12 @@ namespace esAPI.Clients
         {
             _factory = factory;
             _client = _factory.CreateClient(clientName);
+            
+            // Ensure Client-Id header is set for outgoing requests
+            if (!_client.DefaultRequestHeaders.Contains("Client-Id"))
+            {
+                _client.DefaultRequestHeaders.Add("Client-Id", "electronics-supplier");
+            }
         }
 
         protected async Task<TResponse?> GetAsync<TResponse>(string requestUri)

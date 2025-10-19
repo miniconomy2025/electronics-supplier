@@ -1,5 +1,3 @@
-using System.Security.Cryptography.X509Certificates;
-
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -8,17 +6,35 @@ using esAPI.Clients;
 using esAPI.Services;
 using esAPI.Interfaces;
 using esAPI.Configuration;
+using esAPI.Middleware;
 using Amazon.SQS;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure TLS settings
-var tlsUtil = new TLSUtil(builder);
+// Configure HTTP clients
+builder.Services.AddHttpClient("commercial-bank", client =>
+{
+    client.BaseAddress = new Uri("https://commercial-bank-api.subspace.site/api");
+    client.DefaultRequestHeaders.Add("Client-Id", "electronics-supplier");
+});
 
-tlsUtil.AddSecureHttpClient(builder.Services, "commercial-bank", "https://commercial-bank-api.projects.bbdgrad.com");
-tlsUtil.AddSecureHttpClient(builder.Services, "bulk-logistics", "https://bulk-logistics-api.projects.bbdgrad.com/api");
-tlsUtil.AddSecureHttpClient(builder.Services, "thoh", "https://thoh-api.projects.bbdgrad.com");
-tlsUtil.AddSecureHttpClient(builder.Services, "recycler", "https://recycler-api.projects.bbdgrad.com");
+builder.Services.AddHttpClient("bulk-logistics", client =>
+{
+    client.BaseAddress = new Uri("https://team7-todo.xyz/api");
+    client.DefaultRequestHeaders.Add("Client-Id", "electronics-supplier");
+});
+
+builder.Services.AddHttpClient("thoh", client =>
+{
+    client.BaseAddress = new Uri("https://ec2-13-244-65-62.af-south-1.compute.amazonaws.com");
+    client.DefaultRequestHeaders.Add("Client-Id", "electronics-supplier");
+});
+
+builder.Services.AddHttpClient("recycler", client =>
+{
+    client.BaseAddress = new Uri("https://api.recycler.susnet.co.za");
+    client.DefaultRequestHeaders.Add("Client-Id", "electronics-supplier");
+});
 
 //--------------------------------------------------------------------------
 
@@ -107,37 +123,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.Use(async (context, next) =>
-{
-    // Check for client certificate info from ALB headers
-    var clientCertHeader = context.Request.Headers["X-Forwarded-Client-Cert"].FirstOrDefault();
-    if (!string.IsNullOrEmpty(clientCertHeader))
-    {
-        Console.WriteLine("🔧 ALB Client cert header: " + clientCertHeader);
-        // Parse the certificate info from the header
-        // ALB forwards the certificate in a specific format
-    }
-    else
-    {
-        // Fallback to direct connection (for development)
-        var cert = await context.Connection.GetClientCertificateAsync();
-        if (cert != null)
-        {
-            Console.WriteLine("Client cert CN: " + cert.GetNameInfo(X509NameType.SimpleName, false));
-            Console.WriteLine("Issuer: " + cert.Issuer);
-            Console.WriteLine("Thumbprint: " + cert.Thumbprint);
-        }
-        // else
-        // {
-        //     Console.WriteLine("❌ No client cert received (direct connection).");
-        // }
-    }
-
-    await next();
-});
-
 // Use CORS
 app.UseCors("AllowSwagger");
+
+// Use Client-Id authentication
+app.UseClientIdentification();
 
 app.MapControllers();
 

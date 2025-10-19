@@ -37,7 +37,7 @@ namespace esAPI.Services
                 // Create account with notification URL
                 var createAccountRequest = new
                 {
-                    notification_url = "https://electronics-supplier-api.projects.bbdgrad.com/payments"
+                    notification_url = "https://electronics-supplier.tevlen.co.za/payments"
                 };
 
                 _logger.LogInformation("🏦 Request body: {@Request}", createAccountRequest);
@@ -92,7 +92,7 @@ namespace esAPI.Services
                             var retryJob = new BankAccountRetryJob
                             {
                                 CompanyId = company.CompanyId,
-                                NotificationUrl = "https://electronics-supplier-api.projects.bbdgrad.com/payments", // same as original
+                                NotificationUrl = "https://electronics-supplier.tevlen.co.za/payments", // same as original
                                 RetryAttempt = 0
                             };
 

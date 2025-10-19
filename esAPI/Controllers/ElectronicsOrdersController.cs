@@ -20,18 +20,10 @@ namespace esAPI.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateOrder([FromBody] ElectronicsOrderRequest dto)
         {
-            // Get current simulation day
-
-            // --- for testing disabled
-            // var manufacturer = await GetOrganizationalUnitFromCertificateAsync();
-            // if (manufacturer == null)
-            //     return Unauthorized("You must be authenticated to place an order.");
-            var manufacturer = await _context.Companies
-                .Where(c => c.CompanyId == 6) // 6 is pear-company
-                .FirstOrDefaultAsync();
-
+            // Get the authenticated company from the Client-Id middleware
+            var manufacturer = GetCurrentCompany();
             if (manufacturer == null)
-                return BadRequest("Manufacturer not found.");
+                return Unauthorized("You must be authenticated to place an order.");
 
             if (dto == null || dto.Quantity <= 0)
                 return BadRequest("Invalid order data.");
