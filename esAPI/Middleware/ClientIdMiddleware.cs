@@ -8,7 +8,7 @@ namespace esAPI.Middleware
     {
         private readonly RequestDelegate _next;
 
-        public const string ClientIdHeaderName = "X-Client-ID";
+    public const string ClientIdHeaderName = "Client-Id";
         public const string HttpContextItemKey = "ClientId";
 
         public ClientIdMiddleware(RequestDelegate next)

@@ -12,7 +12,7 @@ namespace esAPI.Middleware
             var clientContext = context.HttpContext.RequestServices.GetService(typeof(IClientContext)) as IClientContext;
             if (clientContext?.CompanyId == null)
             {
-                context.Result = new BadRequestObjectResult(new { error = "Missing or invalid X-Client-ID header." });
+                context.Result = new BadRequestObjectResult(new { error = "Missing or invalid Client-Id header." });
                 return;
             }
 
