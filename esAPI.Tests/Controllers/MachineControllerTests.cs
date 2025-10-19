@@ -1,4 +1,3 @@
-using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Moq;
@@ -77,23 +76,23 @@ namespace esAPI.Tests.Controllers
             var result = await controller.ReportMachineFailure(failureRequest);
 
             // Assert
-            var createdResult = result.Result.Should().BeOfType<CreatedAtActionResult>().Subject;
-            var disasterDto = createdResult.Value.Should().BeOfType<DisasterDto>().Subject;
+            var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
+            var disasterDto = Assert.IsType<DisasterDto>(createdResult.Value);
 
-            disasterDto.MachinesAffected.Should().Be(3);
-            disasterDto.BrokenAt.Should().Be(1.500m);
+            Assert.Equal(3, disasterDto.MachinesAffected);
+            Assert.Equal(1.500m, disasterDto.BrokenAt);
 
             // Verify machines were broken
             var brokenMachines = await context.Machines
                 .Where(m => m.MachineStatusId == 3) // BROKEN status
                 .CountAsync();
-            brokenMachines.Should().Be(3);
+            Assert.Equal(3, brokenMachines);
 
             // Verify disaster was recorded
             var disasters = await context.Disasters.ToListAsync();
-            disasters.Should().HaveCount(1);
-            disasters[0].MachinesAffected.Should().Be(3);
-            disasters[0].BrokenAt.Should().Be(1.500m);
+            Assert.Single(disasters);
+            Assert.Equal(3, disasters[0].MachinesAffected);
+            Assert.Equal(1.500m, disasters[0].BrokenAt);
         }
 
         [Fact]
@@ -126,16 +125,16 @@ namespace esAPI.Tests.Controllers
             var result = await controller.ReportMachineFailure(failureRequest);
 
             // Assert
-            var createdResult = result.Result.Should().BeOfType<CreatedAtActionResult>().Subject;
-            var disasterDto = createdResult.Value.Should().BeOfType<DisasterDto>().Subject;
+            var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
+            var disasterDto = Assert.IsType<DisasterDto>(createdResult.Value);
 
-            disasterDto.MachinesAffected.Should().Be(2); // Only 2 machines were available
+            Assert.Equal(2, disasterDto.MachinesAffected); // Only 2 machines were available
 
             // Verify all machines were broken
             var brokenMachines = await context.Machines
                 .Where(m => m.MachineStatusId == 3) // BROKEN status
                 .CountAsync();
-            brokenMachines.Should().Be(2);
+            Assert.Equal(2, brokenMachines);
         }
 
         [Fact]
@@ -168,8 +167,8 @@ namespace esAPI.Tests.Controllers
             var result = await controller.ReportMachineFailure(failureRequest);
 
             // Assert
-            var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-            badRequestResult.Value.Should().Be("No working machines available to break.");
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+            Assert.Equal("No working machines available to break.", badRequestResult.Value);
         }
 
         [Fact]
@@ -191,8 +190,8 @@ namespace esAPI.Tests.Controllers
             var result = await controller.ReportMachineFailure(failureRequest);
 
             // Assert
-            var badRequestResult = result.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
-            badRequestResult.Value.Should().NotBeNull();
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+            Assert.NotNull(badRequestResult.Value);
         }
 
         [Fact]
@@ -228,10 +227,10 @@ namespace esAPI.Tests.Controllers
             var result = await controller.ReportMachineFailure(failureRequest);
 
             // Assert
-            var createdResult = result.Result.Should().BeOfType<CreatedAtActionResult>().Subject;
-            var disasterDto = createdResult.Value.Should().BeOfType<DisasterDto>().Subject;
+            var createdResult = Assert.IsType<CreatedAtActionResult>(result.Result);
+            var disasterDto = Assert.IsType<DisasterDto>(createdResult.Value);
 
-            disasterDto.MachinesAffected.Should().Be(2);
+            Assert.Equal(2, disasterDto.MachinesAffected);
 
             // Verify the first two machines (by ID) were broken
             var brokenMachines = await context.Machines
@@ -239,9 +238,9 @@ namespace esAPI.Tests.Controllers
                 .OrderBy(m => m.MachineId)
                 .ToListAsync();
 
-            brokenMachines.Should().HaveCount(2);
-            brokenMachines[0].MachineId.Should().Be(1);
-            brokenMachines[1].MachineId.Should().Be(2);
+            Assert.Equal(2, brokenMachines.Count);
+            Assert.Equal(1, brokenMachines[0].MachineId);
+            Assert.Equal(2, brokenMachines[1].MachineId);
         }
     }
 }

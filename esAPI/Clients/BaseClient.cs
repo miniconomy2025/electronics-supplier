@@ -26,21 +26,13 @@ namespace esAPI.Clients
 
         protected async Task<TResponse?> PostAsync<TRequest, TResponse>(string requestUri, TRequest requestBody)
         {
-            try
+            var response = await _client.PostAsJsonAsync(requestUri, requestBody);
+            if (!response.IsSuccessStatusCode)
             {
-                var response = await _client.PostAsJsonAsync(requestUri, requestBody);
-                if (!response.IsSuccessStatusCode)
-                {
-                    var errorContent = await response.Content.ReadAsStringAsync();
-                    
-                    return default;
-                }
-                return await response.Content.ReadFromJsonAsync<TResponse>();
+                var errorContent = await response.Content.ReadAsStringAsync();
+                throw new HttpRequestException($"HTTP error: {response.StatusCode} - {errorContent}");
             }
-            catch (Exception)
-            {
-                return default;
-            }
+            return await response.Content.ReadFromJsonAsync<TResponse>();
         }
     }
 }

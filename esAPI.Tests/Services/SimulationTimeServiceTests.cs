@@ -1,5 +1,4 @@
 using esAPI.Services;
-using FluentAssertions;
 using Xunit;
 
 namespace esAPI.Tests.Services
@@ -16,7 +15,7 @@ namespace esAPI.Tests.Services
             var result = SimulationTimeService.ToCanonicalTime(simulationTime);
 
             // Assert
-            result.Should().Be(new DateTime(2050, 1, 2, 12, 0, 0, DateTimeKind.Utc));
+            Assert.Equal(new DateTime(2050, 1, 2, 12, 0, 0, DateTimeKind.Utc), result);
         }
 
         [Fact]
@@ -29,7 +28,7 @@ namespace esAPI.Tests.Services
             var result = SimulationTimeService.ToCanonicalTime(simulationTime);
 
             // Assert
-            result.Should().Be(new DateTime(2050, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+            Assert.Equal(new DateTime(2050, 1, 1, 0, 0, 0, DateTimeKind.Utc), result);
         }
 
         [Fact]
@@ -42,7 +41,7 @@ namespace esAPI.Tests.Services
             var result = SimulationTimeService.ToCanonicalTime(simulationTime);
 
             // Assert
-            result.Should().Be(new DateTime(2050, 1, 1, 12, 0, 0, DateTimeKind.Utc));
+            Assert.Equal(new DateTime(2050, 1, 1, 12, 0, 0, DateTimeKind.Utc), result);
         }
 
         [Fact]
@@ -55,7 +54,7 @@ namespace esAPI.Tests.Services
             var result = SimulationTimeService.FromCanonicalTime(canonicalTime);
 
             // Assert
-            result.Should().Be(2.500m);
+            Assert.Equal(2.500m, result);
         }
 
         [Fact]
@@ -68,7 +67,7 @@ namespace esAPI.Tests.Services
             var result = SimulationTimeService.FromCanonicalTime(canonicalTime);
 
             // Assert
-            result.Should().Be(1.000m);
+            Assert.Equal(1.000m, result);
         }
 
         [Fact]
@@ -82,7 +81,7 @@ namespace esAPI.Tests.Services
             var backToSimTime = SimulationTimeService.FromCanonicalTime(canonicalTime);
 
             // Assert
-            backToSimTime.Should().BeApproximately(originalSimTime, 0.001m);
+            Assert.True(Math.Abs(backToSimTime - originalSimTime) < 0.001m);
         }
 
         [Fact]
@@ -97,8 +96,8 @@ namespace esAPI.Tests.Services
             var convertedSimTime = canonicalTime.ToSimulationTime();
 
             // Assert
-            convertedCanonical.Should().Be(canonicalTime);
-            convertedSimTime.Should().BeApproximately(simTime, 0.001m);
+            Assert.Equal(canonicalTime, convertedCanonical);
+            Assert.True(Math.Abs(convertedSimTime - simTime) < 0.001m);
         }
 
         [Fact]
@@ -113,8 +112,8 @@ namespace esAPI.Tests.Services
             var convertedSimTime = nullableCanonicalTime.ToSimulationTime();
 
             // Assert
-            convertedCanonical.Should().Be(nullableCanonicalTime);
-            convertedSimTime.Should().BeApproximately(nullableSimTime.Value, 0.001m);
+            Assert.Equal(nullableCanonicalTime, convertedCanonical);
+            Assert.True(convertedSimTime.HasValue && Math.Abs(convertedSimTime.Value - nullableSimTime.Value) < 0.001m);
         }
 
         [Fact]
@@ -129,8 +128,8 @@ namespace esAPI.Tests.Services
             var convertedSimTime = nullableCanonicalTime.ToSimulationTime();
 
             // Assert
-            convertedCanonical.Should().BeNull();
-            convertedSimTime.Should().BeNull();
+            Assert.Null(convertedCanonical);
+            Assert.Null(convertedSimTime);
         }
     }
 } 

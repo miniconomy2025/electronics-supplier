@@ -102,11 +102,14 @@ namespace esAPI.Services
             
             
             // 6. Place pickup with Bulk Logistics
+            if (!orderId.HasValue)
+                throw new InvalidOperationException("Order ID is missing from THOH order response.");
+            
             int pickupRequestId = await PlaceBulkLogisticsPickup(orderId.Value, toBuy);
 
             // 7. Save pickupRequestId to DB
             var orderEntity = await _context.MachineOrders
-                .FirstOrDefaultAsync(o => o.ExternalOrderId == orderId && o.Supplier.CompanyName.ToLower() == "thoh");
+                .FirstOrDefaultAsync(o => o.ExternalOrderId == orderId && o.Supplier != null && o.Supplier.CompanyName.ToLower() == "thoh");
 
             if (orderEntity != null)
             {
