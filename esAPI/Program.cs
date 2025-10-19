@@ -88,14 +88,39 @@ builder.Services.Configure<InventoryConfig>(
 builder.Services.AddScoped<SimulationDayOrchestrator>();
 builder.Services.AddSingleton<ISimulationStateService, SimulationStateService>();
 
-builder.Services.AddDefaultAWSOptions(builder.Configuration.GetAWSOptions());
-builder.Services.AddAWSService<IAmazonSQS>();
-builder.Services.AddSingleton<RetryQueuePublisher>();
-builder.Services.AddHostedService<RetryJobDispatcher>();
+// Configure AWS services only if credentials are available
+try 
+{
+    // Check if we have AWS configuration
+    var queueUrl = builder.Configuration["Retry:QueueUrl"];
+    var region = builder.Configuration["AWS:Region"];
+    
+    if (!string.IsNullOrEmpty(queueUrl) && !string.IsNullOrEmpty(region))
+    {
+        builder.Services.AddDefaultAWSOptions(builder.Configuration.GetAWSOptions());
+        builder.Services.AddAWSService<IAmazonSQS>();
+        builder.Services.AddSingleton<RetryQueuePublisher>();
+        builder.Services.AddHostedService<RetryJobDispatcher>();
 
-// Register all retry handlers
-builder.Services.AddScoped<IRetryHandler<BankAccountRetryJob>, BankAccountRetryHandler>();
-builder.Services.AddScoped<IRetryHandler<BankBalanceRetryJob>, BankBalanceRetryHandler>();
+        // Register all retry handlers
+        builder.Services.AddScoped<IRetryHandler<BankAccountRetryJob>, BankAccountRetryHandler>();
+        builder.Services.AddScoped<IRetryHandler<BankBalanceRetryJob>, BankBalanceRetryHandler>();
+        
+        Console.WriteLine("✅ AWS SQS services configured successfully");
+    }
+    else
+    {
+        // Register a null/no-op implementation for services that depend on retry functionality
+        builder.Services.AddSingleton<RetryQueuePublisher>(provider => null!);
+        Console.WriteLine("⚠️ AWS SQS configuration not found, running without retry services");
+    }
+}
+catch (Exception ex)
+{
+    // Register a null implementation for graceful degradation
+    builder.Services.AddSingleton<RetryQueuePublisher>(provider => null!);
+    Console.WriteLine($"⚠️ AWS services not available, running without retry functionality: {ex.Message}");
+}
 
 // builder.Services.AddHostedService<InventoryManagementService>(); // Disabled inventory management system temporarily
 builder.Services.AddHostedService<SimulationAutoAdvanceService>();

@@ -5,12 +5,12 @@ using esAPI.Clients;
 
 namespace esAPI.Services
 {
-    public class BankAccountService(AppDbContext db, ICommercialBankClient bankClient, ILogger<BankAccountService> logger, RetryQueuePublisher retryQueuePublisher)
+    public class BankAccountService(AppDbContext db, ICommercialBankClient bankClient, ILogger<BankAccountService> logger, RetryQueuePublisher? retryQueuePublisher)
     {
         private readonly AppDbContext _db = db;
         private readonly ICommercialBankClient _bankClient = bankClient;
         private readonly ILogger<BankAccountService> _logger = logger;
-        private readonly RetryQueuePublisher _retryQueuePublisher = retryQueuePublisher;
+        private readonly RetryQueuePublisher? _retryQueuePublisher = retryQueuePublisher;
 
         public async Task<(bool Success, string? AccountNumber, string? Error)> SetupBankAccountAsync(CancellationToken cancellationToken = default)
         {
@@ -96,9 +96,15 @@ namespace esAPI.Services
                                 RetryAttempt = 0
                             };
 
-                            await _retryQueuePublisher.PublishAsync(retryJob);
-
-                            _logger.LogInformation("🔄 Retry job enqueued for bank account creation.");
+                            if (_retryQueuePublisher != null)
+                            {
+                                await _retryQueuePublisher.PublishAsync(retryJob);
+                                _logger.LogInformation("🔄 Retry job enqueued for bank account creation.");
+                            }
+                            else
+                            {
+                                _logger.LogWarning("⚠️ Retry functionality not available, no retry job enqueued.");
+                            }
                         }
 
                         return (false, null, $"Failed to create bank account. Status: {createResponse.StatusCode}, retry scheduled.");

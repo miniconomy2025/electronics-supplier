@@ -6,13 +6,13 @@ using Microsoft.Extensions.Logging;
 
 namespace esAPI.Services
 {
-    public class BankService(AppDbContext db, ICommercialBankClient bankClient, ISimulationStateService stateService, ILogger<BankService> logger, RetryQueuePublisher retryQueuePublisher)
+    public class BankService(AppDbContext db, ICommercialBankClient bankClient, ISimulationStateService stateService, ILogger<BankService> logger, RetryQueuePublisher? retryQueuePublisher)
     {
         private readonly AppDbContext _db = db;
         private readonly ICommercialBankClient _bankClient = bankClient;
         private readonly ISimulationStateService _stateService = stateService;
         private readonly ILogger<BankService> _logger = logger;
-        private readonly RetryQueuePublisher _retryQueuePublisher = retryQueuePublisher;
+        private readonly RetryQueuePublisher? _retryQueuePublisher = retryQueuePublisher;
 
         public async Task<decimal> GetAndStoreBalance(int simulationDay)
         {
@@ -48,7 +48,15 @@ namespace esAPI.Services
                     RetryAttempt = 0
                 };
 
-                await _retryQueuePublisher.PublishAsync(retryJob);
+                if (_retryQueuePublisher != null)
+                {
+                    await _retryQueuePublisher.PublishAsync(retryJob);
+                    _logger.LogInformation("🔄 Bank balance retry job enqueued.");
+                }
+                else
+                {
+                    _logger.LogWarning("⚠️ Retry functionality not available, no retry job enqueued.");
+                }
 
                 // Return a sentinel value instead of throwing to allow simulation to continue
                 _logger.LogWarning("⚠️ Returning sentinel balance value (-1) to allow simulation to continue");
