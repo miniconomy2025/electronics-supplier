@@ -4,7 +4,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 namespace esAPI.Controllers;
 
 [ApiController]
-[Route("[controller]")]
+[Route("health")]
 public class HealthController : ControllerBase
 {
     private readonly HealthCheckService _healthCheckService;
