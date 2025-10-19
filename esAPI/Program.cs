@@ -8,6 +8,7 @@ using esAPI.Interfaces;
 using esAPI.Configuration;
 using esAPI.Middleware;
 using Amazon.SQS;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -51,6 +52,10 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
+
+// Add health checks
+builder.Services.AddHealthChecks()
+    .AddCheck("self", () => HealthCheckResult.Healthy("Application is running"));
 
 builder.Services.AddHttpClient(); 
 
@@ -190,6 +195,9 @@ app.UseCors("AllowSwagger");
 
 // Use Client-Id authentication
 app.UseClientIdentification();
+
+// Map health check endpoint
+app.MapHealthChecks("/health");
 
 app.MapControllers();
 
