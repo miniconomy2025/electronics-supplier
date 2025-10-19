@@ -5,15 +5,10 @@ using esAPI.Data;
 namespace esAPI.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
-    public class HealthController : ControllerBase
+    [Route("health")]
+    public class HealthController(AppDbContext context) : ControllerBase
     {
-        private readonly AppDbContext _context;
-
-        public HealthController(AppDbContext context)
-        {
-            _context = context;
-        }
+        private readonly AppDbContext _context = context;
 
         [HttpGet]
         public async Task<IActionResult> Get()
