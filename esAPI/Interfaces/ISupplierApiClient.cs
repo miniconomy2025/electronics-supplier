@@ -1,4 +1,6 @@
 using esAPI.DTOs;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace esAPI.Interfaces;
 
@@ -8,9 +10,4 @@ ISupplierApiClient
     Task<List<SupplierMaterialInfo>> GetAvailableMaterialsAsync();
     Task<SupplierOrderResponse?> PlaceOrderAsync(SupplierOrderRequest request);
 
-}
-
-public interface IBulkLogisticsClient
-{
-    Task<LogisticsPickupResponse?> ArrangePickupAsync(LogisticsPickupRequest request);
 }

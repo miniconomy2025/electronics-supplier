@@ -13,7 +13,7 @@ module "vpc" {
 module "ec2" {
   source         = "./modules/ec2"
   project_name   = var.project_name
-  subnet_id      = module.vpc.public_subnet_id
+  subnet_ids     = [module.vpc.public_subnet_id]
   instance_count = var.ec2_instance_count
   aws_region     = var.aws_region
   security_group_id = module.vpc.default_security_group_id

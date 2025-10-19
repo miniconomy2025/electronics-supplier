@@ -4,23 +4,6 @@ using esAPI.Interfaces;
 
 namespace esAPI.Clients;
 
-public class ThohMaterialInfo
-{
-    [JsonPropertyName("rawMaterialName")]
-    public required string RawMaterialName { get; set; }
-    [JsonPropertyName("quantityAvailable")]
-    public int QuantityAvailable { get; set; }
-    [JsonPropertyName("pricePerKg")]
-    public decimal PricePerKg { get; set; }
-}
-
-public interface IThohMachineApiClient
-{
-    Task<List<ThohMachineInfo>> GetAvailableMachinesAsync();
-
-    Task<ThohMachinePurchaseResponse?> PurchaseMachineAsync(ThohMachinePurchaseRequest request);
-}
-
 public class ThohApiClient(IHttpClientFactory httpClientFactory) : BaseClient(httpClientFactory, ClientName), ISupplierApiClient, IThohMachineApiClient
 {
     private const string ClientName = "thoh";

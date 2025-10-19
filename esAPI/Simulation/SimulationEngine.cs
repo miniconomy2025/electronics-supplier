@@ -2,6 +2,7 @@ using esAPI.Data;
 using esAPI.Simulation.Tasks;
 using esAPI.Services;
 using esAPI.Clients;
+using esAPI.Interfaces;
 
 namespace esAPI.Simulation
 {

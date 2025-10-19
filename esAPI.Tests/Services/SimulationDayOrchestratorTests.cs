@@ -3,7 +3,6 @@ using System.Threading.Tasks;
 using esAPI.DTOs;
 using esAPI.DTOs.Electronics;
 using esAPI.Services;
-using FluentAssertions;
 using Moq;
 using Xunit;
 using Microsoft.Extensions.Logging;

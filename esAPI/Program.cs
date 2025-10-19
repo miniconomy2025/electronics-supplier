@@ -1,5 +1,3 @@
-using System.Security.Cryptography.X509Certificates;
-
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -8,16 +6,36 @@ using esAPI.Clients;
 using esAPI.Services;
 using esAPI.Interfaces;
 using esAPI.Configuration;
+using esAPI.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure TLS settings
-var tlsUtil = new TLSUtil(builder);
-
-tlsUtil.AddSecureHttpClient(builder.Services, "commercial-bank", "https://commercial-bank-api.projects.bbdgrad.com");
-tlsUtil.AddSecureHttpClient(builder.Services, "bulk-logistics", "https://bulk-logistics-api.projects.bbdgrad.com");
-tlsUtil.AddSecureHttpClient(builder.Services, "thoh", "https://thoh-api.projects.bbdgrad.com");
-tlsUtil.AddSecureHttpClient(builder.Services, "recycler", "https://recycler-api.projects.bbdgrad.com");
+// Configure named HttpClients
+builder.Services.AddHttpClient("commercial-bank", client =>
+{
+    client.BaseAddress = new Uri("https://commercial-bank-api.projects.bbdgrad.com");
+    client.DefaultRequestHeaders.Add("Client-Id", "electronics-supplier");
+})
+// Basic resiliency policies (timeouts handled by HttpClient default; retry few times)
+;
+builder.Services.AddHttpClient("bulk-logistics", client =>
+{
+    client.BaseAddress = new Uri("https://bulk-logistics-api.projects.bbdgrad.com");
+    client.DefaultRequestHeaders.Add("Client-Id", "electronics-supplier");
+})
+;
+builder.Services.AddHttpClient("thoh", client =>
+{
+    client.BaseAddress = new Uri("https://thoh-api.projects.bbdgrad.com");
+    client.DefaultRequestHeaders.Add("Client-Id", "electronics-supplier");
+})
+;
+builder.Services.AddHttpClient("recycler", client =>
+{
+    client.BaseAddress = new Uri("https://recycler-api.projects.bbdgrad.com");
+    client.DefaultRequestHeaders.Add("Client-Id", "electronics-supplier");
+})
+;
 
 //--------------------------------------------------------------------------
 
@@ -61,9 +79,15 @@ builder.Services.AddScoped<ISupplierApiClient, RecyclerApiClient>();
 
 builder.Services.AddScoped<IStartupCostCalculator, StartupCostCalculator>();
 
+builder.Services.AddScoped<IClientContext, ClientContext>();
+
 builder.Services.AddScoped<OrderExpirationService>();
 builder.Services.Configure<InventoryConfig>(
     builder.Configuration.GetSection(InventoryConfig.SectionName)
+);
+
+builder.Services.Configure<BankConfig>(
+    builder.Configuration.GetSection(BankConfig.SectionName)
 );
 
 builder.Services.AddScoped<SimulationDayOrchestrator>();
@@ -95,25 +119,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.Use(async (context, next) =>
-{
-    var cert = await context.Connection.GetClientCertificateAsync();
-    if (cert != null)
-    {
-        Console.WriteLine("Client cert CN: " + cert.GetNameInfo(X509NameType.SimpleName, false));
-        Console.WriteLine("Issuer: " + cert.Issuer);
-        Console.WriteLine("Thumbprint: " + cert.Thumbprint);
-    }
-    else
-    {
-        Console.WriteLine("❌ No client cert received.");
-    }
-
-    await next();
-});
 
 // Use CORS
 app.UseCors("AllowSwagger");
+
+app.UseMiddleware<ClientIdMiddleware>();
 
 app.MapControllers();
 

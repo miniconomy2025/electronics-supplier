@@ -15,4 +15,15 @@ public class BulkLogisticsClient : BaseClient, IBulkLogisticsClient
     {
         return await PostAsync<LogisticsPickupRequest, LogisticsPickupResponse>("/api/pickup-request", request);
     }
+
+    public async Task<LogisticsPickupDetailsResponse?> GetPickupRequestAsync(int pickupRequestId)
+    {
+        return await GetAsync<LogisticsPickupDetailsResponse>($"/api/pickup-request/{pickupRequestId}");
+    }
+
+    public async Task<List<LogisticsPickupDetailsResponse>> GetCompanyPickupRequestsAsync(string companyName)
+    {
+        var response = await GetAsync<LogisticsPickupDetailsResponse[]>($"/api/pickup-request/company/{companyName}");
+        return response?.ToList() ?? new List<LogisticsPickupDetailsResponse>();
+    }
 }

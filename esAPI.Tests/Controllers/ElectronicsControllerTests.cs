@@ -1,9 +1,9 @@
-using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using esAPI.Controllers;
 using esAPI.DTOs.Electronics;
 using esAPI.Interfaces;
+using Xunit;
 
 namespace esAPI.Tests.Controllers
 {
@@ -36,12 +36,12 @@ namespace esAPI.Tests.Controllers
             var result = await _controller.GetElectronics();
 
             // Assert
-            var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
-            okResult.StatusCode.Should().Be(200);
+            var okResult = Assert.IsType<OkObjectResult>(result.Result);
+            Assert.Equal(200, okResult.StatusCode);
 
-            var returnedDetails = okResult.Value.Should().BeOfType<ElectronicsDetailsDto>().Subject;
-            returnedDetails.AvailableStock.Should().Be(150);
-            returnedDetails.PricePerUnit.Should().Be(25.50m);
+            var returnedDetails = Assert.IsType<ElectronicsDetailsDto>(okResult.Value);
+            Assert.Equal(150, returnedDetails.AvailableStock);
+            Assert.Equal(25.50m, returnedDetails.PricePerUnit);
 
             _mockElectronicsService.Verify(s => s.GetElectronicsDetailsAsync(), Times.Once);
         }
@@ -58,8 +58,8 @@ namespace esAPI.Tests.Controllers
             var result = await _controller.GetElectronics();
 
             // Assert
-            var notFoundResult = result.Result.Should().BeOfType<NotFoundResult>().Subject;
-            notFoundResult.StatusCode.Should().Be(404);
+            var notFoundResult = Assert.IsType<NotFoundResult>(result.Result);
+            Assert.Equal(404, notFoundResult.StatusCode);
             _mockElectronicsService.Verify(s => s.GetElectronicsDetailsAsync(), Times.Once);
         }
 
@@ -75,7 +75,7 @@ namespace esAPI.Tests.Controllers
             // Act & Assert
             var exception = await Assert.ThrowsAsync<InvalidOperationException>(
                 () => _controller.GetElectronics());
-            exception.Message.Should().Be("Database connection failed");
+            Assert.Equal("Database connection failed", exception.Message);
             _mockElectronicsService.Verify(s => s.GetElectronicsDetailsAsync(), Times.Once);
         }
 
@@ -102,11 +102,11 @@ namespace esAPI.Tests.Controllers
             var result = await _controller.GetElectronics();
 
             // Assert
-            var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
-            okResult.StatusCode.Should().Be(200);
-            var returnedDetails = okResult.Value.Should().BeOfType<ElectronicsDetailsDto>().Subject;
-            returnedDetails.AvailableStock.Should().Be(availableStock);
-            returnedDetails.PricePerUnit.Should().Be(pricePerUnit);
+            var okResult = Assert.IsType<OkObjectResult>(result.Result);
+            Assert.Equal(200, okResult.StatusCode);
+            var returnedDetails = Assert.IsType<ElectronicsDetailsDto>(okResult.Value);
+            Assert.Equal(availableStock, returnedDetails.AvailableStock);
+            Assert.Equal(pricePerUnit, returnedDetails.PricePerUnit);
         }
 
         [Fact]
@@ -127,15 +127,15 @@ namespace esAPI.Tests.Controllers
             var result = await _controller.GetElectronics();
 
             // Assert
-            var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
-            var returnedDetails = okResult.Value.Should().BeOfType<ElectronicsDetailsDto>().Subject;
+            var okResult = Assert.IsType<OkObjectResult>(result.Result);
+            var returnedDetails = Assert.IsType<ElectronicsDetailsDto>(okResult.Value);
             // Verify response matches swagger schema
-            returnedDetails.Should().NotBeNull();
-            returnedDetails.AvailableStock.Should().BeOfType(typeof(int), "availableStock should be integer");
-            returnedDetails.PricePerUnit.Should().BeOfType(typeof(decimal), "pricePerUnit should be number");
+            Assert.NotNull(returnedDetails);
+            Assert.IsType<int>(returnedDetails.AvailableStock);
+            Assert.IsType<decimal>(returnedDetails.PricePerUnit);
             // Verify property values are reasonable
-            returnedDetails.AvailableStock.Should().BeGreaterThanOrEqualTo(0, "stock cannot be negative");
-            returnedDetails.PricePerUnit.Should().BeGreaterThanOrEqualTo(0, "price cannot be negative");
+            Assert.True(returnedDetails.AvailableStock >= 0, "stock cannot be negative");
+            Assert.True(returnedDetails.PricePerUnit >= 0, "price cannot be negative");
         }
 
         [Fact]

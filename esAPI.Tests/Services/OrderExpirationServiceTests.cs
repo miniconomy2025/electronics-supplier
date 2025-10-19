@@ -3,7 +3,6 @@ using esAPI.Models;
 using esAPI.Models.Enums;
 using esAPI.Services;
 using esAPI.Interfaces;
-using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 using Xunit;
@@ -48,11 +47,11 @@ namespace esAPI.Tests.Services
             var result = await service.ReserveElectronicsForOrderAsync(1, 2);
 
             // Assert
-            result.Should().BeTrue();
+            Assert.True(result);
             var reservedCount = await context.Electronics
                 .Where(e => e.ElectronicsStatusId == (int)Electronics.Status.Reserved)
                 .CountAsync();
-            reservedCount.Should().Be(2);
+            Assert.Equal(2, reservedCount);
         }
 
         [Fact]
@@ -79,11 +78,11 @@ namespace esAPI.Tests.Services
             var result = await service.ReserveElectronicsForOrderAsync(1, 2);
 
             // Assert
-            result.Should().BeFalse();
+            Assert.False(result);
             var reservedCount = await context.Electronics
                 .Where(e => e.ElectronicsStatusId == (int)Electronics.Status.Reserved)
                 .CountAsync();
-            reservedCount.Should().Be(0);
+            Assert.Equal(0, reservedCount);
         }
 
         [Fact]
@@ -113,7 +112,7 @@ namespace esAPI.Tests.Services
             var result = await service.GetAvailableElectronicsCountAsync();
 
             // Assert
-            result.Should().Be(2); // Only 2 available (not reserved, not sold)
+            Assert.Equal(2, result); // Only 2 available (not reserved, not sold)
         }
 
         [Fact]
@@ -143,7 +142,7 @@ namespace esAPI.Tests.Services
             var result = await service.GetReservedElectronicsCountAsync();
 
             // Assert
-            result.Should().Be(2); // Only 2 reserved (not sold)
+            Assert.Equal(2, result); // Only 2 reserved (not sold)
         }
 
         [Fact]
@@ -192,9 +191,9 @@ namespace esAPI.Tests.Services
             var result = await service.CheckAndExpireOrdersAsync();
 
             // Assert
-            result.Should().Be(1);
+            Assert.Equal(1, result);
             var expiredOrder = await context.ElectronicsOrders.FindAsync(1);
-            expiredOrder!.OrderStatusId.Should().Be((int)Order.Status.Expired);
+            Assert.Equal((int)Order.Status.Expired, expiredOrder!.OrderStatusId);
         }
     }
 }

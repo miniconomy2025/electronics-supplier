@@ -38,7 +38,7 @@ resource "aws_instance" "this" {
     sudo -u ubuntu pm2 save
 
   EOF
-  iam_instance_profile = var.iam_instance_profile
+  # iam_instance_profile removed (not needed)
   key_name = var.key_name
 }
 
