@@ -196,9 +196,6 @@ app.UseCors("AllowSwagger");
 // Use Client-Id authentication
 app.UseClientIdentification();
 
-// Map health check endpoint
-app.MapHealthChecks("/health");
-
 app.MapControllers();
 
 app.Run();

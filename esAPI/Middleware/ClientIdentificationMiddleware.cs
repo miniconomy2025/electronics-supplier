@@ -18,7 +18,8 @@ public class ClientIdentificationMiddleware
     public async Task InvokeAsync(HttpContext context)
     {
         // Skip middleware for certain paths like Swagger, health checks, etc.
-        if (ShouldSkipClientValidation(context.Request.Path))
+        // Also skip for all GET requests as they are purely informational
+        if (ShouldSkipClientValidation(context.Request.Path, context.Request.Method))
         {
             await _next(context);
             return;
@@ -55,9 +56,15 @@ public class ClientIdentificationMiddleware
         await _next(context);
     }
 
-    private static bool ShouldSkipClientValidation(PathString path)
+    private static bool ShouldSkipClientValidation(PathString path, string method)
     {
         var pathValue = path.Value?.ToLower() ?? string.Empty;
+        
+        // Skip for all GET requests as they are purely informational
+        if (string.Equals(method, "GET", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
         
         return pathValue.StartsWith("/swagger") ||
                pathValue.StartsWith("/health") ||
