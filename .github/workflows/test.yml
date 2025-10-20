@@ -7,7 +7,7 @@ on:
     branches: [ main, dev, tevlen/testing, tevlen/quick ]
 
 permissions:
-  contents: write  # Allow writing to repo for README updates
+  contents: write  # Allow writing to repo for README updates and auto-formatting
   actions: read
   checks: write
   pull-requests: write  # Allow commenting on PRs
@@ -22,6 +22,9 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
 
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
@@ -36,10 +39,32 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
 
-    - name: Check code formatting
+    - name: Check and fix code formatting
       run: |
         echo "🎨 Checking C# code formatting..."
-        dotnet format --verify-no-changes --verbosity diagnostic
+        if ! dotnet format --verify-no-changes --verbosity minimal; then
+          echo "🔧 Code formatting issues found. Applying automatic fixes..."
+          dotnet format --verbosity minimal
+          echo "✅ Code formatting completed"
+        else
+          echo "✅ Code formatting is already correct"
+        fi
+
+    - name: Commit formatting changes
+      if: github.event_name == 'push'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        # Check if there are any changes to commit
+        if [ -n "$(git status --porcelain)" ]; then
+          git add -A
+          git commit -m "🎨 Auto-fix code formatting [skip ci]"
+          git push
+          echo "✅ Formatting changes committed and pushed"
+        else
+          echo "✅ No formatting changes needed"
+        fi
 
     - name: Run security analysis
       run: |
@@ -193,12 +218,9 @@ jobs:
     - name: Build solution
       run: dotnet build --configuration Release --no-restore
 
-    - name: Run code analysis and linting
+    - name: Run code analysis
       run: |
         echo "🔍 Running C# code analysis..."
-        # Run dotnet format to check code formatting
-        dotnet format --verify-no-changes --verbosity diagnostic
-        
         # Run code analysis for security and quality issues
         dotnet build --configuration Release --verbosity normal /p:TreatWarningsAsErrors=false /p:RunAnalyzersDuringBuild=true
 

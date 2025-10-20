@@ -89,7 +89,7 @@ namespace esAPI.Services
                 {
                     var sim = _context.Simulations.FirstOrDefault(s => s.IsRunning);
                     var currentDay = sim?.DayNumber ?? 1;
-                    
+
                     var machineOrder = new Models.MachineOrder
                     {
                         SupplierId = thohCompany.CompanyId,
@@ -99,7 +99,7 @@ namespace esAPI.Services
                         OrderStatusId = 1, // Pending
                         PlacedAt = currentDay
                     };
-                    
+
                     _context.MachineOrders.Add(machineOrder);
                     await _context.SaveChangesAsync();
                 }
@@ -115,8 +115,8 @@ namespace esAPI.Services
                 totalPrice,
                 $"Purchase {toBuy} electronics_machine from THOH"
             );
-            
-            
+
+
             // 6. Place pickup with Bulk Logistics
             if (orderId.HasValue)
             {

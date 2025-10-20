@@ -19,7 +19,7 @@ namespace esAPI.Services
         };
 
         private readonly string _queueUrl;
-        
+
 
         public RetryJobDispatcher(IAmazonSQS sqs, IServiceProvider serviceProvider, ILogger<RetryJobDispatcher> logger, IConfiguration config, ISimulationStateService stateService)
         {

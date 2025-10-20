@@ -1,11 +1,11 @@
 namespace esAPI.DTOs.Electronics
 {
-        public class ElectronicsOrderResponseDto
-        {
-                public int OrderId { get; set; }
-                public int Quantity { get; set; }
-                public decimal AmountDue { get; set; }
-                public string? BankNumber { get; set; }
+    public class ElectronicsOrderResponseDto
+    {
+        public int OrderId { get; set; }
+        public int Quantity { get; set; }
+        public decimal AmountDue { get; set; }
+        public string? BankNumber { get; set; }
 
-        }
+    }
 }

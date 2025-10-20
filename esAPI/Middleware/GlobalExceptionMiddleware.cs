@@ -24,9 +24,9 @@ namespace esAPI.Middleware
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "An unhandled exception occurred. Request: {Method} {Path}", 
+                _logger.LogError(ex, "An unhandled exception occurred. Request: {Method} {Path}",
                     context.Request.Method, context.Request.Path);
-                    
+
                 await HandleExceptionAsync(context, ex);
             }
         }
@@ -34,7 +34,7 @@ namespace esAPI.Middleware
         private async Task HandleExceptionAsync(HttpContext context, Exception exception)
         {
             context.Response.ContentType = "application/json";
-            
+
             var response = new ErrorResponse();
 
             switch (exception)
@@ -45,25 +45,25 @@ namespace esAPI.Middleware
                     response.StatusCode = (int)HttpStatusCode.BadRequest;
                     context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
                     break;
-                    
+
                 case UnauthorizedAccessException _:
                     response.Message = "Unauthorized access";
                     response.StatusCode = (int)HttpStatusCode.Unauthorized;
                     context.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
                     break;
-                    
+
                 case InvalidOperationException _:
                     response.Message = "Invalid operation";
                     response.StatusCode = (int)HttpStatusCode.BadRequest;
                     context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
                     break;
-                    
+
                 case TimeoutException _:
                     response.Message = "Request timeout";
                     response.StatusCode = (int)HttpStatusCode.RequestTimeout;
                     context.Response.StatusCode = (int)HttpStatusCode.RequestTimeout;
                     break;
-                    
+
                 default:
                     response.Message = "An error occurred while processing your request";
                     response.StatusCode = (int)HttpStatusCode.InternalServerError;

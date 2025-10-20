@@ -62,7 +62,7 @@ namespace esAPI.Tests.Middleware
 
             var responseBody = await ReadResponseBody(context);
             var errorResponse = JsonSerializer.Deserialize<JsonElement>(responseBody);
-            
+
             errorResponse.GetProperty("message").GetString().Should().Be("Invalid request parameters");
             errorResponse.GetProperty("statusCode").GetInt32().Should().Be(400);
         }
@@ -80,10 +80,10 @@ namespace esAPI.Tests.Middleware
 
             // Assert
             context.Response.StatusCode.Should().Be(400);
-            
+
             var responseBody = await ReadResponseBody(context);
             var errorResponse = JsonSerializer.Deserialize<JsonElement>(responseBody);
-            
+
             errorResponse.GetProperty("message").GetString().Should().Be("Invalid request parameters");
         }
 
@@ -100,10 +100,10 @@ namespace esAPI.Tests.Middleware
 
             // Assert
             context.Response.StatusCode.Should().Be(401);
-            
+
             var responseBody = await ReadResponseBody(context);
             var errorResponse = JsonSerializer.Deserialize<JsonElement>(responseBody);
-            
+
             errorResponse.GetProperty("message").GetString().Should().Be("Unauthorized access");
             errorResponse.GetProperty("statusCode").GetInt32().Should().Be(401);
         }
@@ -121,10 +121,10 @@ namespace esAPI.Tests.Middleware
 
             // Assert
             context.Response.StatusCode.Should().Be(400);
-            
+
             var responseBody = await ReadResponseBody(context);
             var errorResponse = JsonSerializer.Deserialize<JsonElement>(responseBody);
-            
+
             errorResponse.GetProperty("message").GetString().Should().Be("Invalid operation");
         }
 
@@ -141,10 +141,10 @@ namespace esAPI.Tests.Middleware
 
             // Assert
             context.Response.StatusCode.Should().Be(408);
-            
+
             var responseBody = await ReadResponseBody(context);
             var errorResponse = JsonSerializer.Deserialize<JsonElement>(responseBody);
-            
+
             errorResponse.GetProperty("message").GetString().Should().Be("Request timeout");
             errorResponse.GetProperty("statusCode").GetInt32().Should().Be(408);
         }
@@ -162,10 +162,10 @@ namespace esAPI.Tests.Middleware
 
             // Assert
             context.Response.StatusCode.Should().Be(500);
-            
+
             var responseBody = await ReadResponseBody(context);
             var errorResponse = JsonSerializer.Deserialize<JsonElement>(responseBody);
-            
+
             errorResponse.GetProperty("message").GetString().Should().Be("An error occurred while processing your request");
             errorResponse.GetProperty("statusCode").GetInt32().Should().Be(500);
         }
@@ -175,7 +175,7 @@ namespace esAPI.Tests.Middleware
         {
             // Arrange
             _mockEnvironment.Setup(e => e.EnvironmentName).Returns(Environments.Development);
-            
+
             RequestDelegate next = (context) => throw new Exception("Detailed error message");
             var middleware = new GlobalExceptionMiddleware(next, _mockLogger.Object, _mockEnvironment.Object);
             var context = CreateHttpContext();
@@ -186,10 +186,10 @@ namespace esAPI.Tests.Middleware
             // Assert
             var responseBody = await ReadResponseBody(context);
             var errorResponse = JsonSerializer.Deserialize<JsonElement>(responseBody);
-            
+
             errorResponse.TryGetProperty("details", out var detailsProperty).Should().BeTrue();
             detailsProperty.GetString().Should().Be("Detailed error message");
-            
+
             errorResponse.TryGetProperty("stackTrace", out var stackTraceProperty).Should().BeTrue();
             stackTraceProperty.GetString().Should().NotBeNullOrEmpty();
         }
@@ -199,7 +199,7 @@ namespace esAPI.Tests.Middleware
         {
             // Arrange  
             _mockEnvironment.Setup(e => e.EnvironmentName).Returns(Environments.Production);
-            
+
             RequestDelegate next = (context) => throw new Exception("Detailed error message");
             var middleware = new GlobalExceptionMiddleware(next, _mockLogger.Object, _mockEnvironment.Object);
             var context = CreateHttpContext();
@@ -210,11 +210,11 @@ namespace esAPI.Tests.Middleware
             // Assert
             var responseBody = await ReadResponseBody(context);
             var errorResponse = JsonSerializer.Deserialize<JsonElement>(responseBody);
-            
+
             // In production, we should still get basic error properties
             errorResponse.GetProperty("message").GetString().Should().Be("An error occurred while processing your request");
             errorResponse.GetProperty("statusCode").GetInt32().Should().Be(500);
-            
+
             // But details should not be included (or should be null/empty if included)
             if (errorResponse.TryGetProperty("details", out var detailsProperty))
             {
@@ -239,10 +239,10 @@ namespace esAPI.Tests.Middleware
             // Assert
             var responseBody = await ReadResponseBody(context);
             var errorResponse = JsonSerializer.Deserialize<JsonElement>(responseBody);
-            
+
             errorResponse.TryGetProperty("timestamp", out var timestampProperty).Should().BeTrue();
             var timestamp = timestampProperty.GetDateTime();
-            
+
             timestamp.Should().BeOnOrAfter(beforeTest);
             timestamp.Should().BeOnOrBefore(afterTest);
         }

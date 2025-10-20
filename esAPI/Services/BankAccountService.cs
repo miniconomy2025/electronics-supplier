@@ -129,20 +129,20 @@ namespace esAPI.Services
             try
             {
                 _logger.LogInformation("💾 Parsing and storing bank account number: {Response}", responseContent);
-                
+
                 // Parse the JSON response to extract the account number
                 var responseData = JsonSerializer.Deserialize<JsonElement>(responseContent);
                 var actualAccountNumber = responseData.GetProperty("account_number").GetString();
-                
+
                 if (string.IsNullOrWhiteSpace(actualAccountNumber))
                 {
                     _logger.LogError("❌ No account number found in response");
                     return null;
                 }
-                
+
                 company.BankAccountNumber = actualAccountNumber;
                 await _db.SaveChangesAsync(cancellationToken);
-                
+
                 _logger.LogInformation("✅ Bank account number stored successfully in Company table: {AccountNumber}", actualAccountNumber);
                 return actualAccountNumber;
             }

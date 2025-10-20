@@ -37,9 +37,9 @@ namespace esAPI.Clients
             {
                 var response = await _client.GetFromJsonAsync<List<ThohRawMaterialDto>>("/raw-materials");
                 var result = new List<SupplierMaterialInfo>();
-                
+
                 if (response == null) return result;
-                
+
                 foreach (var material in response)
                 {
                     result.Add(new SupplierMaterialInfo
@@ -49,7 +49,7 @@ namespace esAPI.Clients
                         PricePerKg = material.PricePerKg
                     });
                 }
-                
+
                 return result;
             }
             catch (Exception)
@@ -69,18 +69,18 @@ namespace esAPI.Clients
                     materialName = request.MaterialName,
                     weightQuantity = request.WeightQuantity
                 };
-                
+
                 var response = await _client.PostAsJsonAsync("/raw-materials", orderRequest);
-                
+
                 if (!response.IsSuccessStatusCode)
                 {
                     return null; // Failed to place order, will fallback to Recycler
                 }
-                
+
                 var content = await response.Content.ReadAsStringAsync();
                 using var doc = System.Text.Json.JsonDocument.Parse(content);
                 var order = doc.RootElement;
-                
+
                 return new SupplierOrderResponse
                 {
                     OrderId = order.GetProperty("orderId").GetInt32(),

@@ -44,7 +44,7 @@ namespace esAPI.Services
 
                 await Task.Delay(_checkInterval, stoppingToken);
             }
-            
+
             _logger.LogInformation("Order Expiration Background Service has stopped.");
         }
     }

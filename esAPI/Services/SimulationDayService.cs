@@ -93,7 +93,7 @@ namespace esAPI.Services
         {
             _logger.LogInformation("🏦 Bank balance is low (<= 10,000). Attempting to request a loan...");
             const decimal loanAmount = 20000000m; // 20 million
-            
+
             try
             {
                 string? loanSuccess = await _bankClient.RequestLoanAsync(loanAmount);
@@ -135,7 +135,7 @@ namespace esAPI.Services
                 var ownSupplies = await _context.CurrentSupplies.ToListAsync();
                 int ownCopper = ownSupplies.FirstOrDefault(s => s.MaterialName.ToLower() == "copper")?.AvailableSupply ?? 0;
                 int ownSilicon = ownSupplies.FirstOrDefault(s => s.MaterialName.ToLower() == "silicon")?.AvailableSupply ?? 0;
-                
+
                 _logger.LogInformation($"[Stock] Our Copper: {ownCopper}, Our Silicon: {ownSilicon}");
                 return (ownCopper, ownSilicon);
             }

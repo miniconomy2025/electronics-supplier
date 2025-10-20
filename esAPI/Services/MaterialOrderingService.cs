@@ -65,7 +65,7 @@ namespace esAPI.Services
             {
                 var thohMaterials = await _thohApiClient.GetAvailableMaterialsAsync();
                 var thohMat = thohMaterials?.FirstOrDefault(m => m.MaterialName.ToLower() == materialName);
-                
+
                 if (thohMat == null || thohMat.AvailableQuantity <= 0)
                 {
                     _logger.LogInformation($"[Order] THOH has no available {materialName} or zero quantity. Will attempt Recycler fallback.");
@@ -80,10 +80,10 @@ namespace esAPI.Services
                 }
 
                 _logger.LogInformation($"[Order] Attempting THOH order for {thohQty} kg of {materialName} (our stock: {ownStock})");
-                
+
                 var thohOrderReq = new SupplierOrderRequest { MaterialName = materialName, WeightQuantity = thohQty };
                 var thohOrderResp = await _thohApiClient.PlaceOrderAsync(thohOrderReq);
-                
+
                 if (thohOrderResp == null || string.IsNullOrEmpty(thohOrderResp.BankAccount))
                 {
                     _logger.LogWarning($"[Order] Failed to place THOH order for {materialName}");
@@ -120,10 +120,10 @@ namespace esAPI.Services
             try
             {
                 _logger.LogInformation($"[Order] Attempting Recycler fallback for {materialName}.");
-                
+
                 var recyclerMaterials = await _recyclerClient.GetAvailableMaterialsAsync();
                 var mat = recyclerMaterials.FirstOrDefault(m => m.MaterialName.ToLower() == materialName);
-                
+
                 if (mat == null || mat.AvailableQuantity <= 0)
                 {
                     _logger.LogInformation($"[Order] No order placed for {materialName} (our stock: {ownStock}, recycler available: 0)");
@@ -138,9 +138,9 @@ namespace esAPI.Services
                 }
 
                 _logger.LogInformation($"[Order] Placing recycler order for {orderQty} kg of {mat.MaterialName} (our stock: {ownStock})");
-                
+
                 var orderResponse = await _recyclerClient.PlaceRecyclerOrderAsync(mat.MaterialName, orderQty);
-                
+
                 if (orderResponse?.IsSuccess != true || orderResponse.Data == null)
                 {
                     _logger.LogWarning($"[Order] Failed to place recycler order for {mat.MaterialName}");
@@ -150,7 +150,7 @@ namespace esAPI.Services
                 var orderId = orderResponse.Data.OrderId;
                 var total = orderResponse.Data.Total;
                 var accountNumber = orderResponse.Data.AccountNumber;
-                
+
                 _logger.LogInformation($"[Order] Recycler order placed: OrderId={orderId}, Total={total}, Account={accountNumber}");
 
                 // Store order in database
@@ -182,12 +182,12 @@ namespace esAPI.Services
             {
                 var supplier = await _context.Companies.FirstOrDefaultAsync(c => c.CompanyName.ToLower() == supplierName);
                 var material = await _context.Materials.FirstOrDefaultAsync(m => m.MaterialName.ToLower() == materialName.ToLower());
-                
+
                 if (supplier != null && material != null)
                 {
                     var sim = _context.Simulations.FirstOrDefault(s => s.IsRunning);
                     var orderedAt = sim?.DayNumber ?? dayNumber;
-                    
+
                     var newOrder = new MaterialOrder
                     {
                         SupplierId = supplier.CompanyId,
@@ -198,7 +198,7 @@ namespace esAPI.Services
                         OrderStatusId = 1, // Pending
                         OrderedAt = orderedAt,
                     };
-                    
+
                     _context.MaterialOrders.Add(newOrder);
                     await _context.SaveChangesAsync();
                     _logger.LogInformation($"[DB] Inserted material order for {supplierName}: Material={materialName}, Qty={quantity}, OrderId={orderId}");
@@ -225,13 +225,13 @@ namespace esAPI.Services
                     DestinationCompanyId = "electronics-supplier",
                     Items = new[] { new LogisticsItem { Name = materialName, Quantity = quantity } }
                 };
-                
+
                 var pickupResponse = await _bulkLogisticsClient.ArrangePickupAsync(pickupRequest);
-                
+
                 if (pickupResponse != null && !string.IsNullOrEmpty(pickupResponse.BulkLogisticsBankAccountNumber))
                 {
                     _logger.LogInformation($"[Logistics] Pickup arranged. Paying {pickupResponse.Cost} to Bulk Logistics.");
-                    
+
                     try
                     {
                         await _bankClient.MakePaymentAsync(pickupResponse.BulkLogisticsBankAccountNumber, "commercial-bank", pickupResponse.Cost, $"Pickup for {originCompany} order {externalOrderId}");
@@ -260,8 +260,8 @@ namespace esAPI.Services
         {
             try
             {
-                var pickupType = materialName.ToLower() == "copper" 
-                    ? Models.Enums.PickupRequest.PickupType.COPPER 
+                var pickupType = materialName.ToLower() == "copper"
+                    ? Models.Enums.PickupRequest.PickupType.COPPER
                     : Models.Enums.PickupRequest.PickupType.SILICONE;
 
                 var pickupDb = new PickupRequest
@@ -271,7 +271,7 @@ namespace esAPI.Services
                     Quantity = quantity,
                     PlacedAt = (double)_simulationStateService.GetCurrentSimulationTime(3)
                 };
-                
+
                 _context.PickupRequests.Add(pickupDb);
                 await _context.SaveChangesAsync();
                 _logger.LogInformation($"[DB] Inserted pickup request for Bulk Logistics: OrderId={externalOrderId}, Material={materialName}, Qty={quantity}");

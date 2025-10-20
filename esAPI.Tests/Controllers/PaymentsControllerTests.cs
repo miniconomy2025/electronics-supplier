@@ -25,7 +25,7 @@ namespace esAPI.Tests.Controllers
             var options = new DbContextOptionsBuilder<AppDbContext>()
                 .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
                 .Options;
-                
+
             _context = new AppDbContext(options);
             _mockSimulationStateService = new Mock<ISimulationStateService>();
             _controller = new PaymentsController(_context, _mockSimulationStateService.Object);

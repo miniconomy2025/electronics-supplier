@@ -77,7 +77,7 @@ namespace esAPI.Services
                     return 0m;
 
                 DateTime referenceStartTime;
-                
+
                 // If external epoch start time is provided, use it as the reference
                 if (_externalEpochStartTime.HasValue)
                 {

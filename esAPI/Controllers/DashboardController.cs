@@ -152,7 +152,7 @@ namespace esAPI.Controllers
         {
             public decimal TotalEarnings { get; set; }
         }
-        
+
         [HttpGet("bank/balance")]
         public async Task<IActionResult> GetBankBalance()
         {
@@ -160,10 +160,10 @@ namespace esAPI.Controllers
                 .OrderByDescending(b => b.SimulationDay)
                 .ThenByDescending(b => b.Timestamp)
                 .FirstOrDefaultAsync();
-            
+
             if (latest == null)
                 return Ok(new { balance = 0 });
-            
+
             return Ok(new { balance = latest.Balance });
         }
     }

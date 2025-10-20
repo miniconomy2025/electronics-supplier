@@ -26,7 +26,7 @@ namespace esAPI.Tests.Services
             var options = new DbContextOptionsBuilder<AppDbContext>()
                 .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
                 .Options;
-                
+
             _context = new AppDbContext(options);
             _mockBankClient = new Mock<ICommercialBankClient>();
             _mockStateService = new Mock<ISimulationStateService>();
@@ -34,7 +34,7 @@ namespace esAPI.Tests.Services
             // Mock configuration for RetryQueuePublisher
             var mockConfiguration = new Mock<Microsoft.Extensions.Configuration.IConfiguration>();
             mockConfiguration.Setup(c => c["Retry:QueueUrl"]).Returns("https://test-queue-url");
-            
+
             _mockRetryPublisher = new Mock<RetryQueuePublisher>(
                 Mock.Of<Amazon.SQS.IAmazonSQS>(),
                 Mock.Of<ILogger<RetryQueuePublisher>>(),
@@ -55,7 +55,7 @@ namespace esAPI.Tests.Services
             // Arrange
             const int simulationDay = 5;
             const decimal expectedBalance = 1500.75m;
-            
+
             _mockBankClient.Setup(c => c.GetAccountBalanceAsync())
                 .ReturnsAsync(expectedBalance);
 
@@ -68,11 +68,11 @@ namespace esAPI.Tests.Services
             // Verify snapshot was stored
             var snapshot = await _context.BankBalanceSnapshots
                 .FirstOrDefaultAsync(s => s.SimulationDay == simulationDay);
-            
+
             snapshot.Should().NotBeNull();
             snapshot!.Balance.Should().Be((double)expectedBalance);
             snapshot.Timestamp.Should().Be(simulationDay);
-            
+
             _mockBankClient.Verify(c => c.GetAccountBalanceAsync(), Times.Once);
         }
 
@@ -81,7 +81,7 @@ namespace esAPI.Tests.Services
         {
             // Arrange
             const int simulationDay = 3;
-            
+
             _mockBankClient.Setup(c => c.GetAccountBalanceAsync())
                 .ThrowsAsync(new HttpRequestException("Bank API unavailable"));
 
@@ -105,7 +105,7 @@ namespace esAPI.Tests.Services
             // Arrange
             const int simulationDay = 7;
             const decimal expectedBalance = 2500.00m;
-            
+
             _mockBankClient.Setup(c => c.GetAccountBalanceAsync())
                 .ReturnsAsync(expectedBalance);
 
@@ -138,7 +138,7 @@ namespace esAPI.Tests.Services
 
             // Assert
             result.Should().Be(-1m); // Sentinel value
-            
+
             // Should log warning about retry not available
             VerifyLogContains(LogLevel.Warning, "Retry functionality not available");
         }
@@ -167,7 +167,7 @@ namespace esAPI.Tests.Services
             var snapshots = await _context.BankBalanceSnapshots
                 .Where(s => s.SimulationDay == simulationDay)
                 .ToListAsync();
-                
+
             snapshots.Should().HaveCount(2);
             snapshots[0].Balance.Should().Be((double)balance1);
             snapshots[1].Balance.Should().Be((double)balance2);
@@ -195,8 +195,8 @@ namespace esAPI.Tests.Services
             snapshots[0].SimulationDay.Should().Be(1);
             snapshots[1].SimulationDay.Should().Be(3);
             snapshots[2].SimulationDay.Should().Be(10);
-            
-            snapshots.Should().AllSatisfy(s => 
+
+            snapshots.Should().AllSatisfy(s =>
             {
                 s.Balance.Should().Be((double)balance);
                 s.Timestamp.Should().Be(s.SimulationDay);
@@ -219,7 +219,7 @@ namespace esAPI.Tests.Services
 
             // Assert
             result.Should().Be(balance);
-            
+
             var snapshot = await _context.BankBalanceSnapshots
                 .FirstOrDefaultAsync(s => s.SimulationDay == invalidDay);
             snapshot.Should().NotBeNull();
@@ -242,10 +242,10 @@ namespace esAPI.Tests.Services
 
             // Assert
             results.Should().AllSatisfy(r => r.Should().Be(balance));
-            
+
             var snapshots = await _context.BankBalanceSnapshots.ToListAsync();
             snapshots.Should().HaveCount(5);
-            
+
             _mockBankClient.Verify(c => c.GetAccountBalanceAsync(), Times.Exactly(5));
         }
 

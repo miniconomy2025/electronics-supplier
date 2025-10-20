@@ -15,7 +15,7 @@ namespace esAPI.Simulation
         public async Task RunDayAsync(int dayNumber)
         {
             _logger.LogInformation("\n =============== 🏃‍♂️ Starting simulation day {DayNumber} ===============\n", dayNumber);
-            
+
             try
             {
                 if (dayNumber == 1)
@@ -54,4 +54,4 @@ namespace esAPI.Simulation
         }
 
     }
-} 
+}

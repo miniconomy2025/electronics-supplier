@@ -49,7 +49,7 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
         using var scope = Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         context.Database.EnsureCreated();
-        
+
         if (!context.Companies.Any(c => c.CompanyName == "test-client"))
         {
             context.Companies.Add(new Company { CompanyName = "test-client" });
@@ -138,7 +138,7 @@ public class ClientIdentificationMiddlewareTests : IClassFixture<TestWebApplicat
         var client = _factory.CreateClient();
 
         // Act - Send a valid payment request to avoid validation errors
-        var response = await client.PostAsJsonAsync("/payments", new 
+        var response = await client.PostAsJsonAsync("/payments", new
         {
             TransactionNumber = "TXN123",
             Status = "COMPLETED",

@@ -40,7 +40,7 @@ namespace esAPI.Services
             try
             {
                 _logger.LogInformation("🚀 Starting simulation startup process...");
-                
+
                 // Start simulation state service
                 _stateService.Start();
                 _logger.LogInformation("📊 Simulation state service started");
@@ -55,14 +55,14 @@ namespace esAPI.Services
                     _logger.LogError("❌ Failed to set up bank account. Error: {Error}", bankSetupResult.Error);
                     return (false, null, $"Failed to set up bank account. Error: {bankSetupResult.Error}");
                 }
-                
+
                 _logger.LogInformation("✅ Bank account setup completed successfully");
-                
+
                 // // Check current balance before requesting loan
                 // _logger.LogInformation("💰 Checking current account balance...");
                 // var currentBalance = await _bankClient.GetAccountBalanceAsync();
                 // _logger.LogInformation("💰 Current account balance: {Balance}", currentBalance);
-                
+
                 // if (currentBalance == 0)
                 // {
                 //     _logger.LogInformation("💰 Balance is 0, requesting startup loan...");
@@ -105,7 +105,7 @@ namespace esAPI.Services
 
                 // Persist simulation start to the database
                 await PersistSimulationStartAsync();
-                
+
                 _logger.LogInformation("✅ Simulation started successfully with bank account: {AccountNumber}", bankSetupResult.AccountNumber);
                 return (true, bankSetupResult.AccountNumber, null);
             }
@@ -142,4 +142,4 @@ namespace esAPI.Services
             _logger.LogInformation("✅ Simulation start persisted to database");
         }
     }
-} 
+}

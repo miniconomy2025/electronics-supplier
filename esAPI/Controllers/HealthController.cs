@@ -24,7 +24,7 @@ public class HealthController : ControllerBase
     public async Task<IActionResult> Get()
     {
         var healthReport = await _healthCheckService.CheckHealthAsync();
-        
+
         var response = new HealthCheckResponse
         {
             Status = healthReport.Status.ToString(),
@@ -39,8 +39,8 @@ public class HealthController : ControllerBase
             }).ToList()
         };
 
-        return healthReport.Status == HealthStatus.Healthy 
-            ? Ok(response) 
+        return healthReport.Status == HealthStatus.Healthy
+            ? Ok(response)
             : StatusCode(StatusCodes.Status503ServiceUnavailable, response);
     }
 }

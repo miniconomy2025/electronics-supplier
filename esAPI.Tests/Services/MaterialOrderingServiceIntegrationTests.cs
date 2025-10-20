@@ -20,7 +20,7 @@ namespace esAPI.Tests.Services
             var options = new DbContextOptionsBuilder<AppDbContext>()
                 .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
                 .Options;
-            
+
             _context = new AppDbContext(options);
             _mockSimulationStateService = new Mock<ISimulationStateService>();
             _mockLogger = new Mock<ILogger<MaterialOrderingService>>();
@@ -31,9 +31,9 @@ namespace esAPI.Tests.Services
         private void SetupTestData()
         {
             // Add test companies for logistics
-            _context.Companies.Add(new Company 
-            { 
-                CompanyId = 1, 
+            _context.Companies.Add(new Company
+            {
+                CompanyId = 1,
                 CompanyName = "BulkLogistics",
                 BankAccountNumber = "BL-12345"
             });
@@ -64,7 +64,7 @@ namespace esAPI.Tests.Services
 
             // Assert
             Assert.True(result);
-            
+
             // Verify logger was called with appropriate message
             _mockLogger.Verify(
                 x => x.Log(
@@ -116,7 +116,7 @@ namespace esAPI.Tests.Services
             // This should attempt to order but fail due to null clients
             // The test verifies the low stock path is taken
             var result = await service.OrderMaterialIfLowStockAsync(materialName, ownStock, dayNumber);
-            
+
             // Should return false due to null clients, but shows low stock path was taken
             Assert.False(result);
         }

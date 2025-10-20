@@ -20,18 +20,18 @@ namespace esAPI.Clients
             Console.WriteLine($"🔧 CommercialBankClient: Checking account balance...");
             var response = await _client.GetAsync("api/account/me/balance");
             Console.WriteLine($"🔧 CommercialBankClient: Balance response status: {response.StatusCode}");
-            
+
             if (!response.IsSuccessStatusCode)
             {
                 Console.WriteLine($"❌ CommercialBankClient: Failed to get balance. Status: {response.StatusCode}");
                 return 0m;
             }
-            
+
             var content = await response.Content.ReadAsStringAsync();
             Console.WriteLine($"🔧 CommercialBankClient: Balance response content: {content}");
-            
+
             using var doc = System.Text.Json.JsonDocument.Parse(content);
-            
+
             // Check if the response indicates success
             if (doc.RootElement.TryGetProperty("success", out var successProp) && successProp.GetBoolean())
             {
@@ -71,20 +71,20 @@ namespace esAPI.Clients
             // Console.WriteLine($"🔧 CommercialBankClient: Base address: {_client.BaseAddress}");
             // Console.WriteLine($"🔧 CommercialBankClient: Full URL: {_client.BaseAddress}/account");
             // Console.WriteLine($"🔧 CommercialBankClient: Request URI: {_client.BaseAddress}/account");
-            
+
             try
             {
                 // Use the full URL directly to ensure it's correct
                 var fullUrl = $"{_client.BaseAddress}api/account";
                 Console.WriteLine($"🔧 CommercialBankClient: Using full URL: {fullUrl}");
-                
+
                 var request = new HttpRequestMessage(HttpMethod.Post, fullUrl);
                 var json = System.Text.Json.JsonSerializer.Serialize(requestBody);
                 request.Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
-                
+
                 Console.WriteLine($"🔧 CommercialBankClient: Request body: {json}");
                 Console.WriteLine($"🔧 CommercialBankClient: Sending request with client certificate...");
-                
+
                 var response = await _client.SendAsync(request);
                 Console.WriteLine($"🔧 CommercialBankClient: Response status: {response.StatusCode}");
                 Console.WriteLine($"🔧 CommercialBankClient: Response URL: {response.RequestMessage?.RequestUri}");
@@ -104,15 +104,15 @@ namespace esAPI.Clients
 
             Console.WriteLine($"🔧 CommercialBankClient: Requesting loan of {amount}");
             Console.WriteLine($"🔧 CommercialBankClient: Request body: {System.Text.Json.JsonSerializer.Serialize(requestBody)}");
-            
+
             var response = await _client.PostAsJsonAsync("api/loan", requestBody);
             Console.WriteLine($"🔧 CommercialBankClient: Loan request response status: {response.StatusCode}");
-            
+
             var content = await response.Content.ReadAsStringAsync();
             Console.WriteLine($"🔧 CommercialBankClient: Loan response content: {content}");
-            
+
             using var doc = System.Text.Json.JsonDocument.Parse(content);
-            
+
             // Check if the response indicates success
             if (doc.RootElement.TryGetProperty("success", out var successProp) && successProp.GetBoolean())
             {
@@ -133,25 +133,25 @@ namespace esAPI.Clients
                 // Handle failure response with detailed error information
                 var errorMessage = "Unknown error";
                 var amountRemaining = 0m;
-                
+
                 if (doc.RootElement.TryGetProperty("error", out var errorProp))
                 {
                     errorMessage = errorProp.GetString() ?? "Unknown error";
                 }
-                
+
                 if (doc.RootElement.TryGetProperty("amount_remaining", out var amountProp))
                 {
                     amountRemaining = amountProp.GetDecimal();
                 }
-                
+
                 Console.WriteLine($"❌ CommercialBankClient: Loan request failed - Error: {errorMessage}, Amount remaining: {amountRemaining}");
-                
+
                 // If the loan was too large, we could potentially retry with the remaining amount
                 if (errorMessage == "loanTooLarge" && amountRemaining > 0)
                 {
                     Console.WriteLine($"💡 CommercialBankClient: Loan was too large. Remaining amount available: {amountRemaining}");
                 }
-                
+
                 return null;
             }
         }

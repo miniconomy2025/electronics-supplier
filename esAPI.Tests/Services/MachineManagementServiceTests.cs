@@ -180,8 +180,8 @@ namespace esAPI.Tests.Services
 
             _httpMessageHandlerMock
                 .Protected()
-                .Setup<Task<HttpResponseMessage>>("SendAsync", 
-                    ItExpr.IsAny<HttpRequestMessage>(), 
+                .Setup<Task<HttpResponseMessage>>("SendAsync",
+                    ItExpr.IsAny<HttpRequestMessage>(),
                     ItExpr.IsAny<CancellationToken>())
                 .ReturnsAsync(response);
         }

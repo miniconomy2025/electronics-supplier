@@ -35,7 +35,7 @@ namespace esAPI.Services
             try
             {
                 int totalMachines = await _context.Machines.CountAsync(m => m.RemovedAt == null);
-                int brokenMachines = await _context.Machines.CountAsync(m => 
+                int brokenMachines = await _context.Machines.CountAsync(m =>
                     m.MachineStatusId == (int)Models.Enums.Machine.Status.Broken && m.RemovedAt == null);
 
                 // Order machines if we have zero or all are broken
@@ -61,9 +61,9 @@ namespace esAPI.Services
             {
                 var thohHttpClient = _httpClientFactory.CreateClient("thoh");
                 var machineOrderReq = new { machineName = "electronics_machine", quantity = quantity };
-                
+
                 var response = await thohHttpClient.PostAsJsonAsync("/machines", machineOrderReq);
-                
+
                 if (!response.IsSuccessStatusCode)
                 {
                     _logger.LogWarning($"[Machine] Failed to order machines from THOH. Status: {response.StatusCode}");
@@ -72,11 +72,11 @@ namespace esAPI.Services
 
                 var content = await response.Content.ReadAsStringAsync();
                 using var doc = System.Text.Json.JsonDocument.Parse(content);
-                
+
                 var orderId = doc.RootElement.GetProperty("orderId").GetInt32();
                 var totalPrice = doc.RootElement.GetProperty("totalPrice").GetDecimal();
                 var bankAccount = doc.RootElement.GetProperty("bankAccount").GetString();
-                
+
                 _logger.LogInformation($"[Machine] Ordered {quantity} new machines from THOH. OrderId={orderId}, TotalPrice={totalPrice}, BankAccount={bankAccount}");
 
                 if (!string.IsNullOrEmpty(bankAccount) && totalPrice > 0)

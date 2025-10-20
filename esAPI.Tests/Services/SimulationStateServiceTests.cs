@@ -55,7 +55,7 @@ namespace esAPI.Tests.Services
             _service.IsRunning.Should().BeTrue();
             _service.CurrentDay.Should().Be(1);
             var simTime = _service.GetCurrentSimulationTime();
-            
+
             // Should be greater than 1 since we started 10 minutes ago
             // 10 minutes = 5 simulation days (2 minutes per day)
             simTime.Should().BeGreaterThan(5.0m);
@@ -120,7 +120,7 @@ namespace esAPI.Tests.Services
             // Assert
             simTime.Should().BeGreaterThanOrEqualTo(1.0m); // At least day 1
             simTime.Should().BeLessThan(10.0m); // Should be reasonable
-            
+
             // Test precision
             var simTimeWith2Decimals = _service.GetCurrentSimulationTime(2);
             simTimeWith2Decimals.Should().NotHaveMoreThan2DecimalPlaces();
@@ -266,8 +266,8 @@ namespace esAPI.Tests.Services
             var multiplier = (decimal)Math.Pow(10, maxDecimalPlaces);
             var scaledValue = value * multiplier;
             var truncatedValue = Math.Truncate(scaledValue);
-            
-            scaledValue.Should().Be(truncatedValue, 
+
+            scaledValue.Should().Be(truncatedValue,
                 $"because the value should not have more than {maxDecimalPlaces} decimal places");
 
             return new AndConstraint<FluentAssertions.Numeric.NumericAssertions<decimal>>(parent);

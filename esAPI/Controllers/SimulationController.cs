@@ -39,7 +39,7 @@ namespace esAPI.Controllers
         public async Task<IActionResult> StartSimulation([FromBody] SimulationStartRequestDto? request = null)
         {
             _logger.LogInformation("🚀 ===== MAIN SIMULATION ENDPOINT CALLED =====");
-            
+
             // Start simulation with or without external epoch time
             if (request?.EpochStartTime != null)
             {
@@ -67,7 +67,7 @@ namespace esAPI.Controllers
         public ActionResult<DTOs.SimulationStateDto> GetSimulation()
         {
             _logger.LogDebug("📊 Retrieving current simulation state");
-            
+
             var simTime = _stateService.GetCurrentSimulationTime(3);
             var canonicalSimDate = simTime.ToCanonicalTime();
             var simulationEpoch = new DateTime(2050, 1, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -82,9 +82,9 @@ namespace esAPI.Controllers
                 CanonicalSimulationDate = canonicalSimDate
             };
 
-            _logger.LogDebug("📊 Simulation state: Running={IsRunning}, Day={CurrentDay}, Time={SimTime}", 
+            _logger.LogDebug("📊 Simulation state: Running={IsRunning}, Day={CurrentDay}, Time={SimTime}",
                 dto.IsRunning, dto.CurrentDay, simTime);
-            
+
             return Ok(dto);
         }
 
@@ -98,12 +98,12 @@ namespace esAPI.Controllers
                 return BadRequest("Simulation not running.");
             }
 
-            _logger.LogInformation("⏭️ Advancing simulation from day {CurrentDay} to {NextDay}", 
+            _logger.LogInformation("⏭️ Advancing simulation from day {CurrentDay} to {NextDay}",
                 _stateService.CurrentDay, _stateService.CurrentDay + 1);
 
             await _simulationEngine.RunDayAsync(_stateService.CurrentDay);
             _logger.LogInformation("✅ Day {Day} simulation logic completed", _stateService.CurrentDay);
-            
+
             _stateService.AdvanceDay();
             _logger.LogInformation("📈 Simulation advanced to day {NewDay}", _stateService.CurrentDay);
 
@@ -120,7 +120,7 @@ namespace esAPI.Controllers
             {
                 _logger.LogWarning("⚠️ No simulation record found in database for backup");
             }
-            
+
             return Ok(new { currentDay = _stateService.CurrentDay });
         }
 
@@ -133,7 +133,7 @@ namespace esAPI.Controllers
                 _logger.LogWarning("⚠️ Attempted to stop simulation when not running");
                 return BadRequest("Simulation is not running.");
             }
-            
+
             _logger.LogInformation("🛑 Stopping simulation and cleaning up data");
             _stateService.Stop();
             _logger.LogInformation("📊 Simulation state service stopped");

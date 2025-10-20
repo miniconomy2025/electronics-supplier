@@ -6,11 +6,11 @@ namespace esAPI.Clients
 
         protected readonly HttpClient _client;
 
-        public BaseClient(IHttpClientFactory factory, string clientName)
+        protected BaseClient(IHttpClientFactory factory, string clientName)
         {
             _factory = factory;
             _client = _factory.CreateClient(clientName);
-            
+
             // Ensure Client-Id header is set for outgoing requests
             if (!_client.DefaultRequestHeaders.Contains("Client-Id"))
             {

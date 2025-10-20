@@ -81,13 +81,13 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    options.SwaggerDoc("v1", new() 
-    { 
-        Title = "Electronics Supplier API", 
+    options.SwaggerDoc("v1", new()
+    {
+        Title = "Electronics Supplier API",
         Version = "v1",
         Description = "API for managing electronics supplier simulation and operations"
     });
-    
+
     // Enable XML comments if available
     var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
@@ -111,7 +111,7 @@ builder.Services.AddControllers(options =>
             .SelectMany(x => x.Value!.Errors)
             .Select(x => x.ErrorMessage)
             .ToArray();
-            
+
         return new BadRequestObjectResult(new
         {
             message = "Validation failed",
@@ -124,7 +124,7 @@ builder.Services.AddControllers(options =>
 builder.Services.AddHealthChecks()
     .AddCheck("self", () => HealthCheckResult.Healthy("Application is running"));
 
-builder.Services.AddHttpClient(); 
+builder.Services.AddHttpClient();
 
 // API Clients
 builder.Services.AddScoped<ICommercialBankClient, CommercialBankClient>();
@@ -170,17 +170,17 @@ builder.Services.Configure<ExternalApiConfig>(
 
 // Configure AWS services only if credentials are available
 var awsServicesEnabled = false;
-try 
+try
 {
     // Check if we have AWS configuration
     var queueUrl = builder.Configuration["Retry:QueueUrl"];
     var region = builder.Configuration["AWS:Region"];
-    
+
     if (!string.IsNullOrEmpty(queueUrl) && !string.IsNullOrEmpty(region))
     {
         // Try to check for AWS credentials before registering services
         var credentialsAvailable = CheckAWSCredentialsAvailable();
-        
+
         if (credentialsAvailable)
         {
             builder.Services.AddDefaultAWSOptions(builder.Configuration.GetAWSOptions());
@@ -191,7 +191,7 @@ try
             // Register all retry handlers
             builder.Services.AddScoped<IRetryHandler<BankAccountRetryJob>, BankAccountRetryHandler>();
             builder.Services.AddScoped<IRetryHandler<BankBalanceRetryJob>, BankBalanceRetryHandler>();
-            
+
             awsServicesEnabled = true;
             Console.WriteLine("✅ AWS SQS services configured successfully");
         }
@@ -224,7 +224,7 @@ static bool CheckAWSCredentialsAvailable()
     {
         return true;
     }
-    
+
     // Check if running on EC2 with IAM role
     try
     {
@@ -254,20 +254,20 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("SecureCorsPolicy", policy =>
     {
-        var origins = corsConfig.AllowedOrigins.Length > 0 
-            ? corsConfig.AllowedOrigins 
+        var origins = corsConfig.AllowedOrigins.Length > 0
+            ? corsConfig.AllowedOrigins
             : new[] { "http://localhost:3000", "https://localhost:7000" }; // Fallback for development
 
         policy.WithOrigins(origins)
               .WithMethods(corsConfig.AllowedMethods)
               .WithHeaders(corsConfig.AllowedHeaders);
-              
+
         if (corsConfig.AllowCredentials)
         {
             policy.AllowCredentials();
         }
     });
-    
+
     // Keep a permissive policy for development/Swagger only
     if (builder.Environment.IsDevelopment())
     {

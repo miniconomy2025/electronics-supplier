@@ -30,14 +30,14 @@ namespace esAPI.Tests.Services
             // Mock dependencies for RetryQueuePublisher
             var mockConfiguration = new Mock<Microsoft.Extensions.Configuration.IConfiguration>();
             mockConfiguration.Setup(c => c["Retry:QueueUrl"]).Returns("https://test-queue-url");
-            
+
             var mockLogger = new Mock<ILogger<RetryQueuePublisher>>();
             var mockSqs = new Mock<Amazon.SQS.IAmazonSQS>();
-            
+
             var retryPublisher = new RetryQueuePublisher(
-                mockSqs.Object, 
-                mockLogger.Object, 
-                mockConfiguration.Object, 
+                mockSqs.Object,
+                mockLogger.Object,
+                mockConfiguration.Object,
                 mockStateService.Object);
             var mockLoggerOrchestrator = new Mock<ILogger<SimulationDayOrchestrator>>();
             var mockHttpClientFactory = new Mock<IHttpClientFactory>();

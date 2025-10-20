@@ -26,7 +26,7 @@ public class ClientIdentificationMiddleware
         }
 
         // Check for Client-Id header
-        if (!context.Request.Headers.TryGetValue("Client-Id", out var clientIdValues) || 
+        if (!context.Request.Headers.TryGetValue("Client-Id", out var clientIdValues) ||
             string.IsNullOrWhiteSpace(clientIdValues.FirstOrDefault()))
         {
             context.Response.StatusCode = 401;
@@ -39,9 +39,9 @@ public class ClientIdentificationMiddleware
         // Look up the client in the database
         using var scope = _serviceScopeFactory.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        
+
         var company = await dbContext.Companies.FirstOrDefaultAsync(c => c.CompanyName == clientId);
-        
+
         if (company == null)
         {
             context.Response.StatusCode = 401;
@@ -59,20 +59,20 @@ public class ClientIdentificationMiddleware
     private static bool ShouldSkipClientValidation(PathString path, string method)
     {
         var pathValue = path.Value?.ToLower() ?? string.Empty;
-        
+
         // Skip for all GET requests as they are purely informational
         if (string.Equals(method, "GET", StringComparison.OrdinalIgnoreCase))
         {
             return true;
         }
-        
+
         // Skip for POST /simulation endpoint
-        if (string.Equals(method, "POST", StringComparison.OrdinalIgnoreCase) && 
+        if (string.Equals(method, "POST", StringComparison.OrdinalIgnoreCase) &&
             pathValue.StartsWith("/simulation"))
         {
             return true;
         }
-        
+
         return pathValue.StartsWith("/swagger") ||
                pathValue.StartsWith("/health") ||
                pathValue.StartsWith("/api/docs") ||
