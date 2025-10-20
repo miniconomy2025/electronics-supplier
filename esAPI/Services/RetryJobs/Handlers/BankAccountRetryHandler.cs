@@ -28,8 +28,11 @@ namespace esAPI.Services
             var accountNumber = parsed.GetProperty("account_number").GetString();
 
             var company = await _db.Companies.FirstOrDefaultAsync(c => c.CompanyId == job.CompanyId, token);
-            company.BankAccountNumber = accountNumber;
-            await _db.SaveChangesAsync(token);
+            if (company != null)
+            {
+                company.BankAccountNumber = accountNumber;
+                await _db.SaveChangesAsync(token);
+            }
 
             return true;
         }

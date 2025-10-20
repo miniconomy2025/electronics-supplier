@@ -1,22 +1,8 @@
+using esAPI.DTOs.Startup;
+using esAPI.Interfaces.Services;
+
 namespace esAPI.Services;
 
-public class StartupCosts
-{
-    public decimal TotalMaterialCost { get; set; }
-    public decimal TotalMachineCost { get; set; }
-    public decimal TotalLoanAmount => TotalMaterialCost + TotalMachineCost;
-}
-
-public class StartupPlan
-{
-    public required string MachineName { get; set; }
-    public decimal MachineCost { get; set; }
-    public decimal MaterialsCost { get; set; }
-    public decimal TotalCost => MachineCost + MaterialsCost;
-}
-
-public interface IStartupCostCalculator
-{
-
-    Task<List<StartupPlan>> GenerateAllPossibleStartupPlansAsync();
-}
+// This file is deprecated - interface moved to esAPI.Interfaces.Services.IStartupCostCalculator
+// DTOs moved to esAPI.DTOs.Startup.StartupDtos
+// This file can be deleted after all references are updated

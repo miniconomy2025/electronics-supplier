@@ -6,16 +6,10 @@ using esAPI.Data;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Concurrent;
 using esAPI.Interfaces;
+using esAPI.Interfaces.Services;
 
 namespace esAPI.Services
 {
-    public interface IMaterialAcquisitionService
-    {
-        Task ExecutePurchaseStrategyAsync();
-        // Task PurchaseMaterialsViaBank();
-        // Task PlaceBulkLogisticsPickup(int orderId, string itemName, int quantity, string supplier);
-    }
-
     public class MaterialAcquisitionService : IMaterialAcquisitionService
     {
         private readonly IMaterialSourcingService _sourcingService;

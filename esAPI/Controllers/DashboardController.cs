@@ -7,7 +7,7 @@ using esAPI.Data;
 namespace esAPI.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("dashboard")]
     public class DashboardController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -18,7 +18,7 @@ namespace esAPI.Controllers
         }
 
         // 1. Machine statuses count
-        [HttpGet("machines-status")]
+        [HttpGet("machines/status")]
         public async Task<IActionResult> GetMachinesStatus()
         {
             var data = await _context.Machines
@@ -38,7 +38,7 @@ namespace esAPI.Controllers
         }
 
         // 2. Current material supply
-        [HttpGet("current-supply")]
+        [HttpGet("supplies/current")]
         public async Task<IActionResult> GetCurrentSupply()
         {
             var result = await _context.MaterialSupplies
@@ -56,7 +56,7 @@ namespace esAPI.Controllers
         }
 
         // 3. Electronics stock (from view)
-        [HttpGet("electronics-stock")]
+        [HttpGet("electronics/stock")]
         public async Task<IActionResult> GetElectronicsStock()
         {
             var stock = await _context.Database
@@ -67,7 +67,7 @@ namespace esAPI.Controllers
         }
 
         // 4. Total earnings (from view)
-        [HttpGet("total-earnings")]
+        [HttpGet("earnings/total")]
         public async Task<IActionResult> GetEarnings()
         {
             var total = await _context.Payments
@@ -78,7 +78,7 @@ namespace esAPI.Controllers
         }
 
         // 5. Inventory summary (from function)
-        [HttpGet("inventory-summary")]
+        [HttpGet("inventory/summary")]
         public async Task<IActionResult> GetInventorySummary()
         {
             await using var cmd = _context.Database.GetDbConnection().CreateCommand();
@@ -153,7 +153,7 @@ namespace esAPI.Controllers
             public decimal TotalEarnings { get; set; }
         }
         
-        [HttpGet("bank-balance")]
+        [HttpGet("bank/balance")]
         public async Task<IActionResult> GetBankBalance()
         {
             var latest = await _context.BankBalanceSnapshots

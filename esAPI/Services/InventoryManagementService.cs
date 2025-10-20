@@ -2,6 +2,7 @@ using System.Data;
 using esAPI.Configuration;
 using esAPI.Data;
 using esAPI.Models;
+using esAPI.Interfaces.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Npgsql;

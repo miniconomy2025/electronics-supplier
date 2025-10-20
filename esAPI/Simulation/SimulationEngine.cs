@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 using esAPI.DTOs;
 using esAPI.Interfaces;
+using esAPI.Interfaces.Services;
 using System.Net.Http;
 
 namespace esAPI.Simulation
@@ -154,7 +155,6 @@ namespace esAPI.Simulation
                     try
                     {
                         int thohQty = 0;
-                        decimal thohPrice = 0;
                         var thohMaterials = await _thohApiClient.GetAvailableMaterialsAsync();
                         var thohMat = thohMaterials?.FirstOrDefault(m => m.MaterialName.ToLower() == materialName);
                         if (thohMat != null && thohMat.AvailableQuantity > 0)

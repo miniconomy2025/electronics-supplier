@@ -3,18 +3,10 @@ using esAPI.Clients;
 using esAPI.Data;
 using Microsoft.EntityFrameworkCore;
 using esAPI.Interfaces;
+using esAPI.Interfaces.Services;
 
 namespace esAPI.Services
 {
-    public interface IMachineAcquisitionService
-    {
-        Task<bool> CheckTHOHForMachines();
-        Task<(int? orderId, int quantity)> PurchaseMachineViaBank();
-        Task QueryOrderDetailsFromTHOH();
-        Task PlaceBulkLogisticsPickup(int thohOrderId, int quantity);
-
-    }
-
     public class MachineAcquisitionService(IHttpClientFactory httpClientFactory, BankService bankService, ICommercialBankClient bankClient, AppDbContext context, ISimulationStateService stateService) : IMachineAcquisitionService
     {
         private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
@@ -103,7 +95,10 @@ namespace esAPI.Services
             
             
             // 6. Place pickup with Bulk Logistics
-            await PlaceBulkLogisticsPickup(orderId.Value, toBuy);
+            if (orderId.HasValue)
+            {
+                await PlaceBulkLogisticsPickup(orderId.Value, toBuy);
+            }
 
             return (orderId, toBuy);
         }

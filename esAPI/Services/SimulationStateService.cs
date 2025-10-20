@@ -9,6 +9,7 @@ namespace esAPI.Services
         private bool _isRunning;
         private DateTime? _startTimeUtc;
         private int _currentDay;
+        private long? _externalEpochStartTime;
 
         public void Start()
         {
@@ -17,6 +18,18 @@ namespace esAPI.Services
                 _isRunning = true;
                 _startTimeUtc = DateTime.UtcNow;
                 _currentDay = 1;
+                _externalEpochStartTime = null;
+            }
+        }
+
+        public void Start(long epochStartTime)
+        {
+            lock (_lock)
+            {
+                _isRunning = true;
+                _startTimeUtc = DateTime.UtcNow;
+                _currentDay = 1;
+                _externalEpochStartTime = epochStartTime;
             }
         }
 
@@ -27,6 +40,7 @@ namespace esAPI.Services
                 _isRunning = false;
                 _startTimeUtc = null;
                 _currentDay = 0;
+                _externalEpochStartTime = null;
             }
         }
 
@@ -61,7 +75,20 @@ namespace esAPI.Services
             {
                 if (!_isRunning || !_startTimeUtc.HasValue)
                     return 0m;
-                var elapsed = DateTime.UtcNow - _startTimeUtc.Value;
+
+                DateTime referenceStartTime;
+                
+                // If external epoch start time is provided, use it as the reference
+                if (_externalEpochStartTime.HasValue)
+                {
+                    referenceStartTime = DateTimeOffset.FromUnixTimeSeconds(_externalEpochStartTime.Value).DateTime;
+                }
+                else
+                {
+                    referenceStartTime = _startTimeUtc.Value;
+                }
+
+                var elapsed = DateTime.UtcNow - referenceStartTime;
                 var totalSimDays = (decimal)(elapsed.TotalMinutes / 2.0);
                 var simTime = 1m + totalSimDays; // Day 1 starts at 1.000
                 return Math.Round(simTime, precision);

@@ -5,6 +5,7 @@ using esAPI.Data;
 using esAPI.Clients;
 using esAPI.Services;
 using esAPI.Interfaces;
+using esAPI.Interfaces.Services;
 using esAPI.Configuration;
 using esAPI.Middleware;
 using Amazon.SQS;
@@ -12,29 +13,50 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure HTTP clients
+// Configure External API settings
+var externalApiConfig = new ExternalApiConfig();
+builder.Configuration.GetSection(ExternalApiConfig.SectionName).Bind(externalApiConfig);
+
+// Validate configuration
+if (string.IsNullOrEmpty(externalApiConfig.CommercialBank) ||
+    string.IsNullOrEmpty(externalApiConfig.BulkLogistics) ||
+    string.IsNullOrEmpty(externalApiConfig.THOH) ||
+    string.IsNullOrEmpty(externalApiConfig.Recycler))
+{
+    throw new InvalidOperationException("External API configuration is incomplete. Please check appsettings.json or environment variables.");
+}
+
+// Log the configured endpoints (without sensitive info)
+Console.WriteLine("🔗 External API Configuration:");
+Console.WriteLine($"  Commercial Bank: {externalApiConfig.CommercialBank}");
+Console.WriteLine($"  Bulk Logistics: {externalApiConfig.BulkLogistics}");
+Console.WriteLine($"  THOH: {externalApiConfig.THOH}");
+Console.WriteLine($"  Recycler: {externalApiConfig.Recycler}");
+Console.WriteLine($"  Client ID: {externalApiConfig.ClientId}");
+
+// Configure HTTP clients using configuration
 builder.Services.AddHttpClient("commercial-bank", client =>
 {
-    client.BaseAddress = new Uri("https://commercial-bank-api.subspace.site/api");
-    client.DefaultRequestHeaders.Add("Client-Id", "electronics-supplier");
+    client.BaseAddress = new Uri(externalApiConfig.CommercialBank);
+    client.DefaultRequestHeaders.Add("Client-Id", externalApiConfig.ClientId);
 });
 
 builder.Services.AddHttpClient("bulk-logistics", client =>
 {
-    client.BaseAddress = new Uri("https://team7-todo.xyz/api");
-    client.DefaultRequestHeaders.Add("Client-Id", "electronics-supplier");
+    client.BaseAddress = new Uri(externalApiConfig.BulkLogistics);
+    client.DefaultRequestHeaders.Add("Client-Id", externalApiConfig.ClientId);
 });
 
 builder.Services.AddHttpClient("thoh", client =>
 {
-    client.BaseAddress = new Uri("https://ec2-13-244-65-62.af-south-1.compute.amazonaws.com");
-    client.DefaultRequestHeaders.Add("Client-Id", "electronics-supplier");
+    client.BaseAddress = new Uri(externalApiConfig.THOH);
+    client.DefaultRequestHeaders.Add("Client-Id", externalApiConfig.ClientId);
 });
 
 builder.Services.AddHttpClient("recycler", client =>
 {
-    client.BaseAddress = new Uri("https://api.recycler.susnet.co.za");
-    client.DefaultRequestHeaders.Add("Client-Id", "electronics-supplier");
+    client.BaseAddress = new Uri(externalApiConfig.Recycler);
+    client.DefaultRequestHeaders.Add("Client-Id", externalApiConfig.ClientId);
 });
 
 //--------------------------------------------------------------------------
@@ -59,39 +81,40 @@ builder.Services.AddHealthChecks()
 
 builder.Services.AddHttpClient(); 
 
-// Ensure all SimulationEngine dependencies are registered for DI
-builder.Services.AddScoped<IElectronicsService, ElectronicsService>();
-builder.Services.AddScoped<IBulkLogisticsClient, BulkLogisticsClient>();
-builder.Services.AddScoped<IMaterialOrderService, MaterialOrderService>();
-builder.Services.AddScoped<ISupplyService, SupplyService>();
+// API Clients
 builder.Services.AddScoped<ICommercialBankClient, CommercialBankClient>();
+builder.Services.AddScoped<IBulkLogisticsClient, BulkLogisticsClient>();
 builder.Services.AddScoped<ThohApiClient>();
 builder.Services.AddScoped<RecyclerApiClient>();
-builder.Services.AddScoped<IBulkLogisticsClient, BulkLogisticsClient>();
+builder.Services.AddScoped<ISupplierApiClient, RecyclerApiClient>();
 
-builder.Services.AddScoped<BankAccountService>();
-builder.Services.AddScoped<BankService>();
-builder.Services.AddScoped<InventoryService>();
-builder.Services.AddScoped<SimulationStartupService>();
-builder.Services.AddScoped<ElectronicsMachineDetailsService>();
+// Core Services
+builder.Services.AddScoped<IElectronicsService, ElectronicsService>();
+builder.Services.AddScoped<IMaterialOrderService, MaterialOrderService>();
+builder.Services.AddScoped<ISupplyService, SupplyService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
 builder.Services.AddScoped<IProductionService, ProductionService>();
 builder.Services.AddScoped<IMachineAcquisitionService, MachineAcquisitionService>();
-
 builder.Services.AddScoped<IMaterialSourcingService, MaterialSourcingService>();
 builder.Services.AddScoped<IMaterialAcquisitionService, MaterialAcquisitionService>();
-
-builder.Services.AddScoped<ISupplierApiClient, RecyclerApiClient>();
-
 builder.Services.AddScoped<IStartupCostCalculator, StartupCostCalculator>();
 
+// Business Services  
+builder.Services.AddScoped<BankAccountService>();
+builder.Services.AddScoped<BankService>();
+builder.Services.AddScoped<SimulationStartupService>();
+builder.Services.AddScoped<ElectronicsMachineDetailsService>();
 builder.Services.AddScoped<OrderExpirationService>();
+builder.Services.AddScoped<SimulationDayOrchestrator>();
+builder.Services.AddSingleton<ISimulationStateService, SimulationStateService>();
+
+// Configuration
 builder.Services.Configure<InventoryConfig>(
     builder.Configuration.GetSection(InventoryConfig.SectionName)
 );
-
-builder.Services.AddScoped<SimulationDayOrchestrator>();
-builder.Services.AddSingleton<ISimulationStateService, SimulationStateService>();
+builder.Services.Configure<ExternalApiConfig>(
+    builder.Configuration.GetSection(ExternalApiConfig.SectionName)
+);
 
 // Configure AWS services only if credentials are available
 var awsServicesEnabled = false;

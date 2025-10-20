@@ -6,7 +6,9 @@ using esAPI.Data;
 using esAPI.Services;
 using esAPI.Simulation;
 using esAPI.Interfaces;
+using esAPI.Interfaces.Services;
 using esAPI.Clients;
+using esAPI.DTOs.Simulation;
 using System.Net.Http;
 
 namespace esAPI.Controllers
@@ -33,10 +35,22 @@ namespace esAPI.Controllers
 
         // POST /simulation - start the simulation
         [HttpPost]
-        public async Task<IActionResult> StartSimulation()
+        public async Task<IActionResult> StartSimulation([FromBody] SimulationStartRequestDto? request = null)
         {
             _logger.LogInformation("🚀 ===== MAIN SIMULATION ENDPOINT CALLED =====");
             
+            // Start simulation with or without external epoch time
+            if (request?.EpochStartTime != null)
+            {
+                _logger.LogInformation("📅 Starting simulation with external epoch start time: {EpochStartTime}", request.EpochStartTime);
+                _stateService.Start(request.EpochStartTime);
+            }
+            else
+            {
+                _logger.LogInformation("📅 Starting simulation with current time");
+                _stateService.Start();
+            }
+
             var result = await _simulationStartupService.StartSimulationAsync();
             if (!result.Success)
             {

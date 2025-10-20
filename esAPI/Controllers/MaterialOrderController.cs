@@ -8,7 +8,7 @@ namespace esAPI.Controllers
     [ApiController]
     [Route("materials/orders")]
     [Produces("application/json")]
-    public class MaterialOrdersController(IMaterialOrderService service) : ControllerBase
+    public class MaterialOrderController(IMaterialOrderService service) : ControllerBase
     {
         private readonly IMaterialOrderService _service = service;
 
