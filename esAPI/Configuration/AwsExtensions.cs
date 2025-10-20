@@ -40,11 +40,15 @@ namespace esAPI.Configuration
                 {
                     Console.WriteLine($"⚠️ AWS services not available: {ex.Message}");
                     Console.WriteLine("🔧 Continuing without AWS services...");
+                    // Register null RetryQueuePublisher for services that depend on it
+                    services.AddScoped<RetryQueuePublisher>(provider => null!);
                 }
             }
             else
             {
                 Console.WriteLine("🧪 Test/Container environment - skipping AWS services");
+                // Register null RetryQueuePublisher for services that depend on it
+                services.AddScoped<RetryQueuePublisher>(provider => null!);
             }
 
             return services;

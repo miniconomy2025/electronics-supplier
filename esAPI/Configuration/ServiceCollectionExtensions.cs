@@ -13,9 +13,13 @@ namespace esAPI.Configuration
         {
             // External API clients
             services.AddScoped<IBankService, BankService>();
+            services.AddScoped<BankService>(); // Concrete class for direct injection
             services.AddScoped<IBankAccountService, BankAccountService>();
+            services.AddScoped<BankAccountService>(); // Concrete class for direct injection
             services.AddScoped<IThohApiClient, ThohApiClient>();
+            services.AddScoped<ThohApiClient>(); // Concrete class for direct injection
             services.AddScoped<IRecyclerApiClient, RecyclerApiClient>();
+            services.AddScoped<RecyclerApiClient>(); // Concrete class for direct injection
             services.AddScoped<ISupplierApiClient, RecyclerApiClient>(); // RecyclerApiClient implements ISupplierApiClient
             services.AddScoped<ICommercialBankClient, CommercialBankClient>();
             services.AddScoped<IBulkLogisticsClient, BulkLogisticsClient>();
@@ -38,9 +42,11 @@ namespace esAPI.Configuration
             // Management services
             services.AddScoped<InventoryManagementService>();
             services.AddScoped<InventoryService>();
+            services.AddScoped<IMachineManagementService, MachineManagementService>();
             services.AddScoped<MachineManagementService>();
             services.AddScoped<IMaterialOrderingService, MaterialOrderingService>();
             services.AddScoped<MaterialOrderingService>();
+            services.AddScoped<ISimulationDayService, SimulationDayService>();
             services.AddScoped<SimulationDayService>();
             services.AddScoped<SimulationDayOrchestrator>();
             services.AddScoped<OrderExpirationService>();
