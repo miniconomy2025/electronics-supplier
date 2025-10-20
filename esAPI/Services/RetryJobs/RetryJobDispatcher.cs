@@ -27,7 +27,7 @@ namespace esAPI.Services
             _serviceProvider = serviceProvider;
             _logger = logger;
             _stateService = stateService;
-            _queueUrl = config["Retry:QueueUrl"] ?? throw new ArgumentNullException("Retry:QueueUrl not configured");
+            _queueUrl = config["Retry:QueueUrl"] ?? throw new ArgumentNullException(nameof(config), "Retry:QueueUrl not configured");
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
