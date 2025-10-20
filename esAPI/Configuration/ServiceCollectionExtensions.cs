@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Npgsql;
 using Amazon.SQS;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -90,6 +91,8 @@ namespace esAPI.Configuration
             services.AddScoped<IBankAccountService, BankAccountService>();
             services.AddScoped<IThohApiClient, ThohApiClient>();
             services.AddScoped<IRecyclerApiClient, RecyclerApiClient>();
+            services.AddScoped<ICommercialBankClient, CommercialBankClient>();
+            services.AddScoped<IBulkLogisticsClient, BulkLogisticsClient>();
             services.AddScoped<CommercialBankClient>();
             services.AddScoped<BulkLogisticsClient>();
 
@@ -118,6 +121,9 @@ namespace esAPI.Configuration
 
             // Simulation Engine
             services.AddScoped<SimulationEngine>();
+
+            // Retry services (optional - depends on AWS being available)
+            services.TryAddScoped<RetryQueuePublisher>();
 
             return services;
         }

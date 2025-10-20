@@ -7,6 +7,10 @@ using System.Net.Http.Json;
 using System.Text;
 using esAPI.Data;
 using esAPI.Models;
+using esAPI.Clients;
+using esAPI.Interfaces;
+using esAPI.Services;
+using Moq;
 using Xunit;
 
 namespace esAPI.Tests.Middleware;
@@ -20,7 +24,7 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
         builder.UseEnvironment("Testing");
         builder.ConfigureServices(services =>
         {
-            // Remove all database-related services
+            // Remove problematic services that we don't need for middleware testing
             var toRemove = services.Where(d =>
                 d.ServiceType == typeof(DbContextOptions<AppDbContext>) ||
                 d.ServiceType == typeof(DbContextOptions) ||
@@ -28,7 +32,14 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
                 d.ServiceType.Name.Contains("DbContext") ||
                 d.ImplementationType?.FullName?.Contains("Npgsql") == true ||
                 d.ServiceType.FullName?.Contains("Npgsql") == true ||
-                d.ServiceType.FullName?.Contains("PostgreSQL") == true)
+                d.ServiceType.FullName?.Contains("PostgreSQL") == true ||
+                d.ServiceType == typeof(RetryQueuePublisher) ||
+                d.ImplementationType == typeof(RetryQueuePublisher) ||
+                // Remove hosted services that cause issues in tests
+                d.ServiceType == typeof(Microsoft.Extensions.Hosting.IHostedService) ||
+                d.ImplementationType?.Name.Contains("AutoAdvanceService") == true ||
+                d.ImplementationType?.Name.Contains("BackgroundService") == true ||
+                d.ImplementationType?.Name.Contains("RetryJobDispatcher") == true)
                 .ToList();
 
             foreach (var descriptor in toRemove)
@@ -41,6 +52,21 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
             {
                 options.UseInMemoryDatabase(_databaseName);
             }, ServiceLifetime.Scoped);
+
+            // Add mock external API clients
+            var mockCommercialBankClient = new Mock<ICommercialBankClient>();
+            mockCommercialBankClient.Setup(x => x.GetAccountBalanceAsync()).ReturnsAsync(1000000m);
+            mockCommercialBankClient.Setup(x => x.GetAccountDetailsAsync()).ReturnsAsync("TEST-ACCOUNT");
+            services.AddSingleton(mockCommercialBankClient.Object);
+
+            var mockBulkLogisticsClient = new Mock<IBulkLogisticsClient>();
+            services.AddSingleton(mockBulkLogisticsClient.Object);
+
+            var mockThohApiClient = new Mock<IThohApiClient>();
+            services.AddSingleton(mockThohApiClient.Object);
+
+            var mockRecyclerApiClient = new Mock<IRecyclerApiClient>();
+            services.AddSingleton(mockRecyclerApiClient.Object);
         });
     }
 
