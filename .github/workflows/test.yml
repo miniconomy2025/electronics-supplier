@@ -59,7 +59,7 @@ jobs:
         # Check if there are any changes to commit
         if [ -n "$(git status --porcelain)" ]; then
           git add -A
-          git commit -m "🎨 Auto-fix code formatting [skip ci]"
+          git commit -m "🎨 Auto-fix code formatting"
           git push
           echo "✅ Formatting changes committed and pushed"
         else
