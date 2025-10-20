@@ -156,6 +156,17 @@ namespace esAPI.Clients
             }
         }
 
+        public async Task<string?> RequestLoanAsync(decimal amount)
+        {
+            var requestBody = new { Amount = amount };
+
+            var response = await _client.PostAsJsonAsync("/loan", requestBody);
+            response.EnsureSuccessStatusCode();
+            var content = await response.Content.ReadAsStringAsync();
+            using var doc = System.Text.Json.JsonDocument.Parse(content);
+            return doc.RootElement.TryGetProperty("loan_number", out var loanNum) ? loanNum.GetString() : null;;
+        }
+
         public async Task<string> MakePaymentAsync(string toAccountNumber, string toBankName, decimal amount, string description)
         {
             var paymentReq = new

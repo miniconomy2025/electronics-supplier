@@ -86,7 +86,14 @@ namespace esAPI.Services
                 Console.WriteLine("PlaceOrderAsync not implemented for ThohApiClient");
                 return false;
             }
-            else
+
+            // --- Update Order Status to 'ACCEPTED' ---
+            await UpdateOrderStatusAsync(localOrder.OrderId, "ACCEPTED");
+
+            // --- Arrange and Pay for Logistics ---
+            var logisticsSuccess = await ArrangeLogisticsAsync(orderResponse, materialName, quantityToBuy, sourcedInfo.Name);
+
+            if (!logisticsSuccess)
             {
                 Console.WriteLine($"Unknown supplier client type: {sourcedInfo.Client.GetType().Name}");
                 return false;

@@ -27,6 +27,12 @@ namespace esAPI.Simulation
         private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
         private readonly ThohApiClient _thohApiClient = thohApiClient;
 
+        private readonly IStartupCostCalculator _costCalculator = costCalculator;
+
+        private readonly BankService _bankService = bankService;
+
+        private readonly ICommercialBankClient _bankClient = bankClient;
+
         public static event Func<int, Task>? OnDayAdvanced;
 
         public async Task RunDayAsync(int dayNumber)
@@ -457,6 +463,30 @@ namespace esAPI.Simulation
             _logger.LogInformation("✅ Loan requested successfully: {LoanNumber}", loanSuccess);
 
             _logger.LogInformation("✅ Startup sequence completed successfully");
+            return true;
+        }
+
+        private async Task<bool> ExecuteStartupSequence()
+        {
+
+            await _bankAccountService.SetupBankAccount();
+
+            await _bankClient.SetNotificationUrlAsync();
+
+            var allPlans = await _costCalculator.GenerateAllPossibleStartupPlansAsync();
+            if (!allPlans.Any())
+            {
+                return false;
+            }
+
+            var bestPlan = allPlans.OrderBy(p => p.TotalCost).First();
+
+            string? loanSuccess = await _bankClient.RequestLoanAsync(bestPlan.TotalCost);
+            if (loanSuccess == null)
+            {
+                return false;
+            }
+
             return true;
         }
     }
