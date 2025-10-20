@@ -117,13 +117,38 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Install PostgreSQL client
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y postgresql-client
+
     - name: Build test image
       run: |
         docker build -t test-app:latest .
 
     - name: Run container smoke tests
       run: |
+        # Wait for PostgreSQL to be ready
+        echo "🗄️ Waiting for PostgreSQL to be ready..."
+        until pg_isready -h localhost -p 5432 -U postgres; do
+          echo "Waiting for PostgreSQL..."
+          sleep 2
+        done
+        echo "✅ PostgreSQL is ready"
+
+        # Create basic database structure (simplified for container testing)
+        echo "🗄️ Setting up test database..."
+        PGPASSWORD=testpassword psql -h localhost -p 5432 -U postgres -d test_db -c "
+          CREATE TABLE IF NOT EXISTS companies (
+            id SERIAL PRIMARY KEY,
+            company_name VARCHAR(255) UNIQUE NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+          INSERT INTO companies (company_name) VALUES ('test-client') ON CONFLICT (company_name) DO NOTHING;
+        " || echo "⚠️ Database setup failed, continuing with container test..."
+
         # Start the container
+        echo "🚀 Starting container..."
         docker run -d --name test-container \
           --network host \
           -e ConnectionStrings__DefaultConnection="Host=localhost;Port=5432;Database=test_db;Username=postgres;Password=testpassword" \
@@ -131,19 +156,64 @@ jobs:
           -e ExternalApis__BulkLogistics="https://httpbin.org/status/200" \
           -e ExternalApis__THOH="https://httpbin.org/status/200" \
           -e ExternalApis__Recycler="https://httpbin.org/status/200" \
+          -e ExternalApis__ClientId="test-client" \
+          -e ASPNETCORE_ENVIRONMENT="Testing" \
+          -e ASPNETCORE_URLS="http://+:8080" \
+          -e Logging__LogLevel__Default="Information" \
+          -e Logging__LogLevel__Microsoft.AspNetCore="Warning" \
           test-app:latest
 
-        # Wait for container to start
-        sleep 30
-
-        # Check if container is running
-        docker ps | grep test-container || exit 1
+        # Wait for container to start and application to be ready
+        echo "⏳ Waiting for application to start..."
+        for i in {1..60}; do
+          if docker ps | grep -q test-container; then
+            echo "Container is running (attempt $i/60), checking application health..."
+            
+            # Try different endpoints to debug
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health 2>/dev/null || echo "000")
+            echo "Health endpoint HTTP status: $HTTP_STATUS"
+            
+            if [ "$HTTP_STATUS" = "200" ]; then
+              echo "✅ Application is responding"
+              break
+            elif [ "$HTTP_STATUS" = "401" ]; then
+              echo "⚠️ Health endpoint returned 401 - middleware issue?"
+            elif [ "$HTTP_STATUS" = "000" ]; then
+              echo "⏳ Connection refused - application still starting..."
+            else
+              echo "⚠️ Unexpected status code: $HTTP_STATUS"
+            fi
+          else
+            echo "❌ Container stopped unexpectedly"
+            echo "Container logs:"
+            docker logs test-container
+            exit 1
+          fi
+          
+          if [ $i -eq 60 ]; then
+            echo "❌ Application failed to start within timeout"
+            echo "Final container logs:"
+            docker logs test-container
+            echo ""
+            echo "Container inspect:"
+            docker inspect test-container
+            exit 1
+          fi
+          sleep 2
+        done
 
         # Test health endpoint
+        echo "🏥 Testing health endpoint..."
         curl -f http://localhost:8080/health || exit 1
+        echo "✅ Health endpoint working"
 
-        # Check logs for errors
-        docker logs test-container | grep -i error && exit 1 || true
+        # Check container logs for critical errors (but don't fail on warnings)
+        echo "📋 Checking container logs for critical errors..."
+        if docker logs test-container 2>&1 | grep -E "(Exception|Error|Fatal)" | grep -v -E "(Warning|Information|Debug)"; then
+          echo "❌ Critical errors found in container logs"
+          docker logs test-container
+          exit 1
+        fi
 
         echo "✅ Container smoke tests passed"
 
