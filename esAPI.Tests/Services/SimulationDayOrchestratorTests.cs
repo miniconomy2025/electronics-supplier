@@ -27,7 +27,18 @@ namespace esAPI.Tests.Services
             var mockBankClient = new Mock<ICommercialBankClient>();
             var mockStateService = new Mock<ISimulationStateService>();
             var mockLoggerBank = new Mock<ILogger<BankService>>();
-            var mockRetryPublisher = new Mock<RetryQueuePublisher>(null, null, null, null); // Pass nulls for constructor, or use a test double
+            // Mock dependencies for RetryQueuePublisher
+            var mockConfiguration = new Mock<Microsoft.Extensions.Configuration.IConfiguration>();
+            mockConfiguration.Setup(c => c["Retry:QueueUrl"]).Returns("https://test-queue-url");
+            
+            var mockLogger = new Mock<ILogger<RetryQueuePublisher>>();
+            var mockSqs = new Mock<Amazon.SQS.IAmazonSQS>();
+            
+            var retryPublisher = new RetryQueuePublisher(
+                mockSqs.Object, 
+                mockLogger.Object, 
+                mockConfiguration.Object, 
+                mockStateService.Object);
             var mockLoggerOrchestrator = new Mock<ILogger<SimulationDayOrchestrator>>();
             var mockHttpClientFactory = new Mock<IHttpClientFactory>();
 
@@ -38,7 +49,10 @@ namespace esAPI.Tests.Services
 
             // Setup HttpClientFactory to return a dummy HttpClient
             var handler = new HttpMessageHandlerStub();
-            var httpClient = new HttpClient(handler);
+            var httpClient = new HttpClient(handler)
+            {
+                BaseAddress = new Uri("https://test-bank-api.com")
+            };
             mockHttpClientFactory.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(httpClient);
 
             // Setup bank client
@@ -49,7 +63,7 @@ namespace esAPI.Tests.Services
                 mockBankClient.Object,
                 mockStateService.Object,
                 mockLoggerBank.Object,
-                mockRetryPublisher.Object
+                retryPublisher
             );
 
             var orchestrator = new SimulationDayOrchestrator(

@@ -19,7 +19,7 @@ namespace esAPI.Services
             _sqs = sqs;
             _logger = logger;
             _stateService = stateService;
-            _queueUrl = config["Retry:QueueUrl"] ?? throw new ArgumentNullException("Retry:QueueUrl not configured");
+            _queueUrl = config?["Retry:QueueUrl"] ?? throw new ArgumentNullException(nameof(config), "Configuration is null or Retry:QueueUrl not configured");
         }
 
         public async Task PublishAsync(IRetryJob job)

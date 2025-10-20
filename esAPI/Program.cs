@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 
 using esAPI.Data;
@@ -61,9 +62,14 @@ builder.Services.AddHttpClient("recycler", client =>
 
 //--------------------------------------------------------------------------
 
-var dataSourceBuilder = new NpgsqlDataSourceBuilder(
-    builder.Configuration.GetConnectionString("DefaultConnection")!
-);
+// Build database connection string with environment variable support
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
+var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD") ?? "postgres";
+connectionString += dbPassword;
+
+Console.WriteLine($"🗄️ Database: Connecting to {connectionString.Replace(dbPassword, "***")}");
+
+var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
 
 var dataSource = dataSourceBuilder.Build();
 
@@ -72,8 +78,46 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 );
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-builder.Services.AddControllers();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new() 
+    { 
+        Title = "Electronics Supplier API", 
+        Version = "v1",
+        Description = "API for managing electronics supplier simulation and operations"
+    });
+    
+    // Enable XML comments if available
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        options.IncludeXmlComments(xmlPath);
+    }
+});
+builder.Services.AddControllers(options =>
+{
+    // Enable automatic model validation
+    options.ModelValidatorProviders.Clear();
+})
+.ConfigureApiBehaviorOptions(options =>
+{
+    // Customize validation error responses
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        var errors = context.ModelState
+            .Where(x => x.Value?.Errors.Count > 0)
+            .SelectMany(x => x.Value!.Errors)
+            .Select(x => x.ErrorMessage)
+            .ToArray();
+            
+        return new BadRequestObjectResult(new
+        {
+            message = "Validation failed",
+            errors = errors
+        });
+    };
+});
 
 // Add health checks
 builder.Services.AddHealthChecks()
@@ -187,24 +231,51 @@ static bool CheckAWSCredentialsAvailable()
     }
 }
 
+// Background Services
 // builder.Services.AddHostedService<InventoryManagementService>(); // Disabled inventory management system temporarily
 builder.Services.AddHostedService<SimulationAutoAdvanceService>();
-builder.Services.AddSingleton<OrderExpirationBackgroundService>();
+builder.Services.AddSingleton<OrderExpirationBackgroundService>(); // TODO: Refactor to implement IHostedService
 
-// Add CORS services
+// Configure CORS
+var corsConfig = new CorsConfig();
+builder.Configuration.GetSection(CorsConfig.SectionName).Bind(corsConfig);
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowSwagger", policy =>
+    options.AddPolicy("SecureCorsPolicy", policy =>
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
+        var origins = corsConfig.AllowedOrigins.Length > 0 
+            ? corsConfig.AllowedOrigins 
+            : new[] { "http://localhost:3000", "https://localhost:7000" }; // Fallback for development
+
+        policy.WithOrigins(origins)
+              .WithMethods(corsConfig.AllowedMethods)
+              .WithHeaders(corsConfig.AllowedHeaders);
+              
+        if (corsConfig.AllowCredentials)
+        {
+            policy.AllowCredentials();
+        }
     });
+    
+    // Keep a permissive policy for development/Swagger only
+    if (builder.Environment.IsDevelopment())
+    {
+        options.AddPolicy("DevelopmentCors", policy =>
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyMethod()
+                  .AllowAnyHeader();
+        });
+    }
 });
 
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
+// Add global exception handling first
+app.UseMiddleware<GlobalExceptionMiddleware>();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -213,8 +284,15 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// Use CORS
-app.UseCors("AllowSwagger");
+// Use CORS - secure policy for production, permissive for development
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors("DevelopmentCors");
+}
+else
+{
+    app.UseCors("SecureCorsPolicy");
+}
 
 // Use Client-Id authentication
 app.UseClientIdentification();

@@ -11,6 +11,7 @@ namespace esAPI.DTOs.Simulation
         /// </summary>
         [JsonPropertyName("epochStartTime")]
         [Required]
+        [Range(0, long.MaxValue, ErrorMessage = "Epoch start time must be a positive number")]
         public long EpochStartTime { get; set; }
     }
 }
