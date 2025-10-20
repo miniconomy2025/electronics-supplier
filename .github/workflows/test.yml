@@ -11,6 +11,8 @@ permissions:
   actions: read
   checks: write
   pull-requests: write  # Allow commenting on PRs
+  pages: write      # Allow deploying to GitHub Pages
+  id-token: write   # Allow OIDC for Pages deployment
 
 jobs:
   lint:
@@ -164,6 +166,9 @@ jobs:
       failed-tests: ${{ steps.test-summary.outputs.failed-tests }}
       test-status: ${{ steps.test-summary.outputs.test-status }}
       badge-color: ${{ steps.test-summary.outputs.badge-color }}
+      line-coverage: ${{ steps.coverage.outputs.line-coverage }}
+      branch-coverage: ${{ steps.coverage.outputs.branch-coverage }}
+      coverage-color: ${{ steps.coverage.outputs.coverage-color }}
 
     steps:
     - name: Checkout code
@@ -203,7 +208,53 @@ jobs:
           --logger trx --logger "console;verbosity=detailed" \
           --collect:"XPlat Code Coverage" \
           --results-directory ./TestResults \
-          --filter "Category!=Integration"
+          --filter "Category!=Integration" \
+          --settings CodeCoverage.runsettings
+
+    - name: Install ReportGenerator
+      run: dotnet tool install -g dotnet-reportgenerator-globaltool
+
+    - name: Generate coverage report
+      run: |
+        reportgenerator \
+          -reports:"./TestResults/**/coverage.opencover.xml" \
+          -targetdir:"./TestResults/CoverageReport" \
+          -reporttypes:"Html;JsonSummary;Badges;TextSummary" \
+          -verbosity:Warning
+
+    - name: Extract coverage metrics
+      id: coverage
+      run: |
+        # Extract coverage percentage from the JSON summary
+        COVERAGE_FILE="./TestResults/CoverageReport/Summary.json"
+        if [ -f "$COVERAGE_FILE" ]; then
+          COVERAGE_PERCENT=$(jq -r '.summary.linecoverage' "$COVERAGE_FILE" | cut -d'%' -f1)
+          BRANCH_COVERAGE=$(jq -r '.summary.branchcoverage' "$COVERAGE_FILE" | cut -d'%' -f1)
+          
+          echo "line-coverage=${COVERAGE_PERCENT}" >> $GITHUB_OUTPUT
+          echo "branch-coverage=${BRANCH_COVERAGE}" >> $GITHUB_OUTPUT
+          
+          # Determine coverage color for badge
+          if (( $(echo "$COVERAGE_PERCENT >= 90" | bc -l) )); then
+            echo "coverage-color=brightgreen" >> $GITHUB_OUTPUT
+          elif (( $(echo "$COVERAGE_PERCENT >= 80" | bc -l) )); then
+            echo "coverage-color=green" >> $GITHUB_OUTPUT
+          elif (( $(echo "$COVERAGE_PERCENT >= 70" | bc -l) )); then
+            echo "coverage-color=yellow" >> $GITHUB_OUTPUT
+          elif (( $(echo "$COVERAGE_PERCENT >= 60" | bc -l) )); then
+            echo "coverage-color=orange" >> $GITHUB_OUTPUT
+          else
+            echo "coverage-color=red" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "📊 Line Coverage: ${COVERAGE_PERCENT}%"
+          echo "🌿 Branch Coverage: ${BRANCH_COVERAGE}%"
+        else
+          echo "⚠️ Coverage report not found, using defaults"
+          echo "line-coverage=0" >> $GITHUB_OUTPUT
+          echo "branch-coverage=0" >> $GITHUB_OUTPUT
+          echo "coverage-color=red" >> $GITHUB_OUTPUT
+        fi
 
     - name: Generate test summary
       id: test-summary
@@ -232,12 +283,14 @@ jobs:
           echo "badge-color=red" >> $GITHUB_OUTPUT
         fi
 
-    - name: Upload test results
+    - name: Upload test results and coverage
       uses: actions/upload-artifact@v4
       if: always()
       with:
         name: unit-test-results
-        path: ./TestResults
+        path: |
+          ./TestResults/*.trx
+          ./TestResults/CoverageReport/
 
     - name: Publish test results
       uses: dorny/test-reporter@v1
@@ -258,9 +311,18 @@ jobs:
           const failedTests = '${{ steps.test-summary.outputs.failed-tests }}';
           const status = '${{ steps.test-summary.outputs.test-status }}';
           const lintStatus = '${{ needs.lint.result }}';
+          const lineCoverage = '${{ steps.coverage.outputs.line-coverage }}';
+          const branchCoverage = '${{ steps.coverage.outputs.branch-coverage }}';
           
           const statusEmoji = status === 'passing' ? '✅' : '❌';
           const lintEmoji = lintStatus === 'success' ? '✅' : '❌';
+          
+          // Coverage emoji based on line coverage
+          let coverageEmoji = '❌';
+          if (lineCoverage >= 90) coverageEmoji = '✅';
+          else if (lineCoverage >= 80) coverageEmoji = '🟢';
+          else if (lineCoverage >= 70) coverageEmoji = '🟡';
+          else if (lineCoverage >= 60) coverageEmoji = '🟠';
           
           const body = `## 🔍 Code Quality & Test Results
           
@@ -279,13 +341,48 @@ jobs:
           | Failed | ${failedTests} |
           | Status | ${status === 'passing' ? '✅ Passing' : '❌ Failing'} |
           
+          ### Code Coverage
+          | Coverage Type | Percentage |
+          |---------------|------------|
+          | Line Coverage | ${coverageEmoji} ${lineCoverage}% |
+          | Branch Coverage | ${coverageEmoji} ${branchCoverage}% |
+          
           ${lintStatus !== 'success' ? '⚠️ Please fix linting issues before merging.' : ''}
           ${failedTests > 0 ? '⚠️ Please fix failing tests before merging.' : ''}
-          ${lintStatus === 'success' && failedTests == 0 ? '🎉 All checks are passing!' : ''}`;
+          ${lineCoverage < 80 ? '⚠️ Consider increasing test coverage (target: 80%+).' : ''}
+          ${lintStatus === 'success' && failedTests == 0 && lineCoverage >= 80 ? '🎉 All checks are passing with excellent coverage!' : ''}`;
           
           github.rest.issues.createComment({
             issue_number: context.issue.number,
             owner: context.repo.owner,
             repo: context.repo.repo,
             body: body
-          }); 
+          });
+
+  publish-coverage:
+    name: Publish Coverage Report
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download test artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: unit-test-results
+        path: ./TestResults
+
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+
+    - name: Upload coverage to Pages
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: './TestResults/CoverageReport'
+
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4 
