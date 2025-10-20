@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Npgsql;
 using Amazon.SQS;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -122,15 +121,19 @@ namespace esAPI.Configuration
             // Simulation Engine
             services.AddScoped<SimulationEngine>();
 
-            // Retry services (optional - depends on AWS being available)
-            services.TryAddScoped<RetryQueuePublisher>();
-
             return services;
         }
 
         public static IServiceCollection AddAwsServices(this IServiceCollection services)
         {
             services.AddAWSService<IAmazonSQS>();
+            return services;
+        }
+
+        public static IServiceCollection AddAwsDependentServices(this IServiceCollection services)
+        {
+            // Only add services that depend on AWS when AWS is available
+            services.AddScoped<RetryQueuePublisher>();
             return services;
         }
 

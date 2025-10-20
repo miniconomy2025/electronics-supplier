@@ -72,14 +72,23 @@ builder.Services.Configure<ExternalApiConfig>(
 );
 
 // Optional AWS services with graceful fallback
-try
+if (builder.Environment.IsProduction() || builder.Environment.IsDevelopment())
 {
-    builder.Services.AddAwsServices();
-    Console.WriteLine("✅ AWS services configured");
+    try
+    {
+        builder.Services.AddAwsServices();
+        builder.Services.AddAwsDependentServices();
+        Console.WriteLine("✅ AWS services configured");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"⚠️ AWS services not available: {ex.Message}");
+        Console.WriteLine("🔧 Continuing without AWS services...");
+    }
 }
-catch (Exception ex)
+else
 {
-    Console.WriteLine($"⚠️ AWS services not available: {ex.Message}");
+    Console.WriteLine("🧪 Test/Container environment - skipping AWS services");
 }
 
 var app = builder.Build();
