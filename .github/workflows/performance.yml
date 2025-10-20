@@ -1,14 +1,15 @@
 name: "Performance Testing"
 
-on:
-  push:
-    branches: [ main, dev ]
-  pull_request:
-    branches: [ main, dev ]
-  schedule:
-    # Run only smoke tests nightly (AWS-safe)
-    - cron: '0 2 * * *'
-  workflow_dispatch:
+# Temporarily disabled - uncomment to re-enable
+# on:
+#   push:
+#     branches: [ main, dev ]
+#   pull_request:
+#     branches: [ main, dev ]
+#   schedule:
+#     # Run only smoke tests nightly (AWS-safe)
+#     - cron: '0 2 * * *'
+#   workflow_dispatch:
     inputs:
       test_type:
         description: 'Type of performance test to run'
