@@ -11,14 +11,63 @@ using Xunit;
 
 namespace esAPI.Tests.Middleware;
 
-public class ClientIdentificationMiddlewareTests : IClassFixture<WebApplicationFactory<Program>>
+public class TestWebApplicationFactory : WebApplicationFactory<Program>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly string _databaseName = "TestDb_" + Guid.NewGuid().ToString();
 
-    public ClientIdentificationMiddlewareTests(WebApplicationFactory<Program> factory)
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.UseEnvironment("Testing");
+        builder.ConfigureServices(services =>
+        {
+            // Remove all database-related services
+            var toRemove = services.Where(d =>
+                d.ServiceType == typeof(DbContextOptions<AppDbContext>) ||
+                d.ServiceType == typeof(DbContextOptions) ||
+                d.ServiceType == typeof(AppDbContext) ||
+                d.ServiceType.Name.Contains("DbContext") ||
+                d.ImplementationType?.FullName?.Contains("Npgsql") == true ||
+                d.ServiceType.FullName?.Contains("Npgsql") == true ||
+                d.ServiceType.FullName?.Contains("PostgreSQL") == true)
+                .ToList();
+
+            foreach (var descriptor in toRemove)
+            {
+                services.Remove(descriptor);
+            }
+
+            // Add In-Memory database for testing
+            services.AddDbContext<AppDbContext>(options =>
+            {
+                options.UseInMemoryDatabase(_databaseName);
+            }, ServiceLifetime.Scoped);
+        });
+    }
+
+    public void SeedTestData()
+    {
+        using var scope = Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        context.Database.EnsureCreated();
+        
+        if (!context.Companies.Any(c => c.CompanyName == "test-client"))
+        {
+            context.Companies.Add(new Company { CompanyName = "test-client" });
+            context.SaveChanges();
+        }
+    }
+}
+
+public class ClientIdentificationMiddlewareTests : IClassFixture<TestWebApplicationFactory>
+{
+    private readonly TestWebApplicationFactory _factory;
+
+    public ClientIdentificationMiddlewareTests(TestWebApplicationFactory factory)
     {
         _factory = factory;
     }
+
+    // This method is no longer needed since we have the TestWebApplicationFactory
 
     [Fact]
     public async Task Request_WithoutClientIdHeader_ReturnsUnauthorized()
@@ -26,8 +75,8 @@ public class ClientIdentificationMiddlewareTests : IClassFixture<WebApplicationF
         // Arrange
         var client = _factory.CreateClient();
 
-        // Act - Use a POST endpoint that should trigger middleware (not GET since all GET requests are skipped)
-        var response = await client.PostAsJsonAsync("/electronics", new { });
+        // Act - Use a simple POST endpoint that should trigger middleware but won't cause validation issues
+        var response = await client.PostAsync("/electronics", null);
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -42,8 +91,8 @@ public class ClientIdentificationMiddlewareTests : IClassFixture<WebApplicationF
         var client = _factory.CreateClient();
         client.DefaultRequestHeaders.Add("Client-Id", "unknown-client");
 
-        // Act - Use a POST endpoint that should trigger middleware (not GET since all GET requests are skipped)
-        var response = await client.PostAsJsonAsync("/electronics", new { });
+        // Act - Use a simple POST endpoint that should trigger middleware but won't cause validation issues  
+        var response = await client.PostAsync("/electronics", null);
 
         // Assert
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
@@ -55,39 +104,12 @@ public class ClientIdentificationMiddlewareTests : IClassFixture<WebApplicationF
     public async Task Request_WithValidClientId_PassesMiddleware()
     {
         // Arrange
-        var client = _factory.WithWebHostBuilder(builder =>
-        {
-            builder.UseEnvironment("Testing");
-            builder.ConfigureServices(services =>
-            {
-                // Remove ALL database-related services completely
-                var toRemove = services.Where(d =>
-                    d.ServiceType == typeof(DbContextOptions<AppDbContext>) ||
-                    d.ServiceType == typeof(DbContextOptions) ||
-                    d.ServiceType == typeof(AppDbContext) ||
-                    d.ImplementationType?.FullName?.Contains("AppDbContext") == true ||
-                    d.ImplementationType?.FullName?.Contains("Npgsql") == true)
-                    .ToList();
-
-                foreach (var descriptor in toRemove)
-                {
-                    services.Remove(descriptor);
-                }
-
-                // Replace with in-memory database
-                services.AddDbContext<AppDbContext>(options =>
-                    options.UseInMemoryDatabase("TestDb_" + Guid.NewGuid().ToString()),
-                    ServiceLifetime.Scoped);
-            });
-        }).CreateClient();
-
-        // Get the HttpClient to trigger service provider initialization, then seed database
-        var testClient = client;
-        
+        _factory.SeedTestData(); // Seed the test client
+        var client = _factory.CreateClient();
         client.DefaultRequestHeaders.Add("Client-Id", "test-client");
 
-        // Act - Use a POST endpoint that should trigger middleware
-        var response = await client.PostAsJsonAsync("/electronics", new { });
+        // Act - Use a simple POST endpoint that should trigger middleware but won't cause validation issues
+        var response = await client.PostAsync("/electronics", null);
 
         // Assert
         // The request should pass the middleware (not get 401)
