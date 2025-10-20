@@ -15,12 +15,12 @@ namespace esAPI.Controllers
 {
     [ApiController]
     [Route("simulation")]
-    public class SimulationController(SimulationStartupService simulationStartupService, SimulationDayOrchestrator dayOrchestrator, ISimulationStateService stateService, IStartupCostCalculator costCalculator, ICommercialBankClient bankClient, AppDbContext context, BankService bankService, BankAccountService bankAccountService, RecyclerApiClient recyclerClient, IBulkLogisticsClient bulkLogisticsClient, IElectronicsService electronicsService, IHttpClientFactory httpClientFactory, ThohApiClient thohApiClient, ILogger<SimulationController> logger, ILoggerFactory loggerFactory) : ControllerBase
+    public class SimulationController(SimulationStartupService simulationStartupService, SimulationDayOrchestrator dayOrchestrator, ISimulationStateService stateService, esAPI.Interfaces.Services.IStartupCostCalculator costCalculator, ICommercialBankClient bankClient, AppDbContext context, BankService bankService, BankAccountService bankAccountService, RecyclerApiClient recyclerClient, IBulkLogisticsClient bulkLogisticsClient, IElectronicsService electronicsService, IHttpClientFactory httpClientFactory, ThohApiClient thohApiClient, SimulationEngine simulationEngine, ILogger<SimulationController> logger, ILoggerFactory loggerFactory) : ControllerBase
     {
         private readonly SimulationStartupService _simulationStartupService = simulationStartupService;
         private readonly SimulationDayOrchestrator _dayOrchestrator = dayOrchestrator;
         private readonly ISimulationStateService _stateService = stateService;
-        private readonly IStartupCostCalculator _costCalculator = costCalculator;
+        private readonly esAPI.Interfaces.Services.IStartupCostCalculator _costCalculator = costCalculator;
         private readonly ICommercialBankClient _bankClient = bankClient;
         private readonly AppDbContext _context = context;
         private readonly BankService _bankService = bankService;
@@ -29,6 +29,7 @@ namespace esAPI.Controllers
         private readonly IBulkLogisticsClient _bulkLogisticsClient = bulkLogisticsClient;
         private readonly IElectronicsService _electronicsService = electronicsService;
         private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
+        private readonly SimulationEngine _simulationEngine = simulationEngine;
         private readonly ThohApiClient _thohApiClient = thohApiClient;
         private readonly ILogger<SimulationController> _logger = logger;
         private readonly ILoggerFactory _loggerFactory = loggerFactory;
@@ -100,8 +101,7 @@ namespace esAPI.Controllers
             _logger.LogInformation("⏭️ Advancing simulation from day {CurrentDay} to {NextDay}", 
                 _stateService.CurrentDay, _stateService.CurrentDay + 1);
 
-            var engine = new SimulationEngine(_context, _bankService, _bankAccountService, _dayOrchestrator, _costCalculator, _bankClient, _recyclerClient, _bulkLogisticsClient, _stateService, _electronicsService, _httpClientFactory, _thohApiClient, _loggerFactory.CreateLogger<SimulationEngine>());
-            await engine.RunDayAsync(_stateService.CurrentDay);
+            await _simulationEngine.RunDayAsync(_stateService.CurrentDay);
             _logger.LogInformation("✅ Day {Day} simulation logic completed", _stateService.CurrentDay);
             
             _stateService.AdvanceDay();

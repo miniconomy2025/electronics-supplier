@@ -18,7 +18,7 @@ namespace esAPI.Services
         {
             using (var scope = _serviceProvider.CreateScope())
             {
-                var bankAccountService = scope.ServiceProvider.GetRequiredService<BankAccountService>();
+                var bankAccountService = scope.ServiceProvider.GetRequiredService<IBankAccountService>();
                 var dayOrchestrator = scope.ServiceProvider.GetRequiredService<SimulationDayOrchestrator>();
                 var stateService = scope.ServiceProvider.GetRequiredService<ISimulationStateService>();
                 var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
@@ -45,16 +45,16 @@ namespace esAPI.Services
             {
                 using (var scope = _serviceProvider.CreateScope())
                 {
-                    var bankAccountService = scope.ServiceProvider.GetRequiredService<BankAccountService>();
+                    var bankAccountService = scope.ServiceProvider.GetRequiredService<IBankAccountService>();
                     var dayOrchestrator = scope.ServiceProvider.GetRequiredService<SimulationDayOrchestrator>();
                     var stateService = scope.ServiceProvider.GetRequiredService<ISimulationStateService>();
                     var startupCostCalculator = scope.ServiceProvider.GetRequiredService<IStartupCostCalculator>();
-                    var bankService = scope.ServiceProvider.GetRequiredService<BankService>();
+                    var bankService = scope.ServiceProvider.GetRequiredService<IBankService>();
                     var bankClient = scope.ServiceProvider.GetRequiredService<ICommercialBankClient>();
                     var bulkLogisticsClient = scope.ServiceProvider.GetRequiredService<IBulkLogisticsClient>();
                     var electronicsService = scope.ServiceProvider.GetRequiredService<IElectronicsService>();
                     var httpClientFactory = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>();
-                    var thohApiClient = scope.ServiceProvider.GetRequiredService<ThohApiClient>();
+                    var thohApiClient = scope.ServiceProvider.GetRequiredService<IThohApiClient>();
 
                     var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
                     var autoAdvanceEnabled = config.GetValue<bool>("Simulation:AutoAdvanceEnabled");
@@ -73,10 +73,7 @@ namespace esAPI.Services
                             break;
                         }
                         using var dbScope = _serviceProvider.CreateScope();
-                        var db = dbScope.ServiceProvider.GetRequiredService<AppDbContext>();
-                        var logger = dbScope.ServiceProvider.GetRequiredService<ILogger<SimulationEngine>>();
-                        var recyclerClient = dbScope.ServiceProvider.GetRequiredService<RecyclerApiClient>();
-                        var engine = new SimulationEngine(db, bankService, bankAccountService, dayOrchestrator, startupCostCalculator, bankClient, recyclerClient, bulkLogisticsClient, stateService, electronicsService, httpClientFactory, thohApiClient, logger);
+                        var engine = dbScope.ServiceProvider.GetRequiredService<SimulationEngine>();
                         await engine.RunDayAsync(stateService.CurrentDay);
                     }
                 }

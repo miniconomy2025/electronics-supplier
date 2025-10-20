@@ -2,6 +2,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using esAPI.Clients;
 using esAPI.Data;
+using esAPI.Interfaces;
 using Microsoft.Extensions.Logging;
 using System;
 
@@ -10,10 +11,10 @@ namespace esAPI.Services
     public class ElectronicsMachineDetailsService
     {
         private readonly AppDbContext _context;
-        private readonly ThohApiClient _thohApiClient;
+        private readonly IThohApiClient _thohApiClient;
         private readonly ILogger<ElectronicsMachineDetailsService> _logger;
 
-        public ElectronicsMachineDetailsService(AppDbContext context, ThohApiClient thohApiClient, ILogger<ElectronicsMachineDetailsService> logger)
+        public ElectronicsMachineDetailsService(AppDbContext context, IThohApiClient thohApiClient, ILogger<ElectronicsMachineDetailsService> logger)
         {
             _context = context;
             _thohApiClient = thohApiClient;

@@ -2,10 +2,11 @@ using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using esAPI.Data;
 using esAPI.Clients;
+using esAPI.Interfaces;
 
 namespace esAPI.Services
 {
-    public class BankAccountService(AppDbContext db, ICommercialBankClient bankClient, ILogger<BankAccountService> logger, RetryQueuePublisher? retryQueuePublisher)
+    public class BankAccountService(AppDbContext db, ICommercialBankClient bankClient, ILogger<BankAccountService> logger, RetryQueuePublisher? retryQueuePublisher) : IBankAccountService
     {
         private readonly AppDbContext _db = db;
         private readonly ICommercialBankClient _bankClient = bankClient;

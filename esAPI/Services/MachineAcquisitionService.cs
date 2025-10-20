@@ -7,10 +7,10 @@ using esAPI.Interfaces.Services;
 
 namespace esAPI.Services
 {
-    public class MachineAcquisitionService(IHttpClientFactory httpClientFactory, BankService bankService, ICommercialBankClient bankClient, AppDbContext context, ISimulationStateService stateService) : IMachineAcquisitionService
+    public class MachineAcquisitionService(IHttpClientFactory httpClientFactory, IBankService bankService, ICommercialBankClient bankClient, AppDbContext context, ISimulationStateService stateService) : IMachineAcquisitionService
     {
         private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
-        private readonly BankService _bankService = bankService;
+        private readonly IBankService _bankService = bankService;
         private readonly ICommercialBankClient _bankClient = bankClient;
         private readonly AppDbContext _context = context;
         private readonly ISimulationStateService _stateService = stateService;
@@ -72,7 +72,6 @@ namespace esAPI.Services
                 machineName = "electronics_machine",
                 quantity = toBuy
             };
-            // TODO: Add to our own Machine orders table
             var orderResp = await thohClient.PostAsJsonAsync("/machines", orderReq);
             orderResp.EnsureSuccessStatusCode();
             var orderContent = await orderResp.Content.ReadAsStringAsync();
@@ -81,6 +80,30 @@ namespace esAPI.Services
             var totalPrice = order.GetProperty("totalPrice").GetDecimal();
             var thohBankAccount = order.GetProperty("bankAccount").GetString();
             var orderId = order.TryGetProperty("orderId", out var idProp) ? idProp.GetInt32() : (int?)null;
+
+            // Add to our own Machine orders table
+            if (orderId.HasValue)
+            {
+                var thohCompany = await _context.Companies.FirstOrDefaultAsync(c => c.CompanyName.ToLower() == "thoh");
+                if (thohCompany != null)
+                {
+                    var sim = _context.Simulations.FirstOrDefault(s => s.IsRunning);
+                    var currentDay = sim?.DayNumber ?? 1;
+                    
+                    var machineOrder = new Models.MachineOrder
+                    {
+                        SupplierId = thohCompany.CompanyId,
+                        ExternalOrderId = orderId.Value,
+                        RemainingAmount = toBuy,
+                        TotalAmount = toBuy,
+                        OrderStatusId = 1, // Pending
+                        PlacedAt = currentDay
+                    };
+                    
+                    _context.MachineOrders.Add(machineOrder);
+                    await _context.SaveChangesAsync();
+                }
+            }
 
             if (string.IsNullOrEmpty(thohBankAccount))
                 throw new InvalidOperationException("THOH bank account is missing from order response.");

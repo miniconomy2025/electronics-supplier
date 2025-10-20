@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using System.Text.Json;
 using esAPI.DTOs;
 using esAPI.Interfaces;
 using esAPI.DTOs.Thoh;
@@ -10,7 +11,7 @@ using System.Collections.Generic;
 
 namespace esAPI.Clients
 {
-    public class ThohApiClient
+    public class ThohApiClient : IThohApiClient
     {
         private readonly HttpClient _client;
         public ThohApiClient(IHttpClientFactory factory)
@@ -32,34 +33,66 @@ namespace esAPI.Clients
 
         public async Task<List<SupplierMaterialInfo>> GetAvailableMaterialsAsync()
         {
-            var response = await _client.GetFromJsonAsync<ThohMachinesResponse>("/machines");
-            var result = new List<SupplierMaterialInfo>();
-            if (response?.Machines == null) return result;
-            foreach (var machine in response.Machines)
+            try
             {
-                if (machine.InputRatio != null)
+                var response = await _client.GetFromJsonAsync<List<ThohRawMaterialDto>>("/raw-materials");
+                var result = new List<SupplierMaterialInfo>();
+                
+                if (response == null) return result;
+                
+                foreach (var material in response)
                 {
-                    foreach (var input in machine.InputRatio)
+                    result.Add(new SupplierMaterialInfo
                     {
-                        // Use machine price as price per unit for now (or set to 0 if not applicable)
-                        result.Add(new SupplierMaterialInfo
-                        {
-                            MaterialName = input.Key,
-                            AvailableQuantity = machine.Quantity, // or another field if more appropriate
-                            PricePerKg = machine.Price // This may need to be refined if price per kg is available elsewhere
-                        });
-                    }
+                        MaterialName = material.RawMaterialName,
+                        AvailableQuantity = material.QuantityAvailable,
+                        PricePerKg = material.PricePerKg
+                    });
                 }
+                
+                return result;
             }
-            return result;
+            catch (Exception)
+            {
+                // Return empty list if API call fails
+                return new List<SupplierMaterialInfo>();
+            }
         }
 
-        // Place a material order with THOH (if supported by their API)
-        public Task<SupplierOrderResponse?> PlaceOrderAsync(SupplierOrderRequest request)
+        // Place a material order with THOH using their raw-materials endpoint
+        public async Task<SupplierOrderResponse?> PlaceOrderAsync(SupplierOrderRequest request)
         {
-            // TODO: Replace with actual THOH material order endpoint if available
-            // For now, simulate a failed response to allow fallback to Recycler
-            return Task.FromResult<SupplierOrderResponse?>(null);
+            try
+            {
+                var orderRequest = new
+                {
+                    materialName = request.MaterialName,
+                    weightQuantity = request.WeightQuantity
+                };
+                
+                var response = await _client.PostAsJsonAsync("/raw-materials", orderRequest);
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    return null; // Failed to place order, will fallback to Recycler
+                }
+                
+                var content = await response.Content.ReadAsStringAsync();
+                using var doc = System.Text.Json.JsonDocument.Parse(content);
+                var order = doc.RootElement;
+                
+                return new SupplierOrderResponse
+                {
+                    OrderId = order.GetProperty("orderId").GetInt32(),
+                    Price = order.GetProperty("price").GetDecimal(),
+                    BankAccount = order.GetProperty("bankAccount").GetString() ?? string.Empty
+                };
+            }
+            catch (Exception)
+            {
+                // Return null if any error occurs, allowing fallback to Recycler
+                return null;
+            }
         }
     }
 }

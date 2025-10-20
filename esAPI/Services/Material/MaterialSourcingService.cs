@@ -6,11 +6,11 @@ namespace esAPI.Services;
 public class MaterialSourcingService : IMaterialSourcingService
 {
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly ThohApiClient _thohClient;
-    private readonly RecyclerApiClient _recyclerClient;
+    private readonly IThohApiClient _thohClient;
+    private readonly IRecyclerApiClient _recyclerClient;
 
 
-    public MaterialSourcingService(IHttpClientFactory httpClientFactory, ThohApiClient thohClient, RecyclerApiClient recyclerClient)
+    public MaterialSourcingService(IHttpClientFactory httpClientFactory, IThohApiClient thohClient, IRecyclerApiClient recyclerClient)
     {
         _httpClientFactory = httpClientFactory;
         _thohClient = thohClient;

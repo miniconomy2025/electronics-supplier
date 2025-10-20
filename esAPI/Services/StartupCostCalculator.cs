@@ -9,7 +9,7 @@ namespace esAPI.Services;
 
 public class StartupCostCalculator : IStartupCostCalculator
 {
-    private readonly ThohApiClient _thohClient;
+    private readonly IThohApiClient _thohClient;
     private readonly ISupplierApiClient _materialSupplier;
 
     private const int InitialProductionCyclesToStock = 2;
@@ -21,7 +21,7 @@ public class StartupCostCalculator : IStartupCostCalculator
     };
 
     public StartupCostCalculator(
-        ThohApiClient thohClient,
+        IThohApiClient thohClient,
         ISupplierApiClient materialSupplier)
     {
         _thohClient = thohClient;

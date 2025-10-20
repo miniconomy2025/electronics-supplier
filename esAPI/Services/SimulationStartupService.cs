@@ -10,28 +10,25 @@ namespace esAPI.Services
     public class SimulationStartupService
     {
         private readonly AppDbContext _context;
-        private readonly BankAccountService _bankAccountService;
+        private readonly IBankAccountService _bankAccountService;
         private readonly ISimulationStateService _stateService;
-        private readonly OrderExpirationBackgroundService _orderExpirationBackgroundService;
         private readonly ICommercialBankClient _bankClient;
         private readonly ILogger<SimulationStartupService> _logger;
-        private readonly ThohApiClient _thohApiClient;
+        private readonly IThohApiClient _thohApiClient;
         private readonly ElectronicsMachineDetailsService _machineDetailsService;
 
         public SimulationStartupService(
             AppDbContext context,
-            BankAccountService bankAccountService,
+            IBankAccountService bankAccountService,
             ISimulationStateService stateService,
-            OrderExpirationBackgroundService orderExpirationBackgroundService,
             ICommercialBankClient bankClient,
             ILogger<SimulationStartupService> logger,
-            ThohApiClient thohApiClient,
+            IThohApiClient thohApiClient,
             ElectronicsMachineDetailsService machineDetailsService)
         {
             _context = context;
             _bankAccountService = bankAccountService;
             _stateService = stateService;
-            _orderExpirationBackgroundService = orderExpirationBackgroundService;
             _bankClient = bankClient;
             _logger = logger;
             _thohApiClient = thohApiClient;
@@ -48,9 +45,7 @@ namespace esAPI.Services
                 _stateService.Start();
                 _logger.LogInformation("📊 Simulation state service started");
 
-                // Start order expiration background service
-                _orderExpirationBackgroundService.StartAsync();
-                _logger.LogInformation("⏰ Order expiration background service started");
+                // Note: Order expiration background service starts automatically as a hosted service
 
                 // Set up bank account with commercial bank
                 _logger.LogInformation("🏦 Setting up bank account with commercial bank...");

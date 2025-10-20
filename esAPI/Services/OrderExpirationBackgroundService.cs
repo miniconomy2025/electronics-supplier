@@ -2,19 +2,16 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace esAPI.Services
 {
-    public class OrderExpirationBackgroundService
+    public class OrderExpirationBackgroundService : BackgroundService
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<OrderExpirationBackgroundService> _logger;
         private readonly TimeSpan _checkInterval = TimeSpan.FromMinutes(1);
-        private CancellationTokenSource? _cts;
-        private Task? _backgroundTask;
-        private readonly object _lock = new();
-        private bool _isRunning = false;
 
         public OrderExpirationBackgroundService(IServiceProvider serviceProvider, ILogger<OrderExpirationBackgroundService> logger)
         {
@@ -22,39 +19,10 @@ namespace esAPI.Services
             _logger = logger;
         }
 
-        public void StartAsync()
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            lock (_lock)
-            {
-                if (_isRunning)
-                {
-                    _logger.LogWarning("Order Expiration Background Service is already running.");
-                    return;
-                }
-                _logger.LogInformation("Order Expiration Background Service is starting.");
-                _cts = new CancellationTokenSource();
-                _backgroundTask = Task.Run(() => ExecuteAsync(_cts.Token));
-                _isRunning = true;
-            }
-        }
+            _logger.LogInformation("Order Expiration Background Service is starting.");
 
-        public void StopAsync()
-        {
-            lock (_lock)
-            {
-                if (!_isRunning)
-                {
-                    _logger.LogWarning("Order Expiration Background Service is not running.");
-                    return;
-                }
-                _logger.LogInformation("Order Expiration Background Service is stopping.");
-                _cts?.Cancel();
-                _isRunning = false;
-            }
-        }
-
-        private async Task ExecuteAsync(CancellationToken stoppingToken)
-        {
             while (!stoppingToken.IsCancellationRequested)
             {
                 try
@@ -76,7 +44,8 @@ namespace esAPI.Services
 
                 await Task.Delay(_checkInterval, stoppingToken);
             }
-            _logger.LogInformation("Order Expiration Background Service loop has stopped.");
+            
+            _logger.LogInformation("Order Expiration Background Service has stopped.");
         }
     }
 }

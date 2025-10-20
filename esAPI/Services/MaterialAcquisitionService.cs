@@ -15,14 +15,14 @@ namespace esAPI.Services
         private readonly IMaterialSourcingService _sourcingService;
         private readonly IBulkLogisticsClient _logisticsClient;
         private readonly IHttpClientFactory _httpClientFactory;
-        private readonly BankService _bankService;
+        private readonly IBankService _bankService;
         private readonly ICommercialBankClient _bankClient;
         private readonly AppDbContext _dbContext;
         private readonly ISimulationStateService _stateService;
 
         private static ConcurrentDictionary<string, int> _statusIdCache = new();
 
-        public MaterialAcquisitionService(IHttpClientFactory httpClientFactory, AppDbContext dbContext, BankService bankService, ICommercialBankClient bankClient, IMaterialSourcingService sourcingService, IBulkLogisticsClient logisticsClient, ISimulationStateService stateService)
+        public MaterialAcquisitionService(IHttpClientFactory httpClientFactory, AppDbContext dbContext, IBankService bankService, ICommercialBankClient bankClient, IMaterialSourcingService sourcingService, IBulkLogisticsClient logisticsClient, ISimulationStateService stateService)
         {
             _httpClientFactory = httpClientFactory;
             _bankService = bankService;
@@ -87,17 +87,6 @@ namespace esAPI.Services
                 return false;
             }
 
-            // --- Update Order Status to 'ACCEPTED' ---
-            await UpdateOrderStatusAsync(localOrder.OrderId, "ACCEPTED");
-
-            // --- Arrange and Pay for Logistics ---
-            var logisticsSuccess = await ArrangeLogisticsAsync(orderResponse, materialName, quantityToBuy, sourcedInfo.Name);
-
-            if (!logisticsSuccess)
-            {
-                Console.WriteLine($"Unknown supplier client type: {sourcedInfo.Client.GetType().Name}");
-                return false;
-            }
             if (orderResponse == null || string.IsNullOrEmpty(orderResponse.BankAccount)) return false;
 
             var localOrder = await CreateLocalOrderRecordAsync(sourcedInfo, quantityToBuy, orderResponse);

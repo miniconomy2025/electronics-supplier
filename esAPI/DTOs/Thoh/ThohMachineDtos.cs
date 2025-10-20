@@ -16,6 +16,21 @@ namespace esAPI.DTOs.Thoh
     {
         public List<ThohMachineDto> Machines { get; set; } = new();
     }
+
+    public class ThohRawMaterialDto
+    {
+        [JsonPropertyName("rawMaterialName")]
+        public string RawMaterialName { get; set; } = string.Empty;
+
+        [JsonPropertyName("description")]
+        public string? Description { get; set; }
+
+        [JsonPropertyName("pricePerKg")]
+        public decimal PricePerKg { get; set; }
+
+        [JsonPropertyName("quantityAvailable")]
+        public int QuantityAvailable { get; set; }
+    }
 }
 
 

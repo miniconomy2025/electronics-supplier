@@ -9,6 +9,7 @@ using esAPI.Interfaces;
 using esAPI.Interfaces.Services;
 using esAPI.Configuration;
 using esAPI.Middleware;
+using esAPI.Simulation;
 using Amazon.SQS;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
@@ -128,8 +129,8 @@ builder.Services.AddHttpClient();
 // API Clients
 builder.Services.AddScoped<ICommercialBankClient, CommercialBankClient>();
 builder.Services.AddScoped<IBulkLogisticsClient, BulkLogisticsClient>();
-builder.Services.AddScoped<ThohApiClient>();
-builder.Services.AddScoped<RecyclerApiClient>();
+builder.Services.AddScoped<IThohApiClient, ThohApiClient>();
+builder.Services.AddScoped<IRecyclerApiClient, RecyclerApiClient>();
 builder.Services.AddScoped<ISupplierApiClient, RecyclerApiClient>();
 
 // Core Services
@@ -141,16 +142,23 @@ builder.Services.AddScoped<IProductionService, ProductionService>();
 builder.Services.AddScoped<IMachineAcquisitionService, MachineAcquisitionService>();
 builder.Services.AddScoped<IMaterialSourcingService, MaterialSourcingService>();
 builder.Services.AddScoped<IMaterialAcquisitionService, MaterialAcquisitionService>();
-builder.Services.AddScoped<IStartupCostCalculator, StartupCostCalculator>();
+builder.Services.AddScoped<esAPI.Interfaces.Services.IStartupCostCalculator, StartupCostCalculator>();
 
 // Business Services  
-builder.Services.AddScoped<BankAccountService>();
-builder.Services.AddScoped<BankService>();
+builder.Services.AddScoped<IBankAccountService, BankAccountService>();
+builder.Services.AddScoped<IBankService, BankService>();
 builder.Services.AddScoped<SimulationStartupService>();
 builder.Services.AddScoped<ElectronicsMachineDetailsService>();
 builder.Services.AddScoped<OrderExpirationService>();
 builder.Services.AddScoped<SimulationDayOrchestrator>();
 builder.Services.AddSingleton<ISimulationStateService, SimulationStateService>();
+
+// Simulation Engine Services
+builder.Services.AddScoped<ISimulationStartupService, SimulationDayStartupService>();
+builder.Services.AddScoped<IMaterialOrderingService, MaterialOrderingService>();
+builder.Services.AddScoped<IMachineManagementService, MachineManagementService>();
+builder.Services.AddScoped<ISimulationDayService, SimulationDayService>();
+builder.Services.AddScoped<SimulationEngine>();
 
 // Configuration
 builder.Services.Configure<InventoryConfig>(
@@ -220,8 +228,10 @@ static bool CheckAWSCredentialsAvailable()
     // Check if running on EC2 with IAM role
     try
     {
-        var client = new HttpClient();
-        client.Timeout = TimeSpan.FromSeconds(2);
+        var client = new HttpClient
+        {
+            Timeout = TimeSpan.FromSeconds(2)
+        };
         var response = client.GetAsync("http://169.254.169.254/latest/meta-data/iam/security-credentials/").Result;
         return response.IsSuccessStatusCode;
     }
@@ -234,7 +244,7 @@ static bool CheckAWSCredentialsAvailable()
 // Background Services
 // builder.Services.AddHostedService<InventoryManagementService>(); // Disabled inventory management system temporarily
 builder.Services.AddHostedService<SimulationAutoAdvanceService>();
-builder.Services.AddSingleton<OrderExpirationBackgroundService>(); // TODO: Refactor to implement IHostedService
+builder.Services.AddHostedService<OrderExpirationBackgroundService>();
 
 // Configure CORS
 var corsConfig = new CorsConfig();

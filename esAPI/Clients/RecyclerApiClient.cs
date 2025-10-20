@@ -3,7 +3,7 @@ using esAPI.Interfaces;
 
 namespace esAPI.Clients;
 
-public class RecyclerApiClient : BaseClient, ISupplierApiClient
+public class RecyclerApiClient : BaseClient, IRecyclerApiClient
 {
     private const string ClientName = "recycler";
     private const string OurCompanyName = "electronics_supplier";
@@ -114,14 +114,6 @@ public class RecyclerApiClient : BaseClient, ISupplierApiClient
             actions.Add($"Exception: {ex.Message}");
         }
         return actions;
-    }
-
-    public class RecyclerOrderPaymentInfo
-    {
-        public string MaterialName { get; set; } = string.Empty;
-        public int OrderId { get; set; }
-        public decimal Total { get; set; }
-        public string? AccountNumber { get; set; }
     }
 
     public async Task<List<RecyclerOrderPaymentInfo>> PlaceHalfStockOrdersAsync()

@@ -6,17 +6,3 @@ public class StartupCosts
     public decimal TotalMachineCost { get; set; }
     public decimal TotalLoanAmount => TotalMaterialCost + TotalMachineCost;
 }
-
-public class StartupPlan
-{
-    public required string MachineName { get; set; }
-    public decimal MachineCost { get; set; }
-    public decimal MaterialsCost { get; set; }
-    public decimal TotalCost => MachineCost + MaterialsCost;
-}
-
-public interface IStartupCostCalculator
-{
-
-    Task<List<StartupPlan>> GenerateAllPossibleStartupPlansAsync();
-}

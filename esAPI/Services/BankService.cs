@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace esAPI.Services
 {
-    public class BankService(AppDbContext db, ICommercialBankClient bankClient, ISimulationStateService stateService, ILogger<BankService> logger, RetryQueuePublisher? retryQueuePublisher)
+    public class BankService(AppDbContext db, ICommercialBankClient bankClient, ISimulationStateService stateService, ILogger<BankService> logger, RetryQueuePublisher? retryQueuePublisher) : IBankService
     {
         private readonly AppDbContext _db = db;
         private readonly ICommercialBankClient _bankClient = bankClient;
