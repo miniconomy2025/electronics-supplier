@@ -1,88 +1,14 @@
-using Microsoft.EntityFrameworkCore;
-using Npgsql;
-using Amazon.SQS;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using esAPI.Data;
-using esAPI.Clients;
 using esAPI.Services;
 using esAPI.Interfaces;
 using esAPI.Interfaces.Services;
-using esAPI.Middleware;
 using esAPI.Simulation;
+using esAPI.Clients;
 
 namespace esAPI.Configuration
 {
     public static class ServiceCollectionExtensions
     {
-        public static IServiceCollection AddExternalApiClients(this IServiceCollection services, IConfiguration configuration)
-        {
-            var externalApiConfig = new ExternalApiConfig();
-            configuration.GetSection(ExternalApiConfig.SectionName).Bind(externalApiConfig);
-
-            // Validate configuration
-            if (string.IsNullOrEmpty(externalApiConfig.CommercialBank) ||
-                string.IsNullOrEmpty(externalApiConfig.BulkLogistics) ||
-                string.IsNullOrEmpty(externalApiConfig.THOH) ||
-                string.IsNullOrEmpty(externalApiConfig.Recycler))
-            {
-                throw new InvalidOperationException("External API configuration is incomplete. Please check appsettings.json or environment variables.");
-            }
-
-            // Log the configured endpoints (without sensitive info)
-            Console.WriteLine("🔗 External API Configuration:");
-            Console.WriteLine($"  Commercial Bank: {externalApiConfig.CommercialBank}");
-            Console.WriteLine($"  Bulk Logistics: {externalApiConfig.BulkLogistics}");
-            Console.WriteLine($"  THOH: {externalApiConfig.THOH}");
-            Console.WriteLine($"  Recycler: {externalApiConfig.Recycler}");
-            Console.WriteLine($"  Client ID: {externalApiConfig.ClientId}");
-
-            // Configure HTTP clients
-            services.AddHttpClient("commercial-bank", client =>
-            {
-                client.BaseAddress = new Uri(externalApiConfig.CommercialBank);
-                client.DefaultRequestHeaders.Add("Client-Id", externalApiConfig.ClientId);
-            });
-
-            services.AddHttpClient("bulk-logistics", client =>
-            {
-                client.BaseAddress = new Uri(externalApiConfig.BulkLogistics);
-                client.DefaultRequestHeaders.Add("Client-Id", externalApiConfig.ClientId);
-            });
-
-            services.AddHttpClient("thoh", client =>
-            {
-                client.BaseAddress = new Uri(externalApiConfig.THOH);
-                client.DefaultRequestHeaders.Add("Client-Id", externalApiConfig.ClientId);
-            });
-
-            services.AddHttpClient("recycler", client =>
-            {
-                client.BaseAddress = new Uri(externalApiConfig.Recycler);
-                client.DefaultRequestHeaders.Add("Client-Id", externalApiConfig.ClientId);
-            });
-
-            return services;
-        }
-
-        public static IServiceCollection AddDatabaseContext(this IServiceCollection services, IConfiguration configuration)
-        {
-            // Build database connection string with environment variable support
-            var connectionString = configuration.GetConnectionString("DefaultConnection")!;
-            var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD") ?? "postgres";
-            connectionString += dbPassword;
-
-            Console.WriteLine($"🗄️ Database: Connecting to {connectionString.Replace(dbPassword, "***")}");
-
-            var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
-            var dataSource = dataSourceBuilder.Build();
-
-            services.AddDbContext<AppDbContext>(options =>
-                options.UseNpgsql(dataSource)
-            );
-
-            return services;
-        }
-
         public static IServiceCollection AddApplicationServices(this IServiceCollection services)
         {
             // External API clients
@@ -90,6 +16,7 @@ namespace esAPI.Configuration
             services.AddScoped<IBankAccountService, BankAccountService>();
             services.AddScoped<IThohApiClient, ThohApiClient>();
             services.AddScoped<IRecyclerApiClient, RecyclerApiClient>();
+            services.AddScoped<ISupplierApiClient, RecyclerApiClient>(); // RecyclerApiClient implements ISupplierApiClient
             services.AddScoped<ICommercialBankClient, CommercialBankClient>();
             services.AddScoped<IBulkLogisticsClient, BulkLogisticsClient>();
             services.AddScoped<CommercialBankClient>();
@@ -112,11 +39,18 @@ namespace esAPI.Configuration
             services.AddScoped<InventoryManagementService>();
             services.AddScoped<InventoryService>();
             services.AddScoped<MachineManagementService>();
+            services.AddScoped<IMaterialOrderingService, MaterialOrderingService>();
             services.AddScoped<MaterialOrderingService>();
             services.AddScoped<SimulationDayService>();
             services.AddScoped<SimulationDayOrchestrator>();
             services.AddScoped<OrderExpirationService>();
             services.AddScoped<ElectronicsMachineDetailsService>();
+
+            // Material services
+            services.AddScoped<IMaterialSourcingService, MaterialSourcingService>();
+
+            // Simulation services
+            services.AddScoped<ISimulationStartupService, SimulationDayStartupService>();
 
             // Simulation Engine
             services.AddScoped<SimulationEngine>();
@@ -124,24 +58,10 @@ namespace esAPI.Configuration
             return services;
         }
 
-        public static IServiceCollection AddAwsServices(this IServiceCollection services)
-        {
-            services.AddAWSService<IAmazonSQS>();
-            return services;
-        }
-
-        public static IServiceCollection AddAwsDependentServices(this IServiceCollection services)
-        {
-            // Only add services that depend on AWS when AWS is available
-            services.AddScoped<RetryQueuePublisher>();
-            return services;
-        }
-
         public static IServiceCollection AddBackgroundServices(this IServiceCollection services)
         {
             services.AddHostedService<SimulationAutoAdvanceService>();
             services.AddHostedService<OrderExpirationBackgroundService>();
-            services.AddHostedService<RetryJobDispatcher>();
             return services;
         }
 
@@ -181,6 +101,18 @@ namespace esAPI.Configuration
                     }
                 });
             });
+
+            return services;
+        }
+
+        public static IServiceCollection AddServiceOptions(this IServiceCollection services, IConfiguration configuration)
+        {
+            services.Configure<InventoryConfig>(
+                configuration.GetSection(InventoryConfig.SectionName)
+            );
+            services.Configure<ExternalApiConfig>(
+                configuration.GetSection(ExternalApiConfig.SectionName)
+            );
 
             return services;
         }
