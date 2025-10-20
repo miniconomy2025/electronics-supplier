@@ -1,0 +1,374 @@
+name: "Deploy to Production"
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+      - '.github/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+        - production
+        - staging
+      force_deploy:
+        description: 'Force deployment even if tests fail'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  AWS_REGION: af-south-1
+
+jobs:
+  # Pre-deployment checks
+  pre-deployment:
+    name: Pre-deployment Checks
+    runs-on: ubuntu-latest
+    outputs:
+      should-deploy: ${{ steps.check.outputs.should-deploy }}
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 2
+
+    - name: Check if deployment needed
+      id: check
+      run: |
+        # Check if this is a manual deployment or if there are actual code changes
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "Manual deployment triggered"
+          echo "should-deploy=true" >> $GITHUB_OUTPUT
+        else
+          # Check for significant changes (exclude docs, README, etc.)
+          if git diff --name-only HEAD^ HEAD | grep -E '\.(cs|json|csproj|sql)$' || git diff --name-only HEAD^ HEAD | grep -E '^(esAPI/|Dockerfile|deploy\.sh)'; then
+            echo "Code changes detected"
+            echo "should-deploy=true" >> $GITHUB_OUTPUT
+          else
+            echo "No significant changes for deployment"
+            echo "should-deploy=false" >> $GITHUB_OUTPUT
+          fi
+        fi
+
+    - name: Deployment decision
+      run: |
+        if [ "${{ steps.check.outputs.should-deploy }}" = "true" ]; then
+          echo "✅ Proceeding with deployment"
+        else
+          echo "⏭️ Skipping deployment - no significant changes"
+        fi
+
+  # Run tests before deployment
+  test-before-deploy:
+    name: Pre-deployment Testing
+    runs-on: ubuntu-latest
+    needs: pre-deployment
+    if: needs.pre-deployment.outputs.should-deploy == 'true'
+    
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+
+    - name: Run tests
+      env:
+        ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=test_db;Username=postgres;Password=testpass"
+      run: |
+        dotnet test --configuration Release --no-build \
+          --logger trx --logger "console;verbosity=normal" \
+          --filter "Category!=Integration"
+
+    - name: AWS-safe smoke test
+      env:
+        ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=test_db;Username=postgres;Password=testpass"
+        ExternalApis__CommercialBank: "https://httpbin.org/status/200"
+        ExternalApis__BulkLogistics: "https://httpbin.org/status/200"
+        ExternalApis__THOH: "https://httpbin.org/status/200"
+        ExternalApis__Recycler: "https://httpbin.org/status/200"
+        ASPNETCORE_ENVIRONMENT: "Testing"
+      run: |
+        # Start API for smoke test
+        dotnet run --project esAPI --configuration Release &
+        API_PID=$!
+        
+        # Wait for API to start
+        for i in {1..30}; do
+          if curl -s http://localhost:5000/health >/dev/null 2>&1; then
+            echo "✅ API started successfully"
+            break
+          fi
+          sleep 2
+        done
+        
+        # Basic health check
+        curl -f http://localhost:5000/health || exit 1
+        curl -f http://localhost:5000/ready || exit 1
+        
+        # Stop API
+        kill $API_PID || true
+
+  # Deploy to production
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [pre-deployment, test-before-deploy]
+    if: |
+      always() && 
+      needs.pre-deployment.outputs.should-deploy == 'true' && 
+      (needs.test-before-deploy.result == 'success' || github.event.inputs.force_deploy == 'true')
+    
+    environment: 
+      name: ${{ github.event.inputs.environment || 'production' }}
+      url: ${{ steps.deploy.outputs.app-url }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Setup deployment key
+      run: |
+        # Setup SSH key for EC2 deployment
+        mkdir -p ~/.ssh
+        echo "${{ secrets.EC2_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        
+        # Add EC2 instance to known hosts
+        ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Pre-deployment backup
+      run: |
+        echo "🔄 Creating pre-deployment backup..."
+        ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_HOST }} "
+          sudo mkdir -p /home/ubuntu/backups
+          sudo chown ubuntu:ubuntu /home/ubuntu/backups
+          
+          # Create backup with timestamp
+          backup_dir=\"/home/ubuntu/backups/pre-deploy-\$(date +%Y%m%d-%H%M%S)\"
+          cp -r /home/ubuntu/es \"\$backup_dir\" 2>/dev/null || echo 'No existing deployment to backup'
+          
+          echo \"Backup created at \$backup_dir\"
+        "
+
+    - name: Deploy application
+      id: deploy
+      run: |
+        echo "🚀 Deploying to EC2..."
+        
+        # Copy deployment script to EC2
+        scp -i ~/.ssh/id_rsa deploy.sh ubuntu@${{ secrets.EC2_HOST }}:/home/ubuntu/
+        
+        # Make it executable and run deployment
+        ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_HOST }} "
+          chmod +x /home/ubuntu/deploy.sh
+          
+          # Ensure directories exist
+          mkdir -p /home/ubuntu/backups
+          
+          # Clone repository if it doesn't exist
+          if [ ! -d '/home/ubuntu/es' ]; then
+            echo 'Cloning repository for first-time deployment...'
+            git clone https://github.com/${{ github.repository }}.git /home/ubuntu/es
+          fi
+          
+          # Run deployment
+          cd /home/ubuntu
+          ./deploy.sh deploy
+        "
+        
+        # Set output for environment URL
+        echo "app-url=http://${{ secrets.EC2_HOST }}:5062" >> $GITHUB_OUTPUT
+
+    - name: Post-deployment health check
+      run: |
+        echo "🔍 Running post-deployment health checks..."
+        
+        # Wait for application to be fully ready
+        max_attempts=60
+        attempt=1
+        
+        while [ $attempt -le $max_attempts ]; do
+          if curl -s -f "http://${{ secrets.EC2_HOST }}:5062/health" >/dev/null 2>&1; then
+            echo "✅ Health check passed on attempt $attempt"
+            
+            # Additional endpoint checks
+            curl -f "http://${{ secrets.EC2_HOST }}:5062/ready" || exit 1
+            
+            # Check API is responding with expected format
+            response=$(curl -s "http://${{ secrets.EC2_HOST }}:5062/health")
+            echo "Health check response: $response"
+            
+            echo "🎉 Deployment successful and healthy!"
+            exit 0
+          fi
+          
+          echo "Health check attempt $attempt/$max_attempts failed, waiting..."
+          sleep 5
+          attempt=$((attempt + 1))
+        done
+        
+        echo "❌ Health check failed after $max_attempts attempts"
+        exit 1
+
+    - name: Deployment rollback on failure
+      if: failure()
+      run: |
+        echo "🚨 Deployment failed, initiating rollback..."
+        
+        ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_HOST }} "
+          cd /home/ubuntu
+          ./deploy.sh rollback
+        "
+
+    - name: Notify deployment status
+      if: always()
+      run: |
+        if [ "${{ job.status }}" = "success" ]; then
+          echo "✅ Deployment completed successfully"
+          echo "🌐 Application URL: http://${{ secrets.EC2_HOST }}:5062"
+          echo "📱 Health check: http://${{ secrets.EC2_HOST }}:5062/health"
+        else
+          echo "❌ Deployment failed"
+          echo "Check logs and consider manual intervention"
+        fi
+
+  # Post-deployment monitoring
+  post-deployment:
+    name: Post-deployment Monitoring
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: success()
+    
+    steps:
+    - name: Monitor deployment
+      run: |
+        echo "📊 Starting post-deployment monitoring..."
+        
+        # Monitor for 5 minutes after deployment
+        for i in {1..10}; do
+          echo "Health check $i/10..."
+          
+          if curl -s -f "http://${{ secrets.EC2_HOST }}:5062/health" >/dev/null 2>&1; then
+            echo "✅ Health check $i passed"
+          else
+            echo "❌ Health check $i failed"
+            exit 1
+          fi
+          
+          sleep 30
+        done
+        
+        echo "🎉 Post-deployment monitoring completed successfully"
+
+    - name: Performance baseline check
+      run: |
+        echo "⚡ Running performance baseline check..."
+        
+        # Simple response time check
+        start_time=$(date +%s%N)
+        curl -s -f "http://${{ secrets.EC2_HOST }}:5062/health" >/dev/null
+        end_time=$(date +%s%N)
+        
+        response_time=$(( (end_time - start_time) / 1000000 ))
+        echo "Response time: ${response_time}ms"
+        
+        if [ $response_time -lt 1000 ]; then
+          echo "✅ Response time within acceptable range"
+        else
+          echo "⚠️ Response time higher than expected: ${response_time}ms"
+        fi
+
+  # Create deployment report
+  deployment-report:
+    name: Create Deployment Report
+    runs-on: ubuntu-latest
+    needs: [deploy, post-deployment]
+    if: always()
+    
+    steps:
+    - name: Generate deployment report
+      run: |
+        cat > deployment-report.md << EOF
+        # 🚀 Deployment Report
+        
+        **Date:** $(date)
+        **Branch:** ${{ github.ref_name }}
+        **Commit:** ${{ github.sha }}
+        **Environment:** ${{ github.event.inputs.environment || 'production' }}
+        
+        ## Deployment Status
+        - **Pre-deployment Tests:** ${{ needs.test-before-deploy.result || 'skipped' }}
+        - **Deployment:** ${{ needs.deploy.result }}
+        - **Post-deployment Monitoring:** ${{ needs.post-deployment.result || 'skipped' }}
+        
+        ## Application URLs
+        - **Main Application:** http://${{ secrets.EC2_HOST }}:5062
+        - **Health Check:** http://${{ secrets.EC2_HOST }}:5062/health
+        - **Ready Check:** http://${{ secrets.EC2_HOST }}:5062/ready
+        
+        ## Deployment Commands
+        \`\`\`bash
+        # SSH into EC2
+        ssh -i your-key.pem ubuntu@${{ secrets.EC2_HOST }}
+        
+        # Check deployment status
+        ./deploy.sh status
+        
+        # View logs
+        ./deploy.sh logs
+        
+        # Attach to tmux session
+        ./deploy.sh attach
+        \`\`\`
+        
+        ## Rollback Instructions
+        If issues are detected:
+        \`\`\`bash
+        ssh -i your-key.pem ubuntu@${{ secrets.EC2_HOST }}
+        ./deploy.sh rollback
+        \`\`\`
+        EOF
+
+    - name: Upload deployment report
+      uses: actions/upload-artifact@v4
+      with:
+        name: deployment-report
+        path: deployment-report.md

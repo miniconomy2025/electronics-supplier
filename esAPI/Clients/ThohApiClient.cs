@@ -1,59 +1,98 @@
 using System.Text.Json.Serialization;
+using System.Text.Json;
 using esAPI.DTOs;
 using esAPI.Interfaces;
+using esAPI.DTOs.Thoh;
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Threading.Tasks;
+using System.Linq;
+using System.Collections.Generic;
 
-namespace esAPI.Clients;
-
-public class ThohMaterialInfo
+namespace esAPI.Clients
 {
-    [JsonPropertyName("rawMaterialName")]
-    public required string RawMaterialName { get; set; }
-    [JsonPropertyName("quantityAvailable")]
-    public int QuantityAvailable { get; set; }
-    [JsonPropertyName("pricePerKg")]
-    public decimal PricePerKg { get; set; }
-}
-
-public interface IThohMachineApiClient
-{
-    Task<List<ThohMachineInfo>> GetAvailableMachinesAsync();
-
-    Task<ThohMachinePurchaseResponse?> PurchaseMachineAsync(ThohMachinePurchaseRequest request);
-}
-
-public class ThohApiClient(IHttpClientFactory httpClientFactory) : BaseClient(httpClientFactory, ClientName), ISupplierApiClient, IThohMachineApiClient
-{
-    private const string ClientName = "thoh";
-
-    public async Task<List<ThohMachineInfo>> GetAvailableMachinesAsync()
+    public class ThohApiClient : IThohApiClient
     {
-        var response = await GetAsync<ThohMachineListResponse>("/machines");
-        
-        return response?.Machines ?? new List<ThohMachineInfo>();
-    }
+        private readonly HttpClient _client;
+        public ThohApiClient(IHttpClientFactory factory)
+        {
+            _client = factory.CreateClient("thoh");
+        }
 
-    public async Task<List<SupplierMaterialInfo>> GetAvailableMaterialsAsync()
-    {
-        var response = await GetAsync<List<ThohMaterialInfo>>("/raw-materials");
-        if (response == null) return new List<SupplierMaterialInfo>();
-        var standardizedList = response.Select(thohDto =>
-           new SupplierMaterialInfo
-           {
-               MaterialName = thohDto.RawMaterialName,
-               AvailableQuantity = thohDto.QuantityAvailable,
-               PricePerKg = thohDto.PricePerKg
-           }).ToList();
+        public async Task<ThohMachineDto?> GetElectronicsMachineAsync()
+        {
+            var response = await _client.GetFromJsonAsync<ThohMachinesResponse>("/machines");
+            return response?.Machines?.FirstOrDefault(m => m.MachineName == "electronics_machine");
+        }
 
-        return standardizedList;
-    }
+        public async Task<List<ThohMachineDto>> GetAvailableMachinesAsync()
+        {
+            var response = await _client.GetFromJsonAsync<ThohMachinesResponse>("/machines");
+            return response?.Machines ?? new List<ThohMachineDto>();
+        }
 
-    public async Task<SupplierOrderResponse?> PlaceOrderAsync(SupplierOrderRequest request)
-    {
-        return await PostAsync<SupplierOrderRequest, SupplierOrderResponse>("/raw-materials", request);
-    }
+        public async Task<List<SupplierMaterialInfo>> GetAvailableMaterialsAsync()
+        {
+            try
+            {
+                var response = await _client.GetFromJsonAsync<List<ThohRawMaterialDto>>("/raw-materials");
+                var result = new List<SupplierMaterialInfo>();
 
-    public async Task<ThohMachinePurchaseResponse?> PurchaseMachineAsync(ThohMachinePurchaseRequest request)
-    {
-        return await PostAsync<ThohMachinePurchaseRequest, ThohMachinePurchaseResponse>("/machines", request);
+                if (response == null) return result;
+
+                foreach (var material in response)
+                {
+                    result.Add(new SupplierMaterialInfo
+                    {
+                        MaterialName = material.RawMaterialName,
+                        AvailableQuantity = material.QuantityAvailable,
+                        PricePerKg = material.PricePerKg
+                    });
+                }
+
+                return result;
+            }
+            catch (Exception)
+            {
+                // Return empty list if API call fails
+                return new List<SupplierMaterialInfo>();
+            }
+        }
+
+        // Place a material order with THOH using their raw-materials endpoint
+        public async Task<SupplierOrderResponse?> PlaceOrderAsync(SupplierOrderRequest request)
+        {
+            try
+            {
+                var orderRequest = new
+                {
+                    materialName = request.MaterialName,
+                    weightQuantity = request.WeightQuantity
+                };
+
+                var response = await _client.PostAsJsonAsync("/raw-materials", orderRequest);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    return null; // Failed to place order, will fallback to Recycler
+                }
+
+                var content = await response.Content.ReadAsStringAsync();
+                using var doc = System.Text.Json.JsonDocument.Parse(content);
+                var order = doc.RootElement;
+
+                return new SupplierOrderResponse
+                {
+                    OrderId = order.GetProperty("orderId").GetInt32(),
+                    Price = order.GetProperty("price").GetDecimal(),
+                    BankAccount = order.GetProperty("bankAccount").GetString() ?? string.Empty
+                };
+            }
+            catch (Exception)
+            {
+                // Return null if any error occurs, allowing fallback to Recycler
+                return null;
+            }
+        }
     }
 }

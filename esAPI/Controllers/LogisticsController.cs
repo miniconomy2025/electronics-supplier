@@ -9,14 +9,16 @@ using esAPI.Models.Enums;
 using Machine = esAPI.Models.Machine;
 using MS = esAPI.Models.Enums.Machine;
 using Electronics = esAPI.Models.Enums.Electronics;
+using esAPI.Interfaces;
 
 namespace esAPI.Controllers
 {
     [ApiController]
     [Route("logistics")]
-    public class LogisticsController(AppDbContext context) : ControllerBase
+    public class LogisticsController(AppDbContext context, ISimulationStateService stateService) : ControllerBase
     {
         private readonly AppDbContext _context = context;
+        private readonly ISimulationStateService _stateService = stateService;
 
         [HttpPost]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
@@ -65,25 +67,32 @@ namespace esAPI.Controllers
             if (!int.TryParse(request.Id, out var pickupReqID))
                 return BadRequest("Invalid external order ID format.");
 
-            bool isMachineDelivery = request.Items.All(item => item.Name.Equals("machine", StringComparison.OrdinalIgnoreCase));
-
-            var sim = _context.Simulations.FirstOrDefault(s => s.IsRunning);
-            if (sim == null)
+            if (!_stateService.IsRunning)
                 return BadRequest("Simulation not running.");
 
-            if (isMachineDelivery)
+            int currentDay = _stateService.CurrentDay;
+
+            // 1. Find the pickup request by ID
+            var pickupRequest = await _context.PickupRequests
+                .FirstOrDefaultAsync(p => p.RequestId == pickupReqID);
+
+            if (pickupRequest == null)
+                return NotFound($"No pickup request found with ID {request.Id}");
+
+            // 2. Handle based on pickup request type
+            if (pickupRequest.Type == Models.Enums.PickupRequest.PickupType.MACHINE)
             {
-                // Machine delivery
+                // 3a. Find matching machine order by external order ID
                 var machineOrder = await _context.MachineOrders
-                    .FirstOrDefaultAsync(o => o.PickupRequestId  == pickupReqID); 
+                    .FirstOrDefaultAsync(o => o.ExternalOrderId == pickupRequest.ExternalRequestId);
 
                 if (machineOrder == null)
-                    return NotFound($"No machine order found with ID {request.Id}");
+                    return NotFound($"No machine order found for pickup request {request.Id}");
 
                 if (machineOrder.OrderStatusId == (int)Order.Status.Completed)
                     return BadRequest($"Order {request.Id} is already marked as completed.");
 
-                int machineCount = request.Items.Count;
+                int machineCount = request.Items.Sum(item => item.Quantity);
                 int deliverAmount = Math.Min(machineOrder.RemainingAmount, machineCount);
 
                 if (deliverAmount <= 0)
@@ -94,8 +103,8 @@ namespace esAPI.Controllers
                     {
                         OrderId = machineOrder.OrderId,
                         MachineStatusId = (int)MS.Status.Standby,
-                        ReceivedAt = sim.DayNumber,
-                        PurchasedAt = sim.DayNumber,
+                        ReceivedAt = currentDay,
+                        PurchasedAt = currentDay,
                         PurchasePrice = 0
                     })
                     .ToList();
@@ -106,7 +115,7 @@ namespace esAPI.Controllers
 
                 if (machineOrder.RemainingAmount == 0)
                 {
-                    machineOrder.ReceivedAt = sim.DayNumber;
+                    machineOrder.ReceivedAt = currentDay;
                     machineOrder.OrderStatusId = (int)Order.Status.Completed;
                 }
                 else if (machineOrder.OrderStatusId == (int)Order.Status.Pending || machineOrder.OrderStatusId == (int)Order.Status.Accepted)
@@ -124,17 +133,19 @@ namespace esAPI.Controllers
             }
             else
             {
-                // MATERIAL DELIVERY
-                var order = await _context.MaterialOrders
-                    .FirstOrDefaultAsync(o => o.PickupRequestId == pickupReqID);
+                // 3b. Handle material delivery — find matching material order by external order ID
+                var materialOrder = await _context.MaterialOrders
+                    .FirstOrDefaultAsync(o => o.ExternalOrderId == pickupRequest.ExternalRequestId);
 
-                if (order == null)
-                    return NotFound($"No material order found with ID {request.Id}");
+                if (materialOrder == null)
+                    return NotFound($"No material order found for pickup request {request.Id}");
 
-                if (order.OrderStatusId == (int)Order.Status.Completed)
+                if (materialOrder.OrderStatusId == (int)Order.Status.Completed)
                     return BadRequest($"Order {request.Id} is already fully delivered.");
 
-                int deliverAmount = Math.Min(order.RemainingAmount, request.Items[0].Quantity);
+                // Sum total quantity from request items (in case of multiple items)
+                int requestedQuantity = request.Items.Sum(i => i.Quantity);
+                int deliverAmount = Math.Min(materialOrder.RemainingAmount, requestedQuantity);
 
                 if (deliverAmount <= 0)
                     return BadRequest("Nothing to deliver based on the remaining amount.");
@@ -142,34 +153,35 @@ namespace esAPI.Controllers
                 var suppliesToAdd = Enumerable.Range(0, deliverAmount)
                     .Select(_ => new MaterialSupply
                     {
-                        MaterialId = order.MaterialId,
-                        ReceivedAt = sim.DayNumber
+                        MaterialId = materialOrder.MaterialId,
+                        ReceivedAt = currentDay
                     })
                     .ToList();
 
                 _context.MaterialSupplies.AddRange(suppliesToAdd);
 
-                order.RemainingAmount -= deliverAmount;
+                materialOrder.RemainingAmount -= deliverAmount;
 
-                if (order.RemainingAmount == 0)
+                if (materialOrder.RemainingAmount == 0)
                 {
-                    order.ReceivedAt = sim.DayNumber;
-                    order.OrderStatusId = (int)Order.Status.Completed;
+                    materialOrder.ReceivedAt = currentDay;
+                    materialOrder.OrderStatusId = (int)Order.Status.Completed;
                 }
-                else if (order.OrderStatusId == (int)Order.Status.Pending || order.OrderStatusId == (int)Order.Status.Accepted)
+                else if (materialOrder.OrderStatusId == (int)Order.Status.Pending || materialOrder.OrderStatusId == (int)Order.Status.Accepted)
                 {
-                    order.OrderStatusId = (int)Order.Status.InProgress;
+                    materialOrder.OrderStatusId = (int)Order.Status.InProgress;
                 }
 
                 await _context.SaveChangesAsync();
 
                 return Ok(new
                 {
-                    Message = $"Delivered {deliverAmount} supplies for material ID {order.MaterialId} from order {request.Id}",
-                    Remaining = order.RemainingAmount
+                    Message = $"Delivered {deliverAmount} supplies for material ID {materialOrder.MaterialId} from order {request.Id}",
+                    Remaining = materialOrder.RemainingAmount
                 });
             }
         }
+
 
 
         private async Task<IActionResult> HandlePickupAsync(LogisticsRequestDto request)
@@ -197,13 +209,15 @@ namespace esAPI.Controllers
             if (electronicsToRemove.Count < pickupAmount)
                 return BadRequest("Not enough electronics stock available to fulfill the pickup.");
 
-            var sim = _context.Simulations.FirstOrDefault(s => s.IsRunning);
-            if (sim == null)
+            if (!_stateService.IsRunning)
                 return BadRequest("Simulation not running.");
+
+            int currentDay = _stateService.CurrentDay;
+
 
             foreach (var e in electronicsToRemove)
             {
-                e.SoldAt = sim.DayNumber;
+                e.SoldAt = currentDay;
                 e.ElectronicsStatusId = (int)Electronics.Status.Reserved;
             }
 
@@ -211,7 +225,7 @@ namespace esAPI.Controllers
 
             if (order.RemainingAmount == 0)
             {
-                order.ProcessedAt = sim.DayNumber;
+                order.ProcessedAt = currentDay;
                 order.OrderStatusId = (int)Order.Status.Completed; // COMPLETED
             }
             else if (order.OrderStatusId == (int)Order.Status.Pending || order.OrderStatusId == (int)Order.Status.Accepted) // PENDING or ACCEPTED

@@ -9,6 +9,7 @@ namespace esAPI.Interfaces
         int CurrentDay { get; }
 
         void Start();
+        void Start(long epochStartTime);
         void Stop();
         void AdvanceDay();
         decimal GetCurrentSimulationTime(int precision = 3);

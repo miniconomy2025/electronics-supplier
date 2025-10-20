@@ -6,28 +6,23 @@ using esAPI.Data;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Concurrent;
 using esAPI.Interfaces;
+using esAPI.Interfaces.Services;
 
 namespace esAPI.Services
 {
-    public interface IMaterialAcquisitionService
-    {
-        Task ExecutePurchaseStrategyAsync();
-        // Task PurchaseMaterialsViaBank();
-        // Task PlaceBulkLogisticsPickup(int orderId, string itemName, int quantity, string supplier);
-    }
-
     public class MaterialAcquisitionService : IMaterialAcquisitionService
     {
         private readonly IMaterialSourcingService _sourcingService;
         private readonly IBulkLogisticsClient _logisticsClient;
         private readonly IHttpClientFactory _httpClientFactory;
-        private readonly BankService _bankService;
+        private readonly IBankService _bankService;
         private readonly ICommercialBankClient _bankClient;
         private readonly AppDbContext _dbContext;
+        private readonly ISimulationStateService _stateService;
 
         private static ConcurrentDictionary<string, int> _statusIdCache = new();
 
-        public MaterialAcquisitionService(IHttpClientFactory httpClientFactory, AppDbContext dbContext, BankService bankService, ICommercialBankClient bankClient, IMaterialSourcingService sourcingService, IBulkLogisticsClient logisticsClient)
+        public MaterialAcquisitionService(IHttpClientFactory httpClientFactory, AppDbContext dbContext, IBankService bankService, ICommercialBankClient bankClient, IMaterialSourcingService sourcingService, IBulkLogisticsClient logisticsClient, ISimulationStateService stateService)
         {
             _httpClientFactory = httpClientFactory;
             _bankService = bankService;
@@ -37,6 +32,7 @@ namespace esAPI.Services
             _bankClient = bankClient;
             _logisticsClient = logisticsClient;
             _dbContext = dbContext;
+            _stateService = stateService;
         }
 
         public async Task ExecutePurchaseStrategyAsync()
@@ -44,7 +40,7 @@ namespace esAPI.Services
             await PurchaseWithStrategy("copper", sourcedInfo => Task.FromResult(sourcedInfo.MaterialDetails.AvailableQuantity / 2));
             await PurchaseWithStrategy("silicon", async sourcedInfo =>
             {
-                var balance = await _bankService.GetAndStoreBalance(0);
+                var balance = await _bankService.GetAndStoreBalance(_stateService.CurrentDay);
                 var budget = balance * 0.3m;
                 int qty = (int)Math.Floor(budget / sourcedInfo.MaterialDetails.PricePerKg);
                 return Math.Min(qty, sourcedInfo.MaterialDetails.AvailableQuantity);
@@ -74,7 +70,23 @@ namespace esAPI.Services
             Console.WriteLine("Try buying " + materialName);
 
             var orderRequest = new SupplierOrderRequest { MaterialName = materialName, WeightQuantity = quantityToBuy };
-            var orderResponse = await sourcedInfo.Client.PlaceOrderAsync(orderRequest);
+            SupplierOrderResponse? orderResponse = null;
+            if (sourcedInfo.Client is ISupplierApiClient supplierClient)
+            {
+                orderResponse = await supplierClient.PlaceOrderAsync(orderRequest);
+            }
+            else if (sourcedInfo.Client is RecyclerApiClient recyclerClient)
+            {
+                orderResponse = await recyclerClient.PlaceOrderAsync(orderRequest);
+            }
+            else if (sourcedInfo.Client is ThohApiClient thohClient)
+            {
+                // If ThohApiClient supports PlaceOrderAsync, call it here. Otherwise, log or throw.
+                // orderResponse = await thohClient.PlaceOrderAsync(orderRequest);
+                Console.WriteLine("PlaceOrderAsync not implemented for ThohApiClient");
+                return false;
+            }
+
             if (orderResponse == null || string.IsNullOrEmpty(orderResponse.BankAccount)) return false;
 
             var localOrder = await CreateLocalOrderRecordAsync(sourcedInfo, quantityToBuy, orderResponse);
@@ -121,6 +133,11 @@ namespace esAPI.Services
 
             var pickupResp = await _logisticsClient.ArrangePickupAsync(pickupReq);
             if (pickupResp == null || string.IsNullOrEmpty(pickupResp.BulkLogisticsBankAccountNumber)) return false;
+
+            var pickupRequest = await CreatePickupRequestAsync(order.OrderId, quantity, materialName);
+
+            if (pickupRequest == null)
+                return false;
 
             var paymentSuccess = await _bankClient.MakePaymentAsync(pickupResp.BulkLogisticsBankAccountNumber, "commercial-bank", pickupResp.Cost, $"Pickup for order {order.OrderId}");
 
@@ -188,5 +205,33 @@ namespace esAPI.Services
 
             return 0;
         }
+
+        private async Task<PickupRequest?> CreatePickupRequestAsync(int externalOrderId, int quantity, string materialName)
+        {
+            Models.Enums.PickupRequest.PickupType pickupType;
+
+            // Map the materialName string to PickupType enum
+            if (materialName.Equals("copper", StringComparison.OrdinalIgnoreCase))
+                pickupType = Models.Enums.PickupRequest.PickupType.COPPER;
+            else if (materialName.Equals("silicone", StringComparison.OrdinalIgnoreCase))
+                pickupType = Models.Enums.PickupRequest.PickupType.SILICONE;
+            else
+                throw new ArgumentException($"Unsupported material name: {materialName}");
+
+            var pickupRequest = new PickupRequest
+            {
+                ExternalRequestId = externalOrderId,
+                Type = pickupType,
+                Quantity = quantity,
+                PlacedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+            };
+
+            _dbContext.PickupRequests.Add(pickupRequest);
+            await _dbContext.SaveChangesAsync();
+
+            return pickupRequest;
+        }
+
+
     }
 }

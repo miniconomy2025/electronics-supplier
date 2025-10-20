@@ -1,5 +1,39 @@
 using System.Text.Json.Serialization;
 
+namespace esAPI.DTOs.Thoh
+{
+    public class ThohMachineDto
+    {
+        public string MachineName { get; set; } = string.Empty;
+        public string Inputs { get; set; } = string.Empty;
+        public int Quantity { get; set; }
+        public Dictionary<string, int> InputRatio { get; set; } = new();
+        public int ProductionRate { get; set; }
+        public int Price { get; set; }
+    }
+
+    public class ThohMachinesResponse
+    {
+        public List<ThohMachineDto> Machines { get; set; } = new();
+    }
+
+    public class ThohRawMaterialDto
+    {
+        [JsonPropertyName("rawMaterialName")]
+        public string RawMaterialName { get; set; } = string.Empty;
+
+        [JsonPropertyName("description")]
+        public string? Description { get; set; }
+
+        [JsonPropertyName("pricePerKg")]
+        public decimal PricePerKg { get; set; }
+
+        [JsonPropertyName("quantityAvailable")]
+        public int QuantityAvailable { get; set; }
+    }
+}
+
+
 public class MachineInputRatioDto
 {
     [JsonPropertyName("copper")]

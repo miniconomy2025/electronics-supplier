@@ -9,20 +9,32 @@ namespace esAPI.Models
         [Key]
         [Column("payment_id")]
         public int PaymentId { get; set; }
+
+        [Required]
         [Column("transaction_number")]
-        public string? TransactionNumber { get; set; }
+        public string TransactionNumber { get; set; } = string.Empty;
+
+        [Required]
         [Column("status")]
-        public string? Status { get; set; }
+        public string Status { get; set; } = string.Empty;
+
         [Column("amount")]
         public decimal Amount { get; set; }
+
         [Column("timestamp")]
         public double Timestamp { get; set; }
+
         [Column("description")]
         public string? Description { get; set; }
+
+        [Required]
         [Column("from_account")]
-        public string? FromAccount { get; set; }
+        public string FromAccount { get; set; } = string.Empty;
+
+        [Required]
         [Column("to_account")]
-        public string? ToAccount { get; set; }
+        public string ToAccount { get; set; } = string.Empty;
+
         [Column("order_id")]
         public int? OrderId { get; set; }
     }

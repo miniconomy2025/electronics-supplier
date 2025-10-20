@@ -1,72 +1,57 @@
-using esAPI.Data;
-using esAPI.Simulation.Tasks;
+using Microsoft.Extensions.Logging;
 using esAPI.Services;
-using esAPI.Clients;
+using esAPI.Interfaces;
 
 namespace esAPI.Simulation
 {
-    public class SimulationEngine(AppDbContext context, BankService bankService, BankAccountService bankAccountService, SimulationDayOrchestrator dayOrchestrator, IStartupCostCalculator costCalculator, ICommercialBankClient bankClient)
+    public class SimulationEngine(ISimulationStartupService startupService, ISimulationDayService dayService, ILogger<SimulationEngine> logger)
     {
-        private readonly AppDbContext _context = context;
-        private readonly BankAccountService _bankAccountService = bankAccountService;
-        private readonly SimulationDayOrchestrator _dayOrchestrator = dayOrchestrator;
-
-        private readonly IStartupCostCalculator _costCalculator = costCalculator;
-
-        private readonly BankService _bankService = bankService;
-
-        private readonly ICommercialBankClient _bankClient = bankClient;
+        private readonly ISimulationStartupService _startupService = startupService;
+        private readonly ISimulationDayService _dayService = dayService;
+        private readonly ILogger<SimulationEngine> _logger = logger;
 
         public static event Func<int, Task>? OnDayAdvanced;
 
         public async Task RunDayAsync(int dayNumber)
         {
-            if (dayNumber == 1)
+            _logger.LogInformation("\n =============== 🏃‍♂️ Starting simulation day {DayNumber} ===============\n", dayNumber);
+
+            try
             {
-                await ExecuteStartupSequence();
+                if (dayNumber == 1)
+                {
+                    _logger.LogInformation("🎬 Executing startup sequence for day 1");
+                    var startupSuccess = await _startupService.ExecuteStartupSequenceAsync();
+                    if (!startupSuccess)
+                    {
+                        _logger.LogError("❌ Startup sequence failed for day {DayNumber}", dayNumber);
+                        return;
+                    }
+                }
 
+                // Execute daily operations using the day service
+                var daySuccess = await _dayService.ExecuteDayAsync(dayNumber);
+                if (!daySuccess)
+                {
+                    _logger.LogError("❌ Daily operations failed for day {DayNumber}", dayNumber);
+                    return;
+                }
+
+                // Trigger any day advanced events
+                if (OnDayAdvanced != null)
+                {
+                    _logger.LogInformation("📡 Triggering OnDayAdvanced event for day {DayNumber}", dayNumber);
+                    await OnDayAdvanced(dayNumber);
+                }
+
+                _logger.LogInformation("✅ Simulation day {DayNumber} completed successfully", dayNumber);
             }
-            await _dayOrchestrator.RunDayAsync(dayNumber);
-            Console.WriteLine($"Running simulation logic for Day {dayNumber}");
-
-            // 1. Query bank and store our balance
-            await _bankService.GetAndStoreBalance(dayNumber);
-
-
-            // 2. Check machine inventory and buy if none
-            var machineTask = new MachineTask(_context);
-            await machineTask.EnsureMachineAvailabilityAsync(dayNumber);
-
-            // Add other tasks here later:
-            // - MaterialTask
-            // - ProductionTask
-            // - OrderTask
-            if (OnDayAdvanced != null)
-                await OnDayAdvanced(dayNumber);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Critical error during simulation day {DayNumber}", dayNumber);
+                throw;
+            }
         }
 
-        private async Task<bool> ExecuteStartupSequence()
-        {
-
-            await _bankAccountService.SetupBankAccount();
-
-            await _bankClient.SetNotificationUrlAsync();
-
-            var allPlans = await _costCalculator.GenerateAllPossibleStartupPlansAsync();
-            if (!allPlans.Any())
-            {
-                return false;
-            }
-
-            var bestPlan = allPlans.OrderBy(p => p.TotalCost).First();
-
-            string? loanSuccess = await _bankClient.RequestLoanAsync(bestPlan.TotalCost);
-            if (loanSuccess == null)
-            {
-                return false;
-            }
-
-            return true;
-        }
     }
 }

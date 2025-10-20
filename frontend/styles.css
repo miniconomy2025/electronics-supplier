@@ -57,6 +57,28 @@ section[aria-label="Financial Summary"] p {
   color: #333;
 }
 
+section[aria-label="Simulation Status"] {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+section[aria-label="Simulation Status"] h2 {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  color: #4169e1;
+}
+
+section[aria-label="Simulation Status"] p {
+  font-size: 18px;
+  color: #333;
+  margin-bottom: 8px;
+}
+
 section {
   background: white;
   padding: 20px;

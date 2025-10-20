@@ -2,24 +2,18 @@ using System.Text.Json;
 using esAPI.Clients;
 using esAPI.Data;
 using Microsoft.EntityFrameworkCore;
+using esAPI.Interfaces;
+using esAPI.Interfaces.Services;
 
 namespace esAPI.Services
 {
-    public interface IMachineAcquisitionService
-    {
-        Task<bool> CheckTHOHForMachines();
-        Task<(int? orderId, int quantity)> PurchaseMachineViaBank();
-        Task QueryOrderDetailsFromTHOH();
-        Task<int> PlaceBulkLogisticsPickup(int thohOrderId, int quantity);
-
-    }
-
-    public class MachineAcquisitionService(IHttpClientFactory httpClientFactory, BankService bankService, ICommercialBankClient bankClient, AppDbContext context) : IMachineAcquisitionService
+    public class MachineAcquisitionService(IHttpClientFactory httpClientFactory, IBankService bankService, ICommercialBankClient bankClient, AppDbContext context, ISimulationStateService stateService) : IMachineAcquisitionService
     {
         private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
-        private readonly BankService _bankService = bankService;
+        private readonly IBankService _bankService = bankService;
         private readonly ICommercialBankClient _bankClient = bankClient;
         private readonly AppDbContext _context = context;
+        private readonly ISimulationStateService _stateService = stateService;
 
         // Returns true if 'electronics_machine' is available
         public async Task<bool> CheckTHOHForMachines()
@@ -44,7 +38,7 @@ namespace esAPI.Services
         public async Task<(int? orderId, int quantity)> PurchaseMachineViaBank()
         {
             // 1. Get current bank balance
-            var balance = await _bankService.GetAndStoreBalance(0); // dayNumber not needed for logic
+            var balance = await _bankService.GetAndStoreBalance(_stateService.CurrentDay);
             var budget = balance * 0.2m;
 
             // 2. Get machine price and available quantity from THOH
@@ -78,7 +72,6 @@ namespace esAPI.Services
                 machineName = "electronics_machine",
                 quantity = toBuy
             };
-            // TODO: Add to our own Machine orders table
             var orderResp = await thohClient.PostAsJsonAsync("/machines", orderReq);
             orderResp.EnsureSuccessStatusCode();
             var orderContent = await orderResp.Content.ReadAsStringAsync();
@@ -87,6 +80,30 @@ namespace esAPI.Services
             var totalPrice = order.GetProperty("totalPrice").GetDecimal();
             var thohBankAccount = order.GetProperty("bankAccount").GetString();
             var orderId = order.TryGetProperty("orderId", out var idProp) ? idProp.GetInt32() : (int?)null;
+
+            // Add to our own Machine orders table
+            if (orderId.HasValue)
+            {
+                var thohCompany = await _context.Companies.FirstOrDefaultAsync(c => c.CompanyName.ToLower() == "thoh");
+                if (thohCompany != null)
+                {
+                    var sim = _context.Simulations.FirstOrDefault(s => s.IsRunning);
+                    var currentDay = sim?.DayNumber ?? 1;
+
+                    var machineOrder = new Models.MachineOrder
+                    {
+                        SupplierId = thohCompany.CompanyId,
+                        ExternalOrderId = orderId.Value,
+                        RemainingAmount = toBuy,
+                        TotalAmount = toBuy,
+                        OrderStatusId = 1, // Pending
+                        PlacedAt = currentDay
+                    };
+
+                    _context.MachineOrders.Add(machineOrder);
+                    await _context.SaveChangesAsync();
+                }
+            }
 
             if (string.IsNullOrEmpty(thohBankAccount))
                 throw new InvalidOperationException("THOH bank account is missing from order response.");
@@ -98,25 +115,18 @@ namespace esAPI.Services
                 totalPrice,
                 $"Purchase {toBuy} electronics_machine from THOH"
             );
-            
-            
+
+
             // 6. Place pickup with Bulk Logistics
-            int pickupRequestId = await PlaceBulkLogisticsPickup(orderId.Value, toBuy);
-
-            // 7. Save pickupRequestId to DB
-            var orderEntity = await _context.MachineOrders
-                .FirstOrDefaultAsync(o => o.ExternalOrderId == orderId && o.Supplier.CompanyName.ToLower() == "thoh");
-
-            if (orderEntity != null)
+            if (orderId.HasValue)
             {
-                orderEntity.PickupRequestId = pickupRequestId;
-                await _context.SaveChangesAsync();
+                await PlaceBulkLogisticsPickup(orderId.Value, toBuy);
             }
 
             return (orderId, toBuy);
         }
 
-        public async Task<int> PlaceBulkLogisticsPickup(int thohOrderId, int quantity)
+        public async Task PlaceBulkLogisticsPickup(int thohOrderId, int quantity)
         {
             // 1. Place pickup request with Bulk Logistics
             var bulkClient = _httpClientFactory.CreateClient("bulk-logistics");
@@ -148,8 +158,19 @@ namespace esAPI.Services
                 $"Pickup {quantity} electronics_machine from THOH order {thohOrderId}"
             );
 
-            return pickupRequestId;
+            // 3. Store the pickup request in the pickup_requests table
+            var pickupRequest = new Models.PickupRequest
+            {
+                ExternalRequestId = thohOrderId,
+                Type = Models.Enums.PickupRequest.PickupType.MACHINE,
+                Quantity = quantity,
+                PlacedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+            };
+
+            _context.PickupRequests.Add(pickupRequest);
+            await _context.SaveChangesAsync();
         }
+
 
         public Task QueryOrderDetailsFromTHOH() => Task.CompletedTask;
     }

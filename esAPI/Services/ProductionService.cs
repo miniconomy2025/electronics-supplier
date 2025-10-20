@@ -1,12 +1,8 @@
 using System.Text.Json;
+using esAPI.Interfaces.Services;
 
 namespace esAPI.Services
 {
-    public interface IProductionService
-    {
-        Task<(int electronicsCreated, Dictionary<string, int> materialsUsed)> ProduceElectronics();
-    }
-
     public class ProductionService(IHttpClientFactory httpClientFactory) : IProductionService
     {
         private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;

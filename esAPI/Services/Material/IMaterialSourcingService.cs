@@ -6,7 +6,7 @@ namespace esAPI.Services;
 
 public record SourcedSupplier(
     string Name,
-    ISupplierApiClient Client,
+    object Client,
     SupplierMaterialInfo MaterialDetails
 );
 

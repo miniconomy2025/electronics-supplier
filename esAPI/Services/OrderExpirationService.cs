@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace esAPI.Services
 {
-    public class OrderExpirationService(IServiceProvider serviceProvider, ISimulationStateService stateService) : IHostedService
+    public class OrderExpirationService(IServiceProvider serviceProvider, ISimulationStateService stateService)
     {
         private readonly IServiceProvider _serviceProvider = serviceProvider;
         private readonly ISimulationStateService _stateService = stateService;
@@ -166,16 +166,6 @@ namespace esAPI.Services
             }
         }
 
-        public Task StartAsync(CancellationToken cancellationToken)
-        {
-            // TODO: Add background logic here
-            return Task.CompletedTask;
-        }
 
-        public Task StopAsync(CancellationToken cancellationToken)
-        {
-            // TODO: Add cleanup logic here
-            return Task.CompletedTask;
-        }
     }
 }

@@ -1,0 +1,86 @@
+# Global analyzer configuration
+is_global = true
+
+# Code Analysis Rules
+
+# Security Rules
+dotnet_diagnostic.CA2100.severity = error  # Review SQL queries for security vulnerabilities
+dotnet_diagnostic.CA3001.severity = warning # Review code for SQL injection vulnerabilities
+dotnet_diagnostic.CA3003.severity = warning # Review code for file path injection vulnerabilities
+dotnet_diagnostic.CA3006.severity = warning # Review code for process command injection vulnerabilities
+dotnet_diagnostic.CA3012.severity = warning # Review code for regex injection vulnerabilities
+
+# Performance Rules
+dotnet_diagnostic.CA1802.severity = suggestion # Use literals where appropriate
+dotnet_diagnostic.CA1805.severity = warning    # Do not initialize unnecessarily
+dotnet_diagnostic.CA1810.severity = warning    # Initialize reference type static fields inline
+dotnet_diagnostic.CA1812.severity = suggestion # Avoid uninstantiated internal classes
+dotnet_diagnostic.CA1813.severity = suggestion # Avoid unsealed attributes
+dotnet_diagnostic.CA1814.severity = suggestion # Prefer jagged arrays over multidimensional
+dotnet_diagnostic.CA1815.severity = warning    # Override equals and operator equals on value types
+
+# Design Rules
+dotnet_diagnostic.CA1000.severity = suggestion # Do not declare static members on generic types
+dotnet_diagnostic.CA1001.severity = warning    # Types that own disposable fields should be disposable
+dotnet_diagnostic.CA1002.severity = suggestion # Do not expose generic lists
+dotnet_diagnostic.CA1003.severity = suggestion # Use generic event handler instances
+dotnet_diagnostic.CA1005.severity = suggestion # Avoid excessive parameters on generic types
+dotnet_diagnostic.CA1008.severity = suggestion # Enums should have zero value
+dotnet_diagnostic.CA1010.severity = suggestion # Collections should implement generic interface
+dotnet_diagnostic.CA1012.severity = warning    # Abstract types should not have constructors
+dotnet_diagnostic.CA1014.severity = none       # Mark assemblies with CLSCompliant
+dotnet_diagnostic.CA1016.severity = suggestion # Mark assemblies with assembly version
+dotnet_diagnostic.CA1017.severity = suggestion # Mark assemblies with ComVisible
+dotnet_diagnostic.CA1018.severity = suggestion # Mark attributes with AttributeUsageAttribute
+
+# Maintainability Rules
+dotnet_diagnostic.CA1501.severity = warning    # Avoid excessive inheritance
+dotnet_diagnostic.CA1502.severity = warning    # Avoid excessive complexity
+dotnet_diagnostic.CA1505.severity = warning    # Avoid unmaintainable code
+dotnet_diagnostic.CA1506.severity = warning    # Avoid excessive class coupling
+
+# Naming Rules
+dotnet_diagnostic.CA1700.severity = suggestion # Do not name enum values 'Reserved'
+dotnet_diagnostic.CA1707.severity = suggestion # Identifiers should not contain underscores
+dotnet_diagnostic.CA1708.severity = suggestion # Identifiers should differ by more than case
+dotnet_diagnostic.CA1710.severity = suggestion # Identifiers should have correct suffix
+dotnet_diagnostic.CA1711.severity = suggestion # Identifiers should not have incorrect suffix
+dotnet_diagnostic.CA1712.severity = suggestion # Do not prefix enum values with type name
+dotnet_diagnostic.CA1713.severity = suggestion # Events should not have 'Before' or 'After' prefix
+dotnet_diagnostic.CA1714.severity = suggestion # Flags enums should have plural names
+dotnet_diagnostic.CA1715.severity = suggestion # Identifiers should have correct prefix
+dotnet_diagnostic.CA1716.severity = suggestion # Identifiers should not match keywords
+dotnet_diagnostic.CA1717.severity = suggestion # Only FlagsAttribute enums should have plural names
+
+# Usage Rules
+dotnet_diagnostic.CA2200.severity = warning    # Rethrow to preserve stack details
+dotnet_diagnostic.CA2208.severity = warning    # Instantiate argument exceptions correctly
+dotnet_diagnostic.CA2211.severity = warning    # Non-constant fields should not be visible
+dotnet_diagnostic.CA2213.severity = warning    # Disposable fields should be disposed
+dotnet_diagnostic.CA2214.severity = warning    # Do not call overridable methods in constructors
+dotnet_diagnostic.CA2215.severity = warning    # Dispose methods should call base class dispose
+dotnet_diagnostic.CA2216.severity = warning    # Disposable types should declare finalizer
+dotnet_diagnostic.CA2217.severity = warning    # Do not mark enums with FlagsAttribute
+dotnet_diagnostic.CA2218.severity = warning    # Override GetHashCode on overriding Equals
+dotnet_diagnostic.CA2219.severity = warning    # Do not raise exceptions in finally clauses
+dotnet_diagnostic.CA2224.severity = warning    # Override Equals on overloading operator equals
+dotnet_diagnostic.CA2225.severity = suggestion # Operator overloads have named alternates
+dotnet_diagnostic.CA2226.severity = warning    # Operators should have symmetrical overloads
+dotnet_diagnostic.CA2227.severity = suggestion # Collection properties should be read only
+dotnet_diagnostic.CA2229.severity = warning    # Implement serialization constructors
+dotnet_diagnostic.CA2231.severity = warning    # Overload operator equals on overriding value type Equals
+
+# Async Rules
+dotnet_diagnostic.VSTHRD100.severity = warning # Avoid async void
+dotnet_diagnostic.VSTHRD101.severity = warning # Avoid unsupported async delegates
+dotnet_diagnostic.VSTHRD102.severity = warning # Implement internal logic asynchronously
+dotnet_diagnostic.VSTHRD103.severity = warning # Call async methods when in an async method
+dotnet_diagnostic.VSTHRD104.severity = warning # Offer async option
+dotnet_diagnostic.VSTHRD105.severity = warning # Avoid method overloads that assume TaskScheduler.Current
+dotnet_diagnostic.VSTHRD106.severity = warning # Use InvokeAsync to raise async events
+dotnet_diagnostic.VSTHRD107.severity = warning # Await Task within using expression
+dotnet_diagnostic.VSTHRD108.severity = warning # Assert thread affinity unconditionally
+dotnet_diagnostic.VSTHRD109.severity = warning # Switch instead of assert in async methods
+dotnet_diagnostic.VSTHRD110.severity = warning # Observe result of async calls
+dotnet_diagnostic.VSTHRD111.severity = warning # Use ConfigureAwait(bool)
+dotnet_diagnostic.VSTHRD112.severity = warning # Implement System.IAsyncDisposable

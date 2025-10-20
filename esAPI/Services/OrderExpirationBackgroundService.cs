@@ -1,12 +1,23 @@
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+
 namespace esAPI.Services
 {
-    public class OrderExpirationBackgroundService(
-        IServiceProvider serviceProvider,
-        ILogger<OrderExpirationBackgroundService> logger) : BackgroundService
+    public class OrderExpirationBackgroundService : BackgroundService
     {
-        private readonly IServiceProvider _serviceProvider = serviceProvider;
-        private readonly ILogger<OrderExpirationBackgroundService> _logger = logger;
-        private readonly TimeSpan _checkInterval = TimeSpan.FromMinutes(1); // Check every minute
+        private readonly IServiceProvider _serviceProvider;
+        private readonly ILogger<OrderExpirationBackgroundService> _logger;
+        private readonly TimeSpan _checkInterval = TimeSpan.FromMinutes(1);
+
+        public OrderExpirationBackgroundService(IServiceProvider serviceProvider, ILogger<OrderExpirationBackgroundService> logger)
+        {
+            _serviceProvider = serviceProvider;
+            _logger = logger;
+        }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
@@ -34,7 +45,7 @@ namespace esAPI.Services
                 await Task.Delay(_checkInterval, stoppingToken);
             }
 
-            _logger.LogInformation("Order Expiration Background Service is stopping.");
+            _logger.LogInformation("Order Expiration Background Service has stopped.");
         }
     }
 }

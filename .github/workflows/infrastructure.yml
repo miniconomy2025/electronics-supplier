@@ -1,0 +1,314 @@
+name: "Infrastructure Validation"
+
+# Temporarily disabled - uncomment to re-enable
+# on:
+#   push:
+#     paths:
+#       - 'infrastructure/**'
+#       - '.github/workflows/infrastructure.yml'
+#   pull_request:
+#     paths:
+#       - 'infrastructure/**'
+#       - '.github/workflows/infrastructure.yml'
+
+env:
+  TF_VERSION: '1.6.0'
+  AWS_REGION: 'af-south-1'
+
+jobs:
+  terraform-validate:
+    name: Terraform Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ env.TF_VERSION }}
+
+    - name: Terraform Format Check
+      working-directory: ./infrastructure
+      run: |
+        echo "🎨 Checking Terraform formatting..."
+        terraform fmt -check -recursive
+        if [ $? -eq 0 ]; then
+          echo "✅ All Terraform files are properly formatted"
+        else
+          echo "❌ Some Terraform files need formatting"
+          echo "Run 'terraform fmt -recursive' to fix formatting issues"
+          exit 1
+        fi
+
+    - name: Terraform Init
+      working-directory: ./infrastructure
+      run: |
+        echo "⚙️ Initializing Terraform..."
+        # Initialize without backend for validation
+        terraform init -backend=false
+
+    - name: Terraform Validate
+      working-directory: ./infrastructure
+      run: |
+        echo "✅ Validating Terraform configuration..."
+        terraform validate
+        
+        if [ $? -eq 0 ]; then
+          echo "✅ Terraform configuration is valid"
+        else
+          echo "❌ Terraform configuration has errors"
+          exit 1
+        fi
+
+    - name: Terraform Security Scan (tfsec)
+      working-directory: ./infrastructure
+      run: |
+        echo "🔒 Running Terraform security scan..."
+        
+        # Install tfsec
+        curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
+        
+        # Run security scan
+        tfsec . --format json --out tfsec-results.json || true
+        tfsec . --format lovely
+        
+        # Check for high/critical issues
+        if [ -f tfsec-results.json ]; then
+          HIGH_CRITICAL=$(jq '[.results[] | select(.severity == "HIGH" or .severity == "CRITICAL")] | length' tfsec-results.json)
+          
+          if [ "$HIGH_CRITICAL" -gt 0 ]; then
+            echo "❌ Found $HIGH_CRITICAL high/critical security issues"
+            echo "Please review and fix security issues before proceeding"
+            exit 1
+          else
+            echo "✅ No high/critical security issues found"
+          fi
+        fi
+
+    - name: Upload security scan results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: terraform-security-scan
+        path: infrastructure/tfsec-results.json
+
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    needs: terraform-validate
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ env.TF_VERSION }}
+
+    - name: Configure AWS credentials (if available)
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      run: |
+        if [ -n "$AWS_ACCESS_KEY_ID" ] && [ -n "$AWS_SECRET_ACCESS_KEY" ]; then
+          echo "✅ AWS credentials configured"
+          echo "TERRAFORM_PLAN=true" >> $GITHUB_ENV
+        else
+          echo "⚠️ AWS credentials not available - skipping terraform plan"
+          echo "TERRAFORM_PLAN=false" >> $GITHUB_ENV
+        fi
+
+    - name: Terraform Plan
+      if: env.TERRAFORM_PLAN == 'true'
+      working-directory: ./infrastructure
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      run: |
+        echo "📋 Running Terraform plan..."
+        
+        # Initialize with backend config (if secrets are available)
+        if [ -f backend.config ]; then
+          terraform init -backend-config=backend.config
+        else
+          terraform init
+        fi
+        
+        # Create terraform.tfvars for planning
+        cat > terraform.tfvars << EOF
+        project_name = "electronics-supplier-test"
+        aws_region = "${{ env.AWS_REGION }}"
+        vpc_cidr = "10.0.0.0/16"
+        ec2_instance_count = 1
+        rds_enabled = false
+        db_username = "postgres"
+        db_password = "testpassword"
+        key_name = "test-key"
+        backend_bucket = "test-bucket"
+        backend_dynamodb_table = "test-table"
+        EOF
+        
+        # Run plan
+        terraform plan -var-file=terraform.tfvars -out=tfplan
+        
+        # Save plan output for PR comment
+        terraform show -no-color tfplan > tfplan.txt
+
+    - name: Comment PR with Terraform Plan
+      if: env.TERRAFORM_PLAN == 'true' && github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const planOutput = fs.readFileSync('infrastructure/tfplan.txt', 'utf8');
+          
+          // Truncate if too long
+          const maxLength = 60000;
+          const truncatedOutput = planOutput.length > maxLength 
+            ? planOutput.substring(0, maxLength) + '\n... (output truncated)'
+            : planOutput;
+          
+          const body = `## 🏗️ Terraform Plan Results
+          
+          <details>
+          <summary>Click to expand Terraform plan</summary>
+          
+          \`\`\`
+          ${truncatedOutput}
+          \`\`\`
+          
+          </details>
+          
+          ${planOutput.includes('No changes') ? '✅ No infrastructure changes detected' : '⚠️ Infrastructure changes detected - please review carefully'}`;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: body
+          });
+
+  cost-estimation:
+    name: AWS Cost Estimation
+    runs-on: ubuntu-latest
+    needs: terraform-validate
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ env.TF_VERSION }}
+
+    - name: Install Infracost
+      run: |
+        # Install Infracost for cost estimation
+        curl -fsSL https://raw.githubusercontent.com/infracost/infracost/master/scripts/install.sh | sh
+
+    - name: Generate cost estimate
+      working-directory: ./infrastructure
+      run: |
+        echo "💰 Generating AWS cost estimate..."
+        
+        # Initialize Terraform
+        terraform init -backend=false
+        
+        # Create sample tfvars for cost estimation
+        cat > cost-estimation.tfvars << EOF
+        project_name = "electronics-supplier"
+        aws_region = "${{ env.AWS_REGION }}"
+        vpc_cidr = "10.0.0.0/16"
+        ec2_instance_count = 1
+        rds_enabled = true
+        db_username = "postgres"
+        db_password = "placeholder"
+        key_name = "placeholder"
+        backend_bucket = "placeholder"
+        backend_dynamodb_table = "placeholder"
+        EOF
+        
+        # Generate plan for cost estimation
+        terraform plan -var-file=cost-estimation.tfvars -out=cost-plan
+        
+        # Run Infracost (will work even without API key for basic estimates)
+        infracost breakdown --path cost-plan --format table > cost-estimate.txt || true
+        
+        echo "📊 Estimated monthly costs:"
+        cat cost-estimate.txt || echo "Cost estimation not available"
+
+    - name: Upload cost estimate
+      uses: actions/upload-artifact@v4
+      with:
+        name: aws-cost-estimate
+        path: infrastructure/cost-estimate.txt
+
+  documentation-check:
+    name: Infrastructure Documentation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Check documentation
+      run: |
+        echo "📚 Checking infrastructure documentation..."
+        
+        # Check for required documentation files
+        docs=(
+          "infrastructure/README.md"
+          "infrastructure/variables.tf"
+          "infrastructure/outputs.tf"
+        )
+        
+        for doc in "${docs[@]}"; do
+          if [ -f "$doc" ]; then
+            echo "✅ $doc exists"
+          else
+            echo "❌ $doc is missing"
+            exit 1
+          fi
+        done
+        
+        # Check if variables have descriptions
+        echo "Checking variable descriptions..."
+        undocumented=$(grep -n 'variable\s*"' infrastructure/variables.tf | while read line; do
+          var_name=$(echo "$line" | sed 's/.*variable\s*"\([^"]*\)".*/\1/')
+          line_num=$(echo "$line" | cut -d: -f1)
+          
+          # Check if description exists in the next few lines
+          if ! sed -n "${line_num},$((line_num + 10))p" infrastructure/variables.tf | grep -q "description"; then
+            echo "$var_name (line $line_num)"
+          fi
+        done)
+        
+        if [ -n "$undocumented" ]; then
+          echo "⚠️ Variables without descriptions:"
+          echo "$undocumented"
+        else
+          echo "✅ All variables have descriptions"
+        fi
+        
+        # Check if outputs have descriptions
+        echo "Checking output descriptions..."
+        undocumented_outputs=$(grep -n 'output\s*"' infrastructure/outputs.tf | while read line; do
+          output_name=$(echo "$line" | sed 's/.*output\s*"\([^"]*\)".*/\1/')
+          line_num=$(echo "$line" | cut -d: -f1)
+          
+          if ! sed -n "${line_num},$((line_num + 10))p" infrastructure/outputs.tf | grep -q "description"; then
+            echo "$output_name (line $line_num)"
+          fi
+        done)
+        
+        if [ -n "$undocumented_outputs" ]; then
+          echo "⚠️ Outputs without descriptions:"
+          echo "$undocumented_outputs"
+        else
+          echo "✅ All outputs have descriptions"
+        fi

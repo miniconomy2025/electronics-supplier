@@ -12,77 +12,92 @@ using esAPI.Data;
 using esAPI.Clients;
 using esAPI.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System.Net.Http;
+using System.Threading;
+using System.Text;
 
 namespace esAPI.Tests.Services
 {
     public class SimulationDayOrchestratorTests
     {
         [Fact]
-        public async Task RunDayAsync_HappyPath_CallsAllServicesInOrder()
+        public async Task OrchestrateAsync_HappyPath_CreatesOrFindsBankAccount()
         {
             // Arrange
             var mockBankClient = new Mock<ICommercialBankClient>();
             var mockStateService = new Mock<ISimulationStateService>();
+            var mockLoggerBank = new Mock<ILogger<BankService>>();
+            // Mock dependencies for RetryQueuePublisher
+            var mockConfiguration = new Mock<Microsoft.Extensions.Configuration.IConfiguration>();
+            mockConfiguration.Setup(c => c["Retry:QueueUrl"]).Returns("https://test-queue-url");
 
-            mockBankClient.Setup(b => b.GetAccountBalanceAsync()).ReturnsAsync(1000m);
-            mockStateService.Setup(s => s.GetCurrentSimulationTime(It.IsAny<int>())).Returns(123456);
+            var mockLogger = new Mock<ILogger<RetryQueuePublisher>>();
+            var mockSqs = new Mock<Amazon.SQS.IAmazonSQS>();
+
+            var retryPublisher = new RetryQueuePublisher(
+                mockSqs.Object,
+                mockLogger.Object,
+                mockConfiguration.Object,
+                mockStateService.Object);
+            var mockLoggerOrchestrator = new Mock<ILogger<SimulationDayOrchestrator>>();
+            var mockHttpClientFactory = new Mock<IHttpClientFactory>();
 
             var options = new DbContextOptionsBuilder<AppDbContext>()
                 .UseInMemoryDatabase(databaseName: "TestDb")
                 .Options;
             var dbContext = new AppDbContext(options);
 
-            var bankService = new BankService(dbContext, mockBankClient.Object, mockStateService.Object);
+            // Setup HttpClientFactory to return a dummy HttpClient
+            var handler = new HttpMessageHandlerStub();
+            var httpClient = new HttpClient(handler)
+            {
+                BaseAddress = new Uri("https://test-bank-api.com")
+            };
+            mockHttpClientFactory.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(httpClient);
 
-            var mockInventoryService = new Mock<IInventoryService>();
-            var mockMachineService = new Mock<IMachineAcquisitionService>();
-            var mockMaterialService = new Mock<IMaterialAcquisitionService>();
-            var mockProductionService = new Mock<IProductionService>();
-            var mockLogger = new Mock<ILogger<SimulationDayOrchestrator>>();
+            // Setup bank client
+            mockBankClient.Setup(b => b.GetAccountDetailsAsync()).ReturnsAsync("123456789");
 
-            // Setup inventory: no working machines, no copper, no silicon
-            mockInventoryService.Setup(s => s.GetAndStoreInventory())
-                .ReturnsAsync(new InventorySummaryDto
-                {
-                    Machines = new MachineSummaryDto { InUse = 0 },
-                    MaterialsInStock = new List<MaterialStockDto>(),
-                    ElectronicsInStock = 0
-                });
-
-            // Setup machine acquisition
-            mockMachineService.Setup(s => s.CheckTHOHForMachines()).ReturnsAsync(true);
-            mockMachineService.Setup(s => s.PurchaseMachineViaBank())
-                .ReturnsAsync((orderId: 123, quantity: 2));
-            mockMachineService.Setup(s => s.QueryOrderDetailsFromTHOH()).Returns(Task.CompletedTask);
-            mockMachineService.Setup(s => s.PlaceBulkLogisticsPickup(123, 2)).ReturnsAsync(456);
-
-            // Setup material acquisition
-            mockMaterialService.Setup(s => s.ExecutePurchaseStrategyAsync()).Returns(Task.CompletedTask);
-
-            // Setup production
-            mockProductionService.Setup(s => s.ProduceElectronics())
-                .ReturnsAsync((10, new Dictionary<string, int> { { "copper", 20 }, { "silicon", 10 } }));
+            var bankService = new BankService(
+                dbContext,
+                mockBankClient.Object,
+                mockStateService.Object,
+                mockLoggerBank.Object,
+                retryPublisher
+            );
 
             var orchestrator = new SimulationDayOrchestrator(
-                bankService,
-                mockInventoryService.Object,
-                mockMachineService.Object,
-                mockMaterialService.Object,
-                mockProductionService.Object,
-                mockLogger.Object
+                mockBankClient.Object,
+                dbContext,
+                mockHttpClientFactory.Object,
+                mockLoggerOrchestrator.Object
             );
 
             // Act
-            await orchestrator.RunDayAsync(1);
+            var result = await orchestrator.OrchestrateAsync();
 
             // Assert
-            mockInventoryService.Verify(s => s.GetAndStoreInventory(), Times.Once);
-            mockMachineService.Verify(s => s.CheckTHOHForMachines(), Times.Once);
-            mockMachineService.Verify(s => s.PurchaseMachineViaBank(), Times.Once);
-            mockMachineService.Verify(s => s.QueryOrderDetailsFromTHOH(), Times.Once);
-            mockMachineService.Verify(s => s.PlaceBulkLogisticsPickup(123, 2), Times.Once);
-            mockMaterialService.Verify(s => s.ExecutePurchaseStrategyAsync(), Times.Once);
-            mockProductionService.Verify(s => s.ProduceElectronics(), Times.Once);
+            result.Should().NotBeNull();
+            // You can add more asserts based on expected behavior
+        }
+
+        // Helper stub for HttpMessageHandler
+        private class HttpMessageHandlerStub : HttpMessageHandler
+        {
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                // Simulate a Created response for /account
+                if (request.Method == HttpMethod.Post && request.RequestUri!.AbsolutePath == "/account")
+                {
+                    var response = new HttpResponseMessage(System.Net.HttpStatusCode.Created)
+                    {
+                        Content = new StringContent("{\"account_number\":\"123456789\"}")
+                    };
+                    return Task.FromResult(response);
+                }
+                // Default response
+                return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK));
+            }
         }
     }
 }

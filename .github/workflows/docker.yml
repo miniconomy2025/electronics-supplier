@@ -1,0 +1,224 @@
+name: "Docker Build & Push"
+
+on:
+  push:
+    branches: [ main, dev ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, dev ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,format=short
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push Docker image
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/amd64,linux/arm64
+
+    - name: Generate SBOM
+      if: github.event_name != 'pull_request'
+      uses: anchore/sbom-action@v0
+      with:
+        image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        format: spdx-json
+        output-file: sbom.spdx.json
+
+    - name: Upload SBOM
+      if: github.event_name != 'pull_request'
+      uses: actions/upload-artifact@v4
+      with:
+        name: sbom
+        path: sbom.spdx.json
+
+    - name: Run Trivy vulnerability scanner
+      if: github.event_name != 'pull_request'
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results
+      if: github.event_name != 'pull_request'
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  container-tests:
+    name: Test Container
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.event_name == 'pull_request'
+    
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install PostgreSQL client
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y postgresql-client
+
+    - name: Build test image
+      run: |
+        docker build -t test-app:latest .
+
+    - name: Run container smoke tests
+      run: |
+        # Wait for PostgreSQL to be ready
+        echo "🗄️ Waiting for PostgreSQL to be ready..."
+        until pg_isready -h localhost -p 5432 -U postgres; do
+          echo "Waiting for PostgreSQL..."
+          sleep 2
+        done
+        echo "✅ PostgreSQL is ready"
+
+        # Create basic database structure (simplified for container testing)
+        echo "🗄️ Setting up test database..."
+        PGPASSWORD=testpassword psql -h localhost -p 5432 -U postgres -d test_db -c "
+          CREATE TABLE IF NOT EXISTS companies (
+            id SERIAL PRIMARY KEY,
+            company_name VARCHAR(255) UNIQUE NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+          INSERT INTO companies (company_name) VALUES ('test-client') ON CONFLICT (company_name) DO NOTHING;
+        " || echo "⚠️ Database setup failed, continuing with container test..."
+
+        # Start the container
+        echo "🚀 Starting container..."
+        docker run -d --name test-container \
+          --network host \
+          -e ConnectionStrings__DefaultConnection="Host=localhost;Port=5432;Database=test_db;Username=postgres;Password=testpassword" \
+          -e ExternalApis__CommercialBank="https://httpbin.org/status/200" \
+          -e ExternalApis__BulkLogistics="https://httpbin.org/status/200" \
+          -e ExternalApis__THOH="https://httpbin.org/status/200" \
+          -e ExternalApis__Recycler="https://httpbin.org/status/200" \
+          -e ExternalApis__ClientId="test-client" \
+          -e ASPNETCORE_ENVIRONMENT="Testing" \
+          -e ASPNETCORE_URLS="http://+:8080" \
+          -e Logging__LogLevel__Default="Information" \
+          -e Logging__LogLevel__Microsoft.AspNetCore="Warning" \
+          test-app:latest
+
+        # Wait for container to start and application to be ready
+        echo "⏳ Waiting for application to start..."
+        for i in {1..60}; do
+          if docker ps | grep -q test-container; then
+            echo "Container is running (attempt $i/60), checking application health..."
+            
+            # Try different endpoints to debug
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health 2>/dev/null || echo "000")
+            echo "Health endpoint HTTP status: $HTTP_STATUS"
+            
+            if [ "$HTTP_STATUS" = "200" ]; then
+              echo "✅ Application is responding"
+              break
+            elif [ "$HTTP_STATUS" = "401" ]; then
+              echo "⚠️ Health endpoint returned 401 - middleware issue?"
+            elif [ "$HTTP_STATUS" = "000" ]; then
+              echo "⏳ Connection refused - application still starting..."
+            else
+              echo "⚠️ Unexpected status code: $HTTP_STATUS"
+            fi
+          else
+            echo "❌ Container stopped unexpectedly"
+            echo "Container logs:"
+            docker logs test-container
+            exit 1
+          fi
+          
+          if [ $i -eq 60 ]; then
+            echo "❌ Application failed to start within timeout"
+            echo "Final container logs:"
+            docker logs test-container
+            echo ""
+            echo "Container inspect:"
+            docker inspect test-container
+            exit 1
+          fi
+          sleep 2
+        done
+
+        # Test health endpoint
+        echo "🏥 Testing health endpoint..."
+        curl -f http://localhost:8080/health || exit 1
+        echo "✅ Health endpoint working"
+
+        # Check container logs for critical errors (but don't fail on warnings)
+        echo "📋 Checking container logs for critical errors..."
+        if docker logs test-container 2>&1 | grep -E "(Exception|Error|Fatal)" | grep -v -E "(Warning|Information|Debug)"; then
+          echo "❌ Critical errors found in container logs"
+          docker logs test-container
+          exit 1
+        fi
+
+        echo "✅ Container smoke tests passed"
+
+    - name: Cleanup
+      if: always()
+      run: |
+        docker stop test-container || true
+        docker rm test-container || true

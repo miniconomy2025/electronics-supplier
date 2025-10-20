@@ -6,10 +6,16 @@ namespace esAPI.Clients
 
         protected readonly HttpClient _client;
 
-        public BaseClient(IHttpClientFactory factory, string clientName)
+        protected BaseClient(IHttpClientFactory factory, string clientName)
         {
             _factory = factory;
             _client = _factory.CreateClient(clientName);
+
+            // Ensure Client-Id header is set for outgoing requests
+            if (!_client.DefaultRequestHeaders.Contains("Client-Id"))
+            {
+                _client.DefaultRequestHeaders.Add("Client-Id", "electronics-supplier");
+            }
         }
 
         protected async Task<TResponse?> GetAsync<TResponse>(string requestUri)
@@ -32,7 +38,7 @@ namespace esAPI.Clients
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    
+                    Console.WriteLine($"External API error response (Status {(int)response.StatusCode}): {errorContent}");
                     return default;
                 }
                 return await response.Content.ReadFromJsonAsync<TResponse>();
@@ -42,5 +48,6 @@ namespace esAPI.Clients
                 return default;
             }
         }
+
     }
 }
