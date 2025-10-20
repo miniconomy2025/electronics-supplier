@@ -2,19 +2,168 @@ name: Unit Tests
 
 on:
   push:
-    branches: [ main, dev, tevlen/testing ]
+    branches: [ main, dev, tevlen/testing, tevlen/quick ]
   pull_request:
-    branches: [ main, dev, tevlen/testing ]
+    branches: [ main, dev, tevlen/testing, tevlen/quick ]
 
 permissions:
-  contents: read
+  contents: write  # Allow writing to repo for README updates
   actions: read
   checks: write
+  pull-requests: write  # Allow commenting on PRs
 
 jobs:
+  lint:
+    name: Code Quality & Linting
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Install dotnet tools
+      run: |
+        dotnet tool install -g dotnet-format
+        dotnet tool install -g security-scan
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Check code formatting
+      run: |
+        echo "🎨 Checking C# code formatting..."
+        dotnet format --verify-no-changes --verbosity diagnostic
+
+    - name: Run security analysis
+      run: |
+        echo "🔐 Running security analysis..."
+        dotnet list package --vulnerable --include-transitive 2>&1 | tee security-report.txt
+        
+        # Check if vulnerabilities were found
+        if grep -q "has the following vulnerable packages" security-report.txt; then
+          echo "❌ Security vulnerabilities found!"
+          cat security-report.txt
+          exit 1
+        else
+          echo "✅ No security vulnerabilities found"
+        fi
+
+    - name: Check file consistency
+      run: |
+        echo "📁 Checking file consistency..."
+        
+        # Check for files with inconsistent line endings
+        echo "Checking line endings..."
+        if find . -name "*.cs" -not -path "./.git/*" -exec file {} \; | grep -q CRLF; then
+          echo "⚠️ Found files with CRLF line endings"
+          find . -name "*.cs" -not -path "./.git/*" -exec file {} \; | grep CRLF
+        else
+          echo "✅ All C# files have consistent line endings"
+        fi
+        
+        # Check for trailing whitespace
+        echo "Checking for trailing whitespace..."
+        if find . -name "*.cs" -not -path "./.git/*" -exec grep -l " $" {} \; | head -10; then
+          echo "⚠️ Found files with trailing whitespace (showing first 10)"
+        else
+          echo "✅ No trailing whitespace found"
+        fi
+        
+        # Check for large files
+        echo "Checking for large files..."
+        find . -type f -size +1M -not -path "./.git/*" -not -path "./bin/*" -not -path "./obj/*" | head -5
+        
+        # Check for TODO/FIXME comments
+        echo "Checking for TODO/FIXME comments..."
+        TODO_COUNT=$(find . -name "*.cs" -not -path "./.git/*" -exec grep -l "TODO\|FIXME\|HACK" {} \; | wc -l)
+        echo "📝 Found ${TODO_COUNT} files with TODO/FIXME/HACK comments"
+
+    - name: Validate project files
+      run: |
+        echo "🔧 Validating project structure..."
+        
+        # Check for consistent .csproj formatting
+        find . -name "*.csproj" -exec echo "Checking {}" \; -exec xmllint --format {} --output /tmp/formatted.xml \; -exec diff {} /tmp/formatted.xml \;
+        
+        # Validate JSON files
+        echo "Validating JSON files..."
+        find . -name "*.json" -not -path "./.git/*" -not -path "./bin/*" -not -path "./obj/*" | while read file; do
+          if ! jq empty "$file" 2>/dev/null; then
+            echo "❌ Invalid JSON: $file"
+            exit 1
+          fi
+        done
+        echo "✅ All JSON files are valid"
+
+    - name: Upload linting results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: linting-results
+        path: |
+          security-report.txt
+
+    - name: Generate code quality report
+      if: always()
+      run: |
+        echo "📊 Generating code quality report..."
+        
+        # Create a comprehensive report
+        {
+          echo "# Code Quality Report"
+          echo "Generated on: $(date)"
+          echo ""
+          echo "## Summary"
+          echo "- 🎨 Code Formatting: $(if dotnet format --verify-no-changes --verbosity minimal > /dev/null 2>&1; then echo 'PASSED'; else echo 'FAILED'; fi)"
+          echo "- 🔐 Security Analysis: $(if [ ! -s security-report.txt ] || ! grep -q "vulnerable" security-report.txt; then echo 'PASSED'; else echo 'FAILED'; fi)"
+          echo "- 📁 File Consistency: CHECKED"
+          echo ""
+          echo "## Details"
+          
+          # Code metrics
+          echo "### Code Metrics"
+          TOTAL_CS_FILES=$(find . -name "*.cs" -not -path "./.git/*" -not -path "./bin/*" -not -path "./obj/*" | wc -l)
+          TOTAL_LINES=$(find . -name "*.cs" -not -path "./.git/*" -not -path "./bin/*" -not -path "./obj/*" -exec wc -l {} + | tail -1 | awk '{print $1}')
+          echo "- Total C# files: ${TOTAL_CS_FILES}"
+          echo "- Total lines of code: ${TOTAL_LINES}"
+          
+          # TODO/FIXME count
+          TODO_COUNT=$(find . -name "*.cs" -not -path "./.git/*" -not -path "./bin/*" -not -path "./obj/*" -exec grep -c "TODO\|FIXME\|HACK" {} + 2>/dev/null | awk -F: '{sum += $2} END {print sum+0}')
+          echo "- TODO/FIXME/HACK comments: ${TODO_COUNT}"
+          
+          echo ""
+          if [ -f security-report.txt ]; then
+            echo "### Security Report"
+            cat security-report.txt
+          fi
+        } > code-quality-report.md
+        
+        echo "✅ Code quality report generated"
+
+    - name: Upload linting and quality reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: linting-results
+        path: |
+          security-report.txt
+          code-quality-report.md
+
   unit-tests:
     name: Run Unit Tests
     runs-on: ubuntu-latest
+    needs: lint
+    outputs:
+      total-tests: ${{ steps.test-summary.outputs.total-tests }}
+      passed-tests: ${{ steps.test-summary.outputs.passed-tests }}
+      failed-tests: ${{ steps.test-summary.outputs.failed-tests }}
+      test-status: ${{ steps.test-summary.outputs.test-status }}
+      badge-color: ${{ steps.test-summary.outputs.badge-color }}
 
     steps:
     - name: Checkout code
@@ -39,13 +188,49 @@ jobs:
     - name: Build solution
       run: dotnet build --configuration Release --no-restore
 
-    - name: Run unit tests
+    - name: Run code analysis and linting
+      run: |
+        echo "🔍 Running C# code analysis..."
+        # Run dotnet format to check code formatting
+        dotnet format --verify-no-changes --verbosity diagnostic
+        
+        # Run code analysis for security and quality issues
+        dotnet build --configuration Release --verbosity normal /p:TreatWarningsAsErrors=false /p:RunAnalyzersDuringBuild=true
+
+    - name: Run unit tests with coverage
       run: |
         dotnet test --configuration Release --no-build \
           --logger trx --logger "console;verbosity=detailed" \
           --collect:"XPlat Code Coverage" \
           --results-directory ./TestResults \
           --filter "Category!=Integration"
+
+    - name: Generate test summary
+      id: test-summary
+      if: always()
+      run: |
+        # Parse test results
+        TOTAL_TESTS=$(find ./TestResults -name "*.trx" -exec grep -o 'total="[0-9]*"' {} \; | sed 's/total="//' | sed 's/"//' | awk '{sum += $1} END {print sum}')
+        PASSED_TESTS=$(find ./TestResults -name "*.trx" -exec grep -o 'passed="[0-9]*"' {} \; | sed 's/passed="//' | sed 's/"//' | awk '{sum += $1} END {print sum}')
+        FAILED_TESTS=$(find ./TestResults -name "*.trx" -exec grep -o 'failed="[0-9]*"' {} \; | sed 's/failed="//' | sed 's/"//' | awk '{sum += $1} END {print sum}')
+        
+        # Handle empty values
+        TOTAL_TESTS=${TOTAL_TESTS:-0}
+        PASSED_TESTS=${PASSED_TESTS:-0}
+        FAILED_TESTS=${FAILED_TESTS:-0}
+        
+        echo "total-tests=${TOTAL_TESTS}" >> $GITHUB_OUTPUT
+        echo "passed-tests=${PASSED_TESTS}" >> $GITHUB_OUTPUT
+        echo "failed-tests=${FAILED_TESTS}" >> $GITHUB_OUTPUT
+        
+        # Create status
+        if [ "${FAILED_TESTS}" -eq 0 ]; then
+          echo "test-status=passing" >> $GITHUB_OUTPUT
+          echo "badge-color=brightgreen" >> $GITHUB_OUTPUT
+        else
+          echo "test-status=failing" >> $GITHUB_OUTPUT
+          echo "badge-color=red" >> $GITHUB_OUTPUT
+        fi
 
     - name: Upload test results
       uses: actions/upload-artifact@v4
@@ -61,4 +246,46 @@ jobs:
         name: Unit Test Results
         path: './TestResults/*.trx'
         reporter: dotnet-trx
-        fail-on-error: true 
+        fail-on-error: true
+
+    - name: Add test results to PR comment
+      uses: actions/github-script@v7
+      if: always() && github.event_name == 'pull_request'
+      with:
+        script: |
+          const totalTests = '${{ steps.test-summary.outputs.total-tests }}';
+          const passedTests = '${{ steps.test-summary.outputs.passed-tests }}';
+          const failedTests = '${{ steps.test-summary.outputs.failed-tests }}';
+          const status = '${{ steps.test-summary.outputs.test-status }}';
+          const lintStatus = '${{ needs.lint.result }}';
+          
+          const statusEmoji = status === 'passing' ? '✅' : '❌';
+          const lintEmoji = lintStatus === 'success' ? '✅' : '❌';
+          
+          const body = `## 🔍 Code Quality & Test Results
+          
+          ### Linting & Code Analysis
+          | Check | Status |
+          |-------|--------|
+          | Code Formatting | ${lintEmoji} ${lintStatus === 'success' ? 'Passed' : 'Failed'} |
+          | Security Analysis | ${lintEmoji} ${lintStatus === 'success' ? 'No vulnerabilities' : 'Issues found'} |
+          | File Consistency | ${lintEmoji} ${lintStatus === 'success' ? 'Passed' : 'Issues found'} |
+          
+          ### Test Results
+          | Metric | Value |
+          |--------|-------|
+          | Total Tests | ${totalTests} |
+          | Passed | ${passedTests} |
+          | Failed | ${failedTests} |
+          | Status | ${status === 'passing' ? '✅ Passing' : '❌ Failing'} |
+          
+          ${lintStatus !== 'success' ? '⚠️ Please fix linting issues before merging.' : ''}
+          ${failedTests > 0 ? '⚠️ Please fix failing tests before merging.' : ''}
+          ${lintStatus === 'success' && failedTests == 0 ? '🎉 All checks are passing!' : ''}`;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: body
+          }); 
