@@ -127,14 +127,6 @@ jobs:
         done
         echo "✅ All JSON files are valid"
 
-    - name: Upload linting results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: linting-results
-        path: |
-          security-report.txt
-
     - name: Generate code quality report
       if: always()
       run: |
