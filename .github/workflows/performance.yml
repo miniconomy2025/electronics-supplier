@@ -1,0 +1,492 @@
+name: "Performance Testing"
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main, dev ]
+  schedule:
+    # Run only smoke tests nightly (AWS-safe)
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Type of performance test to run'
+        required: true
+        default: 'smoke'
+        type: choice
+        options:
+        - smoke
+        - load  
+        - stress
+        - spike
+        - endurance
+        - all
+      target_environment:
+        description: 'Target environment for testing'
+        required: true
+        default: 'local'
+        type: choice
+        options:
+        - local
+        - staging
+        - production
+      enable_load_tests:
+        description: 'Enable load/stress tests (USE WITH CAUTION on AWS)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  BASE_URL: http://localhost:5000
+
+jobs:
+  # Smoke test runs on every PR - quick validation (AWS-safe)
+  smoke-test:
+    name: Smoke Test (AWS-Safe Validation)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.event.inputs.test_type == 'smoke' || github.event.inputs.test_type == 'all'
+    
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: perftest
+          POSTGRES_DB: perf_test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Install k6
+      run: |
+        sudo gpg -k
+        sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+        echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+        sudo apt-get update
+        sudo apt-get install k6
+
+    - name: ⚠️ AWS Safety Check
+      run: |
+        echo "🔒 AWS Performance Testing Safety Notice"
+        echo "======================================="
+        echo "This smoke test uses minimal load (5 users, 30s) to avoid AWS rate limiting."
+        echo "For load testing on AWS infrastructure:"
+        echo "- Contact AWS Support for load testing approval"
+        echo "- Use dedicated test environments"
+        echo "- Implement rate limiting and circuit breakers"
+        echo "- Monitor CloudWatch for throttling"
+        echo ""
+        echo "Target: ${{ env.BASE_URL }}"
+        echo "Test Type: Smoke (AWS-safe)"
+
+    - name: Build and start API
+      env:
+        ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=perf_test_db;Username=postgres;Password=perftest"
+        ExternalApis__CommercialBank: "https://httpbin.org/status/200"
+        ExternalApis__BulkLogistics: "https://httpbin.org/status/200"
+        ExternalApis__THOH: "https://httpbin.org/status/200"
+        ExternalApis__Recycler: "https://httpbin.org/status/200"
+        ASPNETCORE_ENVIRONMENT: "Testing"
+      run: |
+        dotnet build --configuration Release
+        dotnet run --project esAPI --configuration Release &
+        API_PID=$!
+        echo "API_PID=$API_PID" >> $GITHUB_ENV
+        
+        # Wait for API to be ready
+        echo "Waiting for API to start..."
+        for i in {1..60}; do
+          if curl -s http://localhost:5000/health >/dev/null 2>&1; then
+            echo "✅ API is ready"
+            break
+          fi
+          if [ $i -eq 60 ]; then
+            echo "❌ API failed to start"
+            exit 1
+          fi
+          sleep 2
+        done
+
+    - name: Run AWS-safe smoke test
+      run: |
+        cd performance-tests
+        echo "🚀 Running AWS-safe smoke test (5 users, 30s, minimal load)"
+        k6 run --out json=smoke-results.json smoke-test.js
+
+    - name: Upload smoke test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: smoke-test-results
+        path: |
+          performance-tests/smoke-results.json
+          performance-tests/smoke-test-summary.json
+
+    - name: Comment on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          try {
+            const results = JSON.parse(fs.readFileSync('performance-tests/smoke-results.json', 'utf8'));
+            const passed = Object.values(results.thresholds).every(t => t.ok);
+            const avgResponseTime = results.metrics.http_req_duration.values.avg.toFixed(2);
+            const errorRate = (results.metrics.http_req_failed.values.rate * 100).toFixed(2);
+            
+            const body = `## 💨 Performance Smoke Test Results
+            
+            ${passed ? '✅ **PASSED** - API performance is acceptable' : '❌ **FAILED** - Performance issues detected'}
+            
+            ### Key Metrics
+            - **Average Response Time**: ${avgResponseTime}ms
+            - **Error Rate**: ${errorRate}%
+            - **Total Requests**: ${results.metrics.http_reqs.values.count}
+            
+            ### Thresholds
+            ${Object.entries(results.thresholds).map(([key, value]) => 
+              `- ${value.ok ? '✅' : '❌'} **${key}**: ${value.ok ? 'PASSED' : 'FAILED'}`
+            ).join('\n')}
+            
+            ${passed ? 
+              '🎉 Performance looks good! Ready for deployment.' : 
+              '⚠️ Please review performance issues before merging.'}`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+          } catch (error) {
+            console.log('Could not read smoke test results:', error);
+          }
+
+    - name: Cleanup
+      if: always()
+      run: |
+        if [ ! -z "$API_PID" ]; then
+          kill $API_PID || true
+        fi
+
+  # Load test - ONLY for local testing or with explicit approval
+  load-test:
+    name: Load Test (⚠️ AWS LOAD TEST - USE WITH CAUTION)
+    runs-on: ubuntu-latest
+    if: |
+      (github.event.inputs.enable_load_tests == 'true' && 
+       (github.event.inputs.test_type == 'load' || github.event.inputs.test_type == 'all')) ||
+      (github.event_name == 'workflow_dispatch' && 
+       github.event.inputs.target_environment == 'local' && 
+       (github.event.inputs.test_type == 'load' || github.event.inputs.test_type == 'all'))
+    
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: perftest
+          POSTGRES_DB: perf_test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Install k6
+      run: |
+        sudo gpg -k
+        sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+        echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+        sudo apt-get update
+        sudo apt-get install k6
+
+    - name: ⚠️ AWS Load Testing Warning
+      run: |
+        echo "🚨 AWS LOAD TESTING WARNING"
+        echo "==========================="
+        echo "Target Environment: ${{ github.event.inputs.target_environment || 'local' }}"
+        echo ""
+        echo "⚠️  BEFORE running load tests on AWS:"
+        echo "   1. Get approval from AWS Support"
+        echo "   2. Ensure you have AWS Shield Advanced if needed"
+        echo "   3. Monitor CloudWatch for throttling"
+        echo "   4. Have incident response plan ready"
+        echo "   5. Use dedicated test environment"
+        echo ""
+        echo "💡 For production testing, consider:"
+        echo "   - Synthetic monitoring (Datadog, New Relic)"
+        echo "   - Gradual traffic increase"
+        echo "   - Real user monitoring"
+        echo ""
+        if [ "${{ github.event.inputs.target_environment }}" = "production" ]; then
+          echo "🛑 PRODUCTION LOAD TESTING DETECTED"
+          echo "This is strongly discouraged without explicit approval!"
+          sleep 10
+        fi
+
+    - name: Build and start API
+      env:
+        ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=perf_test_db;Username=postgres;Password=perftest"
+        ExternalApis__CommercialBank: "https://httpbin.org/status/200"
+        ExternalApis__BulkLogistics: "https://httpbin.org/status/200"
+        ExternalApis__THOH: "https://httpbin.org/status/200"
+        ExternalApis__Recycler: "https://httpbin.org/status/200"
+        ASPNETCORE_ENVIRONMENT: "Testing"
+      run: |
+        dotnet build --configuration Release
+        dotnet run --project esAPI --configuration Release &
+        API_PID=$!
+        echo "API_PID=$API_PID" >> $GITHUB_ENV
+        
+        # Wait for API
+        for i in {1..60}; do
+          if curl -s http://localhost:5000/health >/dev/null 2>&1; then
+            echo "✅ API is ready for load testing"
+            break
+          fi
+          sleep 2
+        done
+
+    - name: Run load test
+      run: |
+        cd performance-tests
+        k6 run --out json=load-results.json load-test.js
+
+    - name: Upload load test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: load-test-results
+        path: |
+          performance-tests/load-results.json
+          performance-tests/performance-summary.json
+
+    - name: Cleanup
+      if: always()
+      run: |
+        if [ ! -z "$API_PID" ]; then
+          kill $API_PID || true
+        fi
+
+  # Comprehensive performance suite - LOCAL TESTING ONLY BY DEFAULT
+  performance-suite:
+    name: AWS-Safe Performance Suite
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'schedule' || 
+      (github.event_name == 'workflow_dispatch' && 
+       github.event.inputs.target_environment == 'local' && 
+       github.event.inputs.test_type == 'all')
+    
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: perftest
+          POSTGRES_DB: perf_test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    strategy:
+      matrix:
+        # Only smoke test by default for AWS safety
+        test: [smoke-test]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Install k6
+      run: |
+        sudo gpg -k
+        sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+        echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+        sudo apt-get update
+        sudo apt-get install k6
+
+    - name: AWS Safety Notice
+      run: |
+        echo "🔒 AWS-Safe Performance Testing"
+        echo "==============================="
+        echo "Running: ${{ matrix.test }}"
+        echo "Target: Local (CI environment)"
+        echo ""
+        echo "Note: Only smoke tests run automatically to prevent AWS issues."
+        echo "For comprehensive testing, use local environment with manual approval."
+
+    - name: Build and start API
+      env:
+        ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=perf_test_db;Username=postgres;Password=perftest"
+        ExternalApis__CommercialBank: "https://httpbin.org/status/200"
+        ExternalApis__BulkLogistics: "https://httpbin.org/status/200"
+        ExternalApis__THOH: "https://httpbin.org/status/200"
+        ExternalApis__Recycler: "https://httpbin.org/status/200"
+        ASPNETCORE_ENVIRONMENT: "Testing"
+      run: |
+        dotnet build --configuration Release
+        dotnet run --project esAPI --configuration Release &
+        API_PID=$!
+        echo "API_PID=$API_PID" >> $GITHUB_ENV
+        
+        # Wait for API
+        for i in {1..60}; do
+          if curl -s http://localhost:5000/health >/dev/null 2>&1; then
+            echo "✅ API ready for ${{ matrix.test }}"
+            break
+          fi
+          sleep 2
+        done
+
+    - name: Run performance test
+      run: |
+        cd performance-tests
+        echo "🚀 Running ${{ matrix.test }}..."
+        k6 run --out json=${{ matrix.test }}-results.json ${{ matrix.test }}.js
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: ${{ matrix.test }}-results
+        path: |
+          performance-tests/${{ matrix.test }}-results.json
+          performance-tests/${{ matrix.test }}-summary.json
+
+    - name: Cleanup
+      if: always()
+      run: |
+        if [ ! -z "$API_PID" ]; then
+          kill $API_PID || true
+        fi
+
+  # Generate performance report - AWS-safe summary
+  performance-report:
+    name: Generate AWS-Safe Performance Report
+    runs-on: ubuntu-latest
+    needs: [performance-suite]
+    if: always() && (github.event_name == 'schedule' || github.event.inputs.test_type == 'all')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download all test results
+      uses: actions/download-artifact@v4
+      with:
+        path: ./test-results
+
+    - name: Generate AWS-safe performance report
+      run: |
+        echo "# 📊 AWS-Safe Performance Testing Report" > performance-report.md
+        echo "Generated on: $(date)" >> performance-report.md
+        echo "" >> performance-report.md
+        echo "## 🔒 AWS Safety Notice" >> performance-report.md
+        echo "This report shows results from AWS-safe testing (smoke tests only)." >> performance-report.md
+        echo "For comprehensive load testing:" >> performance-report.md
+        echo "- Use local development environment" >> performance-report.md
+        echo "- Get AWS Support approval for production testing" >> performance-report.md
+        echo "- Consider synthetic monitoring alternatives" >> performance-report.md
+        echo "" >> performance-report.md
+        
+        # Check which tests we have results for
+        for test in smoke-test; do
+          if [ -f "./test-results/${test}-results/${test}-results.json" ]; then
+            echo "## ${test} Results (AWS-Safe)" >> performance-report.md
+            
+            # Extract key metrics using jq
+            if command -v jq &> /dev/null; then
+              results_file="./test-results/${test}-results/${test}-results.json"
+              avg_response=$(jq -r '.metrics.http_req_duration.values.avg' "$results_file" 2>/dev/null || echo "N/A")
+              p95_response=$(jq -r '.metrics.http_req_duration.values["p(95)"]' "$results_file" 2>/dev/null || echo "N/A")
+              error_rate=$(jq -r '.metrics.http_req_failed.values.rate' "$results_file" 2>/dev/null || echo "N/A")
+              total_requests=$(jq -r '.metrics.http_reqs.values.count' "$results_file" 2>/dev/null || echo "N/A")
+              
+              echo "- **Average Response Time**: ${avg_response}ms" >> performance-report.md
+              echo "- **95th Percentile**: ${p95_response}ms" >> performance-report.md
+              echo "- **Error Rate**: $(echo "$error_rate * 100" | bc -l 2>/dev/null || echo "$error_rate")%" >> performance-report.md
+              echo "- **Total Requests**: $total_requests" >> performance-report.md
+              echo "" >> performance-report.md
+            else
+              echo "Results available in artifacts" >> performance-report.md
+              echo "" >> performance-report.md
+            fi
+          else
+            echo "## ${test} - No Results" >> performance-report.md
+            echo "Test did not complete or results not found" >> performance-report.md
+            echo "" >> performance-report.md
+          fi
+        done
+        
+        echo "## 📈 AWS Performance Best Practices" >> performance-report.md
+        echo "- **Monitoring**: Use CloudWatch, X-Ray for performance insights" >> performance-report.md
+        echo "- **Auto-scaling**: Configure ECS/EKS auto-scaling based on metrics" >> performance-report.md
+        echo "- **Load Testing**: Use AWS Load Testing solution for approved testing" >> performance-report.md
+        echo "- **Synthetic Monitoring**: Consider Datadog Synthetics or similar" >> performance-report.md
+        echo "- **Real User Monitoring**: Implement RUM for production insights" >> performance-report.md
+        echo "" >> performance-report.md
+        
+        echo "## 🎯 Recommendations for AWS Deployment" >> performance-report.md
+        echo "- Set up CloudWatch alarms for response time and error rate" >> performance-report.md
+        echo "- Configure Application Load Balancer health checks" >> performance-report.md
+        echo "- Implement circuit breakers and retry logic" >> performance-report.md
+        echo "- Use AWS WAF to protect against traffic spikes" >> performance-report.md
+        echo "- Consider AWS Shield for DDoS protection" >> performance-report.md
+
+    - name: Upload performance report
+      uses: actions/upload-artifact@v4
+      with:
+        name: performance-report
+        path: performance-report.md
+
+    - name: Comment with report (if scheduled)
+      if: github.event_name == 'schedule'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          if (fs.existsSync('performance-report.md')) {
+            const report = fs.readFileSync('performance-report.md', 'utf8');
+            
+            // Create an issue with the performance report
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🔄 Nightly Performance Report - ${new Date().toISOString().split('T')[0]}`,
+              body: report,
+              labels: ['performance', 'automated-report']
+            });
+          }
