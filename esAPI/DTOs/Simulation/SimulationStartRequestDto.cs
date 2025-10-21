@@ -38,9 +38,11 @@ namespace esAPI.DTOs.Simulation
                     
                 if (long.TryParse(stringValue, out var result))
                     return result;
+                    
+                throw new JsonException($"Cannot convert string '{stringValue}' to long. Expected a valid integer.");
             }
             
-            throw new JsonException($"Cannot convert {reader.TokenType} to long");
+            throw new JsonException($"Cannot convert {reader.TokenType} to long. Expected a number or string containing a valid integer.");
         }
 
         public override void Write(Utf8JsonWriter writer, long? value, JsonSerializerOptions options)
