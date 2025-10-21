@@ -176,8 +176,8 @@ namespace esAPI.Controllers
                 
                 _logger.LogInformation("📋 Found {Count} tables: {Tables}", existingTables.Count, string.Join(", ", existingTables));
 
-                // Truncate tables individually to handle missing tables gracefully
-                var tablesToTruncate = new[]
+                // Define safe list of tables to truncate (prevents SQL injection)
+                var safeTableNames = new HashSet<string>
                 {
                     "material_supplies", "material_orders", "machines", "machine_orders",
                     "machine_ratios", "machine_details", "electronics", "electronics_orders",
@@ -185,14 +185,15 @@ namespace esAPI.Controllers
                     "pickup_requests"
                 };
 
-                foreach (var table in tablesToTruncate)
+                foreach (var table in safeTableNames)
                 {
+                    // Double validation: table must be in both our safe list AND exist in database
                     if (existingTables.Contains(table))
                     {
                         try
                         {
                             _logger.LogInformation("🗑️ Truncating table: {TableName}", table);
-                            // Table names are from predefined safe list, not user input
+                            // Safe: table name is validated against predefined whitelist
                             #pragma warning disable EF1002
                             await _context.Database.ExecuteSqlRawAsync($"TRUNCATE TABLE {table} RESTART IDENTITY CASCADE;");
                             #pragma warning restore EF1002
