@@ -183,6 +183,20 @@ namespace esAPI.Services
                 var supplier = await _context.Companies.FirstOrDefaultAsync(c => c.CompanyName.ToLower() == supplierName);
                 var material = await _context.Materials.FirstOrDefaultAsync(m => m.MaterialName.ToLower() == materialName.ToLower());
 
+                // Auto-create missing material if it doesn't exist
+                if (supplier != null && material == null)
+                {
+                    _logger.LogInformation($"[DB] Creating missing material: {materialName}");
+                    material = new Models.Material
+                    {
+                        MaterialName = materialName.ToLower(),
+                        PricePerKg = 10.0m // Default price
+                    };
+                    _context.Materials.Add(material);
+                    await _context.SaveChangesAsync();
+                    _logger.LogInformation($"[DB] Created material: {materialName} with ID {material.MaterialId}");
+                }
+
                 if (supplier != null && material != null)
                 {
                     var sim = _context.Simulations.FirstOrDefault(s => s.IsRunning);
