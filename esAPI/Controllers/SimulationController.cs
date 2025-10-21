@@ -164,19 +164,61 @@ namespace esAPI.Controllers
             // Clean up simulation data according to requirements
             _logger.LogInformation("🗑️ Cleaning up simulation data from database");
             
-            // Truncate most tables (excluding companies and lookup_values)
-            await _context.Database.ExecuteSqlRawAsync(@"
-                TRUNCATE TABLE material_supplies, material_orders, machines, machine_orders, 
-                              machine_ratios, machine_details, electronics, electronics_orders, 
-                              simulation, disasters, bank_balance_snapshots, payments, pickup_requests,
-                              materials, machine_statuses, electronics_statuses, order_statuses
-                RESTART IDENTITY CASCADE;");
-            
-            // Clear bank account numbers from companies table but keep company names
-            _logger.LogInformation("🏢 Clearing bank account numbers from companies table");
-            await _context.Database.ExecuteSqlRawAsync("UPDATE companies SET bank_account_number = NULL;");
-            
-            _logger.LogInformation("✅ All simulation data cleared from database (company names and lookup values preserved)");
+            try
+            {
+                // First check which tables exist
+                _logger.LogInformation("🔍 Checking which tables exist in database");
+                var existingTables = await _context.Database.SqlQueryRaw<string>(@"
+                    SELECT table_name 
+                    FROM information_schema.tables 
+                    WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+                ").ToListAsync();
+                
+                _logger.LogInformation("📋 Found {Count} tables: {Tables}", existingTables.Count, string.Join(", ", existingTables));
+
+                // Truncate tables individually to handle missing tables gracefully
+                var tablesToTruncate = new[]
+                {
+                    "material_supplies", "material_orders", "machines", "machine_orders",
+                    "machine_ratios", "machine_details", "electronics", "electronics_orders",
+                    "simulation", "disasters", "bank_balance_snapshots", "payments", 
+                    "pickup_requests"
+                };
+
+                foreach (var table in tablesToTruncate)
+                {
+                    if (existingTables.Contains(table))
+                    {
+                        try
+                        {
+                            _logger.LogInformation("🗑️ Truncating table: {TableName}", table);
+                            // Table names are from predefined safe list, not user input
+                            #pragma warning disable EF1002
+                            await _context.Database.ExecuteSqlRawAsync($"TRUNCATE TABLE {table} RESTART IDENTITY CASCADE;");
+                            #pragma warning restore EF1002
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning("⚠️ Failed to truncate table {TableName}: {Error}", table, ex.Message);
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogInformation("⏭️ Skipping non-existent table: {TableName}", table);
+                    }
+                }
+
+                // Clear bank account numbers from companies table but keep company names
+                _logger.LogInformation("🏢 Clearing bank account numbers from companies table");
+                await _context.Database.ExecuteSqlRawAsync("UPDATE companies SET bank_account_number = NULL;");
+                
+                _logger.LogInformation("✅ Simulation data cleanup completed (company names and lookup values preserved)");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error during database cleanup");
+                return StatusCode(500, new { message = "Error during database cleanup", error = ex.Message });
+            }
 
             return Ok(new { message = "Simulation stopped and data cleared (company names and lookup values preserved)." });
         }
