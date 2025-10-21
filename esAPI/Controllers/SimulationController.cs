@@ -133,15 +133,17 @@ namespace esAPI.Controllers
         [HttpDelete]
         public async Task<IActionResult> StopAndDeleteSimulation()
         {
-            if (!_stateService.IsRunning)
-            {
-                _logger.LogWarning("⚠️ Attempted to stop simulation when not running");
-                return BadRequest("Simulation is not running.");
-            }
-
             _logger.LogInformation("🛑 Stopping simulation and cleaning up data");
-            _stateService.Stop();
-            _logger.LogInformation("📊 Simulation state service stopped");
+            
+            if (_stateService.IsRunning)
+            {
+                _stateService.Stop();
+                _logger.LogInformation("� Simulation state service stopped");
+            }
+            else
+            {
+                _logger.LogInformation("📊 Simulation was not running, proceeding with data cleanup");
+            }
 
             // Backup to DB
             _logger.LogInformation("💾 Updating simulation stop in database");
@@ -159,12 +161,24 @@ namespace esAPI.Controllers
                 _logger.LogWarning("⚠️ No simulation record found in database for cleanup");
             }
 
-            // Truncate all tables except views and migration history
-            _logger.LogInformation("🗑️ Truncating all simulation data tables");
-            await _context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE material_supplies, material_orders, machines, machine_orders, machine_ratios, machine_details, electronics, electronics_orders, lookup_values, simulation, disasters RESTART IDENTITY CASCADE;");
-            _logger.LogInformation("✅ All simulation data cleared from database");
+            // Clean up simulation data according to requirements
+            _logger.LogInformation("🗑️ Cleaning up simulation data from database");
+            
+            // Truncate most tables (excluding companies and lookup_values)
+            await _context.Database.ExecuteSqlRawAsync(@"
+                TRUNCATE TABLE material_supplies, material_orders, machines, machine_orders, 
+                              machine_ratios, machine_details, electronics, electronics_orders, 
+                              simulation, disasters, bank_balance_snapshots, payments, pickup_requests,
+                              materials, machine_statuses, electronics_statuses, order_statuses
+                RESTART IDENTITY CASCADE;");
+            
+            // Clear bank account numbers from companies table but keep company names
+            _logger.LogInformation("🏢 Clearing bank account numbers from companies table");
+            await _context.Database.ExecuteSqlRawAsync("UPDATE companies SET bank_account_number = NULL;");
+            
+            _logger.LogInformation("✅ All simulation data cleared from database (company names and lookup values preserved)");
 
-            return Ok(new { message = "Simulation stopped and all data deleted." });
+            return Ok(new { message = "Simulation stopped and data cleared (company names and lookup values preserved)." });
         }
 
 
