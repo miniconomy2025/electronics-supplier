@@ -11,11 +11,11 @@ namespace esAPI.Controllers
 {
     [ApiController]
     [Route("orders")]
-    public class ElectronicsOrdersController(AppDbContext context, IElectronicsService electronicsService, ISimulationStateService stateService, OrderExpirationService orderExpirationService) : BaseController(context)
+    public class ElectronicsOrdersController(AppDbContext context, IElectronicsService electronicsService, ISimulationStateService stateService, IOrderExpirationService orderExpirationService) : BaseController(context)
     {
         private readonly IElectronicsService _electronicsService = electronicsService;
         private readonly ISimulationStateService _stateService = stateService;
-        private readonly OrderExpirationService _orderExpirationService = orderExpirationService;
+        private readonly IOrderExpirationService _orderExpirationService = orderExpirationService;
 
         [HttpPost]
         public async Task<IActionResult> CreateOrder([FromBody] ElectronicsOrderRequest dto)

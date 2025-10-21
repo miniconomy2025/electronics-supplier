@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace esAPI.Services
 {
-    public class OrderExpirationService(IServiceProvider serviceProvider, ISimulationStateService stateService)
+    public class OrderExpirationService(IServiceProvider serviceProvider, ISimulationStateService stateService) : IOrderExpirationService
     {
         private readonly IServiceProvider _serviceProvider = serviceProvider;
         private readonly ISimulationStateService _stateService = stateService;
