@@ -46,9 +46,21 @@ public class LogisticsPickupRequest
 }
 public class LogisticsPickupResponse
 {
+    [JsonPropertyName("pickupRequestId")]
+    public int PickupRequestId { get; set; }
+
     [JsonPropertyName("cost")]
     public decimal Cost { get; set; }
 
+    [JsonPropertyName("paymentReferenceId")]
+    public string? PaymentReferenceId { get; set; }
+
     [JsonPropertyName("bulkLogisticsBankAccountNumber")]
     public string? BulkLogisticsBankAccountNumber { get; set; }
+
+    [JsonPropertyName("status")]
+    public string? Status { get; set; }
+
+    [JsonPropertyName("statusCheckUrl")]
+    public string? StatusCheckUrl { get; set; }
 }

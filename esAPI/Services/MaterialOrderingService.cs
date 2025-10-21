@@ -205,7 +205,9 @@ namespace esAPI.Services
                 }
                 else
                 {
-                    _logger.LogWarning($"[DB] Could not insert material order for {supplierName}: missing company or material. Material={materialName}");
+                    var supplierExists = supplier != null ? "found" : "NOT FOUND";
+                    var materialExists = material != null ? "found" : "NOT FOUND";
+                    _logger.LogWarning($"[DB] Could not insert material order for {supplierName}: Supplier={supplierExists}, Material={materialName} {materialExists}");
                 }
             }
             catch (Exception ex)
@@ -230,26 +232,35 @@ namespace esAPI.Services
 
                 var pickupResponse = await _bulkLogisticsClient.ArrangePickupAsync(pickupRequest);
 
-                if (pickupResponse != null && !string.IsNullOrEmpty(pickupResponse.BulkLogisticsBankAccountNumber))
+                if (pickupResponse != null)
                 {
-                    _logger.LogInformation($"[Logistics] Pickup arranged. Paying {pickupResponse.Cost} to Bulk Logistics.");
-
-                    try
+                    _logger.LogInformation($"[Logistics] Pickup response received: ID={pickupResponse.PickupRequestId}, Cost={pickupResponse.Cost}, BankAccount='{pickupResponse.BulkLogisticsBankAccountNumber}', Status='{pickupResponse.Status}'");
+                    
+                    if (!string.IsNullOrEmpty(pickupResponse.BulkLogisticsBankAccountNumber))
                     {
-                        await _bankClient.MakePaymentAsync(pickupResponse.BulkLogisticsBankAccountNumber, "commercial-bank", pickupResponse.Cost, $"Pickup for {originCompany} order {externalOrderId}");
-                        _logger.LogInformation($"[Logistics] Payment sent to Bulk Logistics for pickup of order {externalOrderId}");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, $"[Logistics] Error paying Bulk Logistics for pickup of order {externalOrderId}");
-                    }
+                        _logger.LogInformation($"[Logistics] Pickup arranged. Paying {pickupResponse.Cost} to Bulk Logistics.");
 
-                    // Insert pickup request record
-                    await CreatePickupRequestRecordAsync(int.Parse(externalOrderId), materialName, quantity);
+                        try
+                        {
+                            await _bankClient.MakePaymentAsync(pickupResponse.BulkLogisticsBankAccountNumber, "commercial-bank", pickupResponse.Cost, $"Pickup for {originCompany} order {externalOrderId}");
+                            _logger.LogInformation($"[Logistics] Payment sent to Bulk Logistics for pickup of order {externalOrderId}");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, $"[Logistics] Error paying Bulk Logistics for pickup of order {externalOrderId}");
+                        }
+
+                        // Insert pickup request record
+                        await CreatePickupRequestRecordAsync(int.Parse(externalOrderId), materialName, quantity);
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"[Logistics] Pickup response received but bank account number is null/empty for order {externalOrderId}");
+                    }
                 }
                 else
                 {
-                    _logger.LogWarning($"[Logistics] Failed to arrange pickup with Bulk Logistics for order {externalOrderId}");
+                    _logger.LogWarning($"[Logistics] Failed to arrange pickup with Bulk Logistics for order {externalOrderId} - response was null");
                 }
             }
             catch (Exception ex)
