@@ -39,17 +39,43 @@ namespace esAPI.Configuration
                 client.DefaultRequestHeaders.Add("Client-Id", externalApiConfig.ClientId);
             });
 
-            services.AddHttpClient("thoh", client =>
+            // Configure THOH client with optional SSL certificate validation bypass
+            var thohClientBuilder = services.AddHttpClient("thoh", client =>
             {
                 client.BaseAddress = new Uri(externalApiConfig.THOH);
                 client.DefaultRequestHeaders.Add("Client-Id", externalApiConfig.ClientId);
             });
 
-            services.AddHttpClient("recycler", client =>
+            if (externalApiConfig.BypassSslValidation)
+            {
+                Console.WriteLine("⚠️  SSL validation bypass enabled for THOH API");
+                thohClientBuilder.ConfigurePrimaryHttpMessageHandler(() =>
+                {
+                    return new HttpClientHandler()
+                    {
+                        ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+                    };
+                });
+            }
+
+            // Configure Recycler client with optional SSL certificate validation bypass
+            var recyclerClientBuilder = services.AddHttpClient("recycler", client =>
             {
                 client.BaseAddress = new Uri(externalApiConfig.Recycler);
                 client.DefaultRequestHeaders.Add("Client-Id", externalApiConfig.ClientId);
             });
+
+            if (externalApiConfig.BypassSslValidation)
+            {
+                Console.WriteLine("⚠️  SSL validation bypass enabled for Recycler API");
+                recyclerClientBuilder.ConfigurePrimaryHttpMessageHandler(() =>
+                {
+                    return new HttpClientHandler()
+                    {
+                        ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+                    };
+                });
+            }
 
             return services;
         }

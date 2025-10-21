@@ -9,5 +9,6 @@ namespace esAPI.Configuration
         public string THOH { get; set; } = string.Empty;
         public string Recycler { get; set; } = string.Empty;
         public string ClientId { get; set; } = "electronics-supplier";
+        public bool BypassSslValidation { get; set; } = true; // Default to true for development/testing
     }
 }
