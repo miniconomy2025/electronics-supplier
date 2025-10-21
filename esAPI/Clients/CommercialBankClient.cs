@@ -104,6 +104,8 @@ namespace esAPI.Clients
 
             Console.WriteLine($"🔧 CommercialBankClient: Requesting loan of {amount}");
             Console.WriteLine($"🔧 CommercialBankClient: Request body: {System.Text.Json.JsonSerializer.Serialize(requestBody)}");
+            Console.WriteLine($"🔧 CommercialBankClient: Base address: {_client.BaseAddress}");
+            Console.WriteLine($"🔧 CommercialBankClient: Full loan URL: {_client.BaseAddress}loan");
 
             var response = await _client.PostAsJsonAsync("loan", requestBody);
             Console.WriteLine($"🔧 CommercialBankClient: Loan request response status: {response.StatusCode}");
@@ -111,47 +113,64 @@ namespace esAPI.Clients
             var content = await response.Content.ReadAsStringAsync();
             Console.WriteLine($"🔧 CommercialBankClient: Loan response content: {content}");
 
-            using var doc = System.Text.Json.JsonDocument.Parse(content);
-
-            // Check if the response indicates success
-            if (doc.RootElement.TryGetProperty("success", out var successProp) && successProp.GetBoolean())
+            // Check if the response was successful before trying to parse as JSON
+            if (!response.IsSuccessStatusCode)
             {
-                if (doc.RootElement.TryGetProperty("loan_number", out var loanNum))
+                Console.WriteLine($"❌ CommercialBankClient: Loan request failed with status {response.StatusCode}");
+                return null;
+            }
+
+            // Only try to parse JSON if we have a successful response
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(content);
+
+                // Check if the response indicates success
+                if (doc.RootElement.TryGetProperty("success", out var successProp) && successProp.GetBoolean())
                 {
-                    var loanNumber = loanNum.GetString();
-                    Console.WriteLine($"✅ CommercialBankClient: Loan request successful! Loan number: {loanNumber}");
-                    return loanNumber;
+                    if (doc.RootElement.TryGetProperty("loan_number", out var loanNum))
+                    {
+                        var loanNumber = loanNum.GetString();
+                        Console.WriteLine($"✅ CommercialBankClient: Loan request successful! Loan number: {loanNumber}");
+                        return loanNumber;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"❌ CommercialBankClient: Success response but no loan_number found");
+                        return null;
+                    }
                 }
                 else
                 {
-                    Console.WriteLine($"❌ CommercialBankClient: Success response but no loan_number found");
+                    // Handle failure response with detailed error information
+                    var errorMessage = "Unknown error";
+                    var amountRemaining = 0m;
+
+                    if (doc.RootElement.TryGetProperty("error", out var errorProp))
+                    {
+                        errorMessage = errorProp.GetString() ?? "Unknown error";
+                    }
+
+                    if (doc.RootElement.TryGetProperty("amount_remaining", out var amountProp))
+                    {
+                        amountRemaining = amountProp.GetDecimal();
+                    }
+
+                    Console.WriteLine($"❌ CommercialBankClient: Loan request failed - Error: {errorMessage}, Amount remaining: {amountRemaining}");
+
+                    // If the loan was too large, we could potentially retry with the remaining amount
+                    if (errorMessage == "loanTooLarge" && amountRemaining > 0)
+                    {
+                        Console.WriteLine($"💡 CommercialBankClient: Loan was too large. Remaining amount available: {amountRemaining}");
+                    }
+
                     return null;
                 }
             }
-            else
+            catch (System.Text.Json.JsonException ex)
             {
-                // Handle failure response with detailed error information
-                var errorMessage = "Unknown error";
-                var amountRemaining = 0m;
-
-                if (doc.RootElement.TryGetProperty("error", out var errorProp))
-                {
-                    errorMessage = errorProp.GetString() ?? "Unknown error";
-                }
-
-                if (doc.RootElement.TryGetProperty("amount_remaining", out var amountProp))
-                {
-                    amountRemaining = amountProp.GetDecimal();
-                }
-
-                Console.WriteLine($"❌ CommercialBankClient: Loan request failed - Error: {errorMessage}, Amount remaining: {amountRemaining}");
-
-                // If the loan was too large, we could potentially retry with the remaining amount
-                if (errorMessage == "loanTooLarge" && amountRemaining > 0)
-                {
-                    Console.WriteLine($"💡 CommercialBankClient: Loan was too large. Remaining amount available: {amountRemaining}");
-                }
-
+                Console.WriteLine($"❌ CommercialBankClient: Failed to parse response as JSON: {ex.Message}");
+                Console.WriteLine($"❌ CommercialBankClient: Response content was: {content}");
                 return null;
             }
         }
