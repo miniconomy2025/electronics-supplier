@@ -26,24 +26,27 @@ namespace esAPI.Configuration
             Console.WriteLine($"  Recycler: {externalApiConfig.Recycler}");
             Console.WriteLine($"  Client ID: {externalApiConfig.ClientId}");
 
-            // Configure HTTP clients
+            // Configure HTTP clients with simulation-appropriate timeouts (2 min = 1 day)
             services.AddHttpClient("commercial-bank", client =>
             {
                 client.BaseAddress = new Uri(externalApiConfig.CommercialBank);
                 client.DefaultRequestHeaders.Add("Client-Id", externalApiConfig.ClientId);
+                client.Timeout = TimeSpan.FromSeconds(30); // 30 second timeout
             });
 
             services.AddHttpClient("bulk-logistics", client =>
             {
                 client.BaseAddress = new Uri(externalApiConfig.BulkLogistics);
                 client.DefaultRequestHeaders.Add("Client-Id", externalApiConfig.ClientId);
+                client.Timeout = TimeSpan.FromSeconds(30); // 30 second timeout
             });
 
-            // Configure THOH client with optional SSL certificate validation bypass
+            // Configure THOH client with simulation-appropriate timeout and optional SSL certificate validation bypass
             var thohClientBuilder = services.AddHttpClient("thoh", client =>
             {
                 client.BaseAddress = new Uri(externalApiConfig.THOH);
                 client.DefaultRequestHeaders.Add("Client-Id", externalApiConfig.ClientId);
+                client.Timeout = TimeSpan.FromSeconds(45); // 45 second timeout for THOH
             });
 
             if (externalApiConfig.BypassSslValidation)
@@ -58,11 +61,12 @@ namespace esAPI.Configuration
                 });
             }
 
-            // Configure Recycler client with optional SSL certificate validation bypass
+            // Configure Recycler client with simulation-appropriate timeout and optional SSL certificate validation bypass
             var recyclerClientBuilder = services.AddHttpClient("recycler", client =>
             {
                 client.BaseAddress = new Uri(externalApiConfig.Recycler);
                 client.DefaultRequestHeaders.Add("Client-Id", externalApiConfig.ClientId);
+                client.Timeout = TimeSpan.FromSeconds(30); // 30 second timeout
             });
 
             if (externalApiConfig.BypassSslValidation)

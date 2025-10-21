@@ -57,53 +57,74 @@ namespace esAPI.Services
 
         private async Task<bool> PurchaseMachinesFromThohAsync(int quantity)
         {
-            try
+            const int maxRetries = 3;
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
             {
-                var thohHttpClient = _httpClientFactory.CreateClient("thoh");
-                var machineOrderReq = new { machineName = "electronics_machine", quantity = quantity };
-
-                var response = await thohHttpClient.PostAsJsonAsync("/machines", machineOrderReq);
-
-                if (!response.IsSuccessStatusCode)
+                try
                 {
-                    _logger.LogWarning($"[Machine] Failed to order machines from THOH. Status: {response.StatusCode}");
-                    return false;
-                }
+                    _logger.LogInformation($"[Machine] THOH machine order attempt {attempt}/{maxRetries}");
+                    var thohHttpClient = _httpClientFactory.CreateClient("thoh");
+                    var machineOrderReq = new { machineName = "electronics_machine", quantity = quantity };
 
-                var content = await response.Content.ReadAsStringAsync();
-                using var doc = System.Text.Json.JsonDocument.Parse(content);
+                    var response = await thohHttpClient.PostAsJsonAsync("/machines", machineOrderReq);
 
-                var orderId = doc.RootElement.GetProperty("orderId").GetInt32();
-                var totalPrice = doc.RootElement.GetProperty("totalPrice").GetDecimal();
-                var bankAccount = doc.RootElement.GetProperty("bankAccount").GetString();
-
-                _logger.LogInformation($"[Machine] Ordered {quantity} new machines from THOH. OrderId={orderId}, TotalPrice={totalPrice}, BankAccount={bankAccount}");
-
-                if (!string.IsNullOrEmpty(bankAccount) && totalPrice > 0)
-                {
-                    try
+                    if (!response.IsSuccessStatusCode)
                     {
-                        await _bankClient.MakePaymentAsync(bankAccount, "thoh", totalPrice, $"Purchase {quantity} electronics_machine from THOH");
-                        _logger.LogInformation($"[Machine] Payment sent to THOH for order {orderId}");
-                        return true;
+                        _logger.LogWarning($"[Machine] Failed to order machines from THOH attempt {attempt}. Status: {response.StatusCode}");
+                        if (attempt == maxRetries)
+                            return false;
+                        continue;
                     }
-                    catch (Exception ex)
+
+                    var content = await response.Content.ReadAsStringAsync();
+                    using var doc = System.Text.Json.JsonDocument.Parse(content);
+
+                    var orderId = doc.RootElement.GetProperty("orderId").GetInt32();
+                    var totalPrice = doc.RootElement.GetProperty("totalPrice").GetDecimal();
+                    var bankAccount = doc.RootElement.GetProperty("bankAccount").GetString();
+
+                    _logger.LogInformation($"[Machine] Ordered {quantity} new machines from THOH. OrderId={orderId}, TotalPrice={totalPrice}, BankAccount={bankAccount}");
+
+                    if (!string.IsNullOrEmpty(bankAccount) && totalPrice > 0)
                     {
-                        _logger.LogError(ex, $"[Machine] Error paying THOH for machine order {orderId}");
+                        try
+                        {
+                            await _bankClient.MakePaymentAsync(bankAccount, "thoh", totalPrice, $"Purchase {quantity} electronics_machine from THOH");
+                            _logger.LogInformation($"[Machine] Payment sent to THOH for order {orderId}");
+                            return true;
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, $"[Machine] Error paying THOH for machine order {orderId}");
+                            return false;
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"[Machine] Invalid payment details for THOH machine order {orderId}");
                         return false;
                     }
                 }
-                else
+                catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
                 {
-                    _logger.LogWarning($"[Machine] Invalid payment details for THOH machine order {orderId}");
-                    return false;
+                    _logger.LogWarning($"[Machine] Timeout on attempt {attempt}/{maxRetries} for THOH machine purchase");
+                    if (attempt == maxRetries)
+                    {
+                        _logger.LogError("[Machine] All attempts failed due to timeout for THOH machine purchase");
+                        return false;
+                    }
+                    await Task.Delay(TimeSpan.FromSeconds(2 * attempt)); // Quick retry for simulation
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"[Machine] Exception during machine purchase from THOH attempt {attempt}");
+                    if (attempt == maxRetries)
+                        return false;
+                    await Task.Delay(TimeSpan.FromSeconds(2 * attempt)); // Quick retry for simulation
                 }
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "[Machine] Exception during machine purchase from THOH");
-                return false;
-            }
+            
+            return false; // All retries failed
         }
     }
 }
