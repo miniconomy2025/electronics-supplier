@@ -9,17 +9,26 @@ namespace esAPI.Services
 {
     public class RetryQueuePublisher
     {
-        private readonly IAmazonSQS _sqs;
+        private readonly IAmazonSQS? _sqs;
         private readonly ILogger<RetryQueuePublisher> _logger;
         private readonly ISimulationStateService _stateService;
-        private readonly string _queueUrl;
+        private readonly string? _queueUrl;
 
-        public RetryQueuePublisher(IAmazonSQS sqs, ILogger<RetryQueuePublisher> logger, IConfiguration config, ISimulationStateService stateService)
+        public RetryQueuePublisher(IAmazonSQS? sqs, ILogger<RetryQueuePublisher> logger, IConfiguration config, ISimulationStateService stateService)
         {
             _sqs = sqs;
             _logger = logger;
             _stateService = stateService;
-            _queueUrl = config?["Retry:QueueUrl"] ?? throw new ArgumentNullException(nameof(config), "Configuration is null or Retry:QueueUrl not configured");
+            _queueUrl = config?["Retry:QueueUrl"];
+            
+            if (_sqs == null)
+            {
+                _logger.LogWarning("🔧 RetryQueuePublisher created without AWS SQS client - retry functionality disabled");
+            }
+            else if (string.IsNullOrEmpty(_queueUrl))
+            {
+                _logger.LogWarning("🔧 RetryQueuePublisher created without queue URL - retry functionality disabled");
+            }
         }
 
         public async Task PublishAsync(IRetryJob job)
@@ -28,6 +37,19 @@ namespace esAPI.Services
             if (!_stateService.IsRunning)
             {
                 _logger.LogDebug("🔄 Simulation not running, skipping retry job publication for {JobType}", job.JobType);
+                return;
+            }
+
+            // Check if AWS SQS is available
+            if (_sqs == null)
+            {
+                _logger.LogDebug("🔧 AWS SQS not available, skipping retry job publication for {JobType}", job.JobType);
+                return;
+            }
+
+            if (string.IsNullOrEmpty(_queueUrl))
+            {
+                _logger.LogDebug("🔧 Queue URL not configured, skipping retry job publication for {JobType}", job.JobType);
                 return;
             }
 
