@@ -46,17 +46,7 @@ namespace esAPI.Services
                 _logger.LogInformation("📊 Simulation state service started");
 
                 // Note: Order expiration background service starts automatically as a hosted service
-
-                // Set up bank account with commercial bank
-                _logger.LogInformation("🏦 Setting up bank account with commercial bank...");
-                var bankSetupResult = await _bankAccountService.SetupBankAccountAsync();
-                if (!bankSetupResult.Success)
-                {
-                    _logger.LogError("❌ Failed to set up bank account. Error: {Error}", bankSetupResult.Error);
-                    return (false, null, $"Failed to set up bank account. Error: {bankSetupResult.Error}");
-                }
-
-                _logger.LogInformation("✅ Bank account setup completed successfully");
+                // Note: Bank account creation will happen in day orchestrator
 
                 // // Check current balance before requesting loan
                 // _logger.LogInformation("💰 Checking current account balance...");
@@ -106,8 +96,8 @@ namespace esAPI.Services
                 // Persist simulation start to the database
                 await PersistSimulationStartAsync();
 
-                _logger.LogInformation("✅ Simulation started successfully with bank account: {AccountNumber}", bankSetupResult.AccountNumber);
-                return (true, bankSetupResult.AccountNumber, null);
+                _logger.LogInformation("✅ Simulation startup completed successfully - bank account will be created by day orchestrator");
+                return (true, null, null);
             }
             catch (Exception ex)
             {

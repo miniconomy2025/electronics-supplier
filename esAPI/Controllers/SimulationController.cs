@@ -52,6 +52,7 @@ namespace esAPI.Controllers
                 _stateService.Start();
             }
 
+            // Run basic startup tasks (without bank account creation)
             var result = await _simulationStartupService.StartSimulationAsync();
             if (!result.Success)
             {
@@ -59,6 +60,7 @@ namespace esAPI.Controllers
                 return StatusCode(502, $"Failed to start simulation. Error: {result.Error}");
             }
 
+            _logger.LogInformation("✅ Simulation started - bank account creation will happen in day orchestrator");
             return Ok(new { message = "Simulation started" });
         }
 

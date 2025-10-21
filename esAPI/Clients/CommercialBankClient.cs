@@ -18,7 +18,7 @@ namespace esAPI.Clients
         public async Task<decimal> GetAccountBalanceAsync()
         {
             Console.WriteLine($"🔧 CommercialBankClient: Checking account balance...");
-            var response = await _client.GetAsync("api/account/me/balance");
+            var response = await _client.GetAsync("account/me/balance");
             Console.WriteLine($"🔧 CommercialBankClient: Balance response status: {response.StatusCode}");
 
             if (!response.IsSuccessStatusCode)
@@ -74,8 +74,8 @@ namespace esAPI.Clients
 
             try
             {
-                // Use the full URL directly to ensure it's correct
-                var fullUrl = $"{_client.BaseAddress}api/account";
+                // Use the correct endpoint (base address already includes /api)
+                var fullUrl = $"{_client.BaseAddress}account";
                 Console.WriteLine($"🔧 CommercialBankClient: Using full URL: {fullUrl}");
 
                 var request = new HttpRequestMessage(HttpMethod.Post, fullUrl);
@@ -105,7 +105,7 @@ namespace esAPI.Clients
             Console.WriteLine($"🔧 CommercialBankClient: Requesting loan of {amount}");
             Console.WriteLine($"🔧 CommercialBankClient: Request body: {System.Text.Json.JsonSerializer.Serialize(requestBody)}");
 
-            var response = await _client.PostAsJsonAsync("api/loan", requestBody);
+            var response = await _client.PostAsJsonAsync("loan", requestBody);
             Console.WriteLine($"🔧 CommercialBankClient: Loan request response status: {response.StatusCode}");
 
             var content = await response.Content.ReadAsStringAsync();
@@ -165,7 +165,7 @@ namespace esAPI.Clients
                 amount,
                 description
             };
-            var response = await _client.PostAsJsonAsync("api/transaction", paymentReq);
+            var response = await _client.PostAsJsonAsync("transaction", paymentReq);
             response.EnsureSuccessStatusCode();
             var content = await response.Content.ReadAsStringAsync();
             using var doc = System.Text.Json.JsonDocument.Parse(content);
@@ -180,7 +180,7 @@ namespace esAPI.Clients
 
         public async Task<string?> GetAccountDetailsAsync()
         {
-            var response = await _client.GetAsync("api/account/me");
+            var response = await _client.GetAsync("account/me");
             response.EnsureSuccessStatusCode();
             var content = await response.Content.ReadAsStringAsync();
             using var doc = System.Text.Json.JsonDocument.Parse(content);
@@ -189,7 +189,7 @@ namespace esAPI.Clients
 
         public async Task<HttpResponseMessage> GetAccountAsync()
         {
-            return await _client.GetAsync("api/account/me");
+            return await _client.GetAsync("account/me");
         }
     }
 }

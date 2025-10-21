@@ -9,30 +9,30 @@ namespace esAPI.Services
     /// </summary>
     public class SimulationDayStartupService : ISimulationStartupService
     {
-        private readonly IBankAccountService _bankAccountService;
+        private readonly SimulationDayOrchestrator _dayOrchestrator;
         private readonly ICommercialBankClient _bankClient;
         private readonly ILogger<SimulationDayStartupService> _logger;
 
         public SimulationDayStartupService(
-            IBankAccountService bankAccountService,
+            SimulationDayOrchestrator dayOrchestrator,
             ICommercialBankClient bankClient,
             ILogger<SimulationDayStartupService> logger)
         {
-            _bankAccountService = bankAccountService;
+            _dayOrchestrator = dayOrchestrator;
             _bankClient = bankClient;
             _logger = logger;
         }
 
         public async Task<bool> ExecuteStartupSequenceAsync()
         {
-            _logger.LogInformation("🏦 Setting up bank account");
-            var bankSetupResult = await _bankAccountService.SetupBankAccountAsync();
-            if (!bankSetupResult.Success)
+            _logger.LogInformation("🏦 Setting up bank account via day orchestrator");
+            var bankSetupResult = await _dayOrchestrator.OrchestrateAsync();
+            if (!bankSetupResult.Success && bankSetupResult.Error != "accountAlreadyExists")
             {
                 _logger.LogError("❌ Failed to set up bank account: {Error}", bankSetupResult.Error);
                 return false;
             }
-            _logger.LogInformation("✅ Bank account setup completed");
+            _logger.LogInformation("✅ Bank account setup completed: {AccountNumber}", bankSetupResult.AccountNumber);
 
             // COMMENTED OUT: Startup cost planning for now
             /*
