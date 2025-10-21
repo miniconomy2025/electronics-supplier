@@ -44,7 +44,7 @@ namespace esAPI.Controllers
             if (request?.EpochStartTime != null)
             {
                 _logger.LogInformation("📅 Starting simulation with external epoch start time: {EpochStartTime}", request.EpochStartTime);
-                _stateService.Start(request.EpochStartTime);
+                _stateService.Start(request.EpochStartTime.Value);
             }
             else
             {
