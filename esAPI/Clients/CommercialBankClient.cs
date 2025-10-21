@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace esAPI.Clients
 {
     public interface ICommercialBankClient
@@ -37,16 +39,32 @@ namespace esAPI.Clients
             {
                 if (doc.RootElement.TryGetProperty("balance", out var balanceProp))
                 {
-                    // Handle balance as string (e.g., "60000000.00") and parse to decimal
-                    var balanceString = balanceProp.GetString();
-                    if (decimal.TryParse(balanceString, out var balance))
+                    decimal balance = 0m;
+                    
+                    // Handle balance as either number or string
+                    if (balanceProp.ValueKind == JsonValueKind.Number)
                     {
-                        Console.WriteLine($"✅ CommercialBankClient: Account balance: {balance}");
+                        balance = balanceProp.GetDecimal();
+                        Console.WriteLine($"✅ CommercialBankClient: Account balance (number): {balance}");
                         return balance;
+                    }
+                    else if (balanceProp.ValueKind == JsonValueKind.String)
+                    {
+                        var balanceString = balanceProp.GetString();
+                        if (decimal.TryParse(balanceString, out balance))
+                        {
+                            Console.WriteLine($"✅ CommercialBankClient: Account balance (string): {balance}");
+                            return balance;
+                        }
+                        else
+                        {
+                            Console.WriteLine($"❌ CommercialBankClient: Failed to parse balance string: {balanceString}");
+                            return 0m;
+                        }
                     }
                     else
                     {
-                        Console.WriteLine($"❌ CommercialBankClient: Failed to parse balance string: {balanceString}");
+                        Console.WriteLine($"❌ CommercialBankClient: Balance property has unexpected type: {balanceProp.ValueKind}");
                         return 0m;
                     }
                 }
