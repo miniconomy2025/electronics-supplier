@@ -8,12 +8,10 @@ namespace esAPI.Configuration
     {
         public static IServiceCollection AddDatabaseContext(this IServiceCollection services, IConfiguration configuration)
         {
-            // Build database connection string with environment variable support
+            // Get the connection string from configuration (environment variables take precedence)
             var connectionString = configuration.GetConnectionString("DefaultConnection")!;
-            var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD") ?? "postgres";
-            connectionString += dbPassword;
 
-            Console.WriteLine($"🗄️ Database: Connecting to {connectionString.Replace(dbPassword, "***")}");
+            Console.WriteLine($"🗄️ Database: Connecting to {MaskPassword(connectionString)}");
 
             var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
             var dataSource = dataSourceBuilder.Build();
@@ -23,6 +21,21 @@ namespace esAPI.Configuration
             );
 
             return services;
+        }
+
+        private static string MaskPassword(string connectionString)
+        {
+            // Simple password masking for logging
+            var parts = connectionString.Split(';');
+            for (int i = 0; i < parts.Length; i++)
+            {
+                if (parts[i].StartsWith("Password=", StringComparison.OrdinalIgnoreCase))
+                {
+                    parts[i] = "Password=***";
+                    break;
+                }
+            }
+            return string.Join(';', parts);
         }
     }
 }
