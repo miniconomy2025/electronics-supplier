@@ -126,8 +126,8 @@ namespace esAPI.Services
             var pickupReq = new LogisticsPickupRequest
             {
                 OriginalExternalOrderId = order.OrderId.ToString(),
-                OriginCompanyId = supplierName,
-                DestinationCompanyId = "1",
+                OriginCompany = supplierName,
+                DestinationCompany = "electronics-supplier",
                 Items = [new LogisticsItem { Name = materialName, Quantity = quantity }]
             };
 

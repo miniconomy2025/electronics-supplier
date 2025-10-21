@@ -35,11 +35,11 @@ public class LogisticsPickupRequest
     [JsonPropertyName("originalExternalOrderId")]
     public required string OriginalExternalOrderId { get; set; }
 
-    [JsonPropertyName("originCompanyId")]
-    public required string OriginCompanyId { get; set; }
+    [JsonPropertyName("originCompany")]
+    public required string OriginCompany { get; set; }
 
-    [JsonPropertyName("destinationCompanyId")]
-    public required string DestinationCompanyId { get; set; }
+    [JsonPropertyName("destinationCompany")]
+    public required string DestinationCompany { get; set; }
 
     [JsonPropertyName("items")]
     public required LogisticsItem[] Items { get; set; }

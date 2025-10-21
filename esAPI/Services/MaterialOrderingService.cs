@@ -221,8 +221,8 @@ namespace esAPI.Services
                 var pickupRequest = new LogisticsPickupRequest
                 {
                     OriginalExternalOrderId = externalOrderId,
-                    OriginCompanyId = originCompany,
-                    DestinationCompanyId = "electronics-supplier",
+                    OriginCompany = originCompany,
+                    DestinationCompany = "electronics-supplier",
                     Items = new[] { new LogisticsItem { Name = materialName, Quantity = quantity } }
                 };
 
