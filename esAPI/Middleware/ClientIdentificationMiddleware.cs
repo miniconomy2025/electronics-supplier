@@ -73,6 +73,13 @@ public class ClientIdentificationMiddleware
             return true;
         }
 
+        // Skip for DELETE /simulation endpoint
+        if (string.Equals(method, "DELETE", StringComparison.OrdinalIgnoreCase) &&
+            pathValue.StartsWith("/simulation"))
+        {
+            return true;
+        }
+
         return pathValue.StartsWith("/swagger") ||
                pathValue.StartsWith("/health") ||
                pathValue.StartsWith("/api/docs") ||
