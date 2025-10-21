@@ -171,7 +171,19 @@ namespace esAPI.Clients
 
                     if (doc.RootElement.TryGetProperty("amount_remaining", out var amountProp))
                     {
-                        amountRemaining = amountProp.GetDecimal();
+                        // Handle amount as either number or string
+                        if (amountProp.ValueKind == JsonValueKind.Number)
+                        {
+                            amountRemaining = amountProp.GetDecimal();
+                        }
+                        else if (amountProp.ValueKind == JsonValueKind.String)
+                        {
+                            var amountString = amountProp.GetString();
+                            if (!decimal.TryParse(amountString, out amountRemaining))
+                            {
+                                amountRemaining = 0m;
+                            }
+                        }
                     }
 
                     Console.WriteLine($"❌ CommercialBankClient: Loan request failed - Error: {errorMessage}, Amount remaining: {amountRemaining}");
