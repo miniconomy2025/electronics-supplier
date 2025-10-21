@@ -20,9 +20,9 @@ namespace esAPI.Services
             _logger = logger;
         }
 
-        public async Task<bool> ExecuteStartupSequenceAsync()
+        public Task<bool> ExecuteStartupSequenceAsync()
         {
-            _logger.LogInformation("🏦 Day 1 startup sequence - bank account already created during simulation startup");
+            _logger.LogInformation("🏦 Day 1 startup sequence - bank account and initial loan already handled during simulation startup");
 
             // COMMENTED OUT: Startup cost planning for now
             /*
@@ -39,18 +39,8 @@ namespace esAPI.Services
             // _logger.LogInformation("💡 Selected best startup plan with cost: {TotalCost}", bestPlan.TotalCost);
             */
 
-            _logger.LogInformation("🏦 Requesting loan for startup costs");
-            const decimal loanAmount = 20000000m; // 20 million
-            string? loanSuccess = await _bankClient.RequestLoanAsync(loanAmount);
-            if (loanSuccess == null)
-            {
-                _logger.LogError("❌ Failed to request loan for startup costs");
-                return false;
-            }
-            _logger.LogInformation("✅ Loan requested successfully: {LoanNumber}", loanSuccess);
-
-            _logger.LogInformation("✅ Startup sequence completed successfully");
-            return true;
+            _logger.LogInformation("✅ Day 1 startup sequence completed successfully - no additional actions needed");
+            return Task.FromResult(true);
         }
     }
 }
