@@ -41,12 +41,23 @@ namespace esAPI.Services
             {
                 _logger.LogInformation("🚀 Starting simulation startup process...");
 
-                // Start simulation state service
-                _stateService.Start();
-                _logger.LogInformation("📊 Simulation state service started");
-
+                // Note: Simulation state service already started by controller
                 // Note: Order expiration background service starts automatically as a hosted service
-                // Note: Bank account creation will happen in day orchestrator
+
+                // Ensure company exists in database
+                _logger.LogInformation("🏢 Ensuring company record exists...");
+                await EnsureCompanyExistsAsync();
+
+                // Set up bank account with commercial bank
+                _logger.LogInformation("🏦 Setting up bank account with commercial bank...");
+                var bankSetupResult = await _bankAccountService.SetupBankAccountAsync();
+                if (!bankSetupResult.Success)
+                {
+                    _logger.LogError("❌ Failed to set up bank account. Error: {Error}", bankSetupResult.Error);
+                    return (false, null, $"Failed to set up bank account. Error: {bankSetupResult.Error}");
+                }
+
+                _logger.LogInformation("✅ Bank account setup completed successfully");
 
                 // // Check current balance before requesting loan
                 // _logger.LogInformation("💰 Checking current account balance...");
@@ -96,8 +107,8 @@ namespace esAPI.Services
                 // Persist simulation start to the database
                 await PersistSimulationStartAsync();
 
-                _logger.LogInformation("✅ Simulation startup completed successfully - bank account will be created by day orchestrator");
-                return (true, null, null);
+                _logger.LogInformation("✅ Simulation started successfully with bank account: {AccountNumber}", bankSetupResult.AccountNumber);
+                return (true, bankSetupResult.AccountNumber, null);
             }
             catch (Exception ex)
             {
@@ -130,6 +141,28 @@ namespace esAPI.Services
             }
             await _context.SaveChangesAsync();
             _logger.LogInformation("✅ Simulation start persisted to database");
+        }
+
+        private async Task EnsureCompanyExistsAsync()
+        {
+            var company = await _context.Companies.FirstOrDefaultAsync(c => c.CompanyId == 1);
+            if (company == null)
+            {
+                _logger.LogInformation("📝 Creating Electronics Supplier company record (ID=1)");
+                company = new Models.Company
+                {
+                    CompanyId = 1,
+                    CompanyName = "Electronics Supplier",
+                    BankAccountNumber = null
+                };
+                _context.Companies.Add(company);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("✅ Electronics Supplier company record created");
+            }
+            else
+            {
+                _logger.LogInformation("✅ Electronics Supplier company record already exists");
+            }
         }
     }
 }
