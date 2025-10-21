@@ -123,6 +123,8 @@ namespace esAPI.Services
 
         private async Task<bool> ArrangeLogisticsAsync(SupplierOrderResponse order, string materialName, int quantity, string supplierName)
         {
+            Console.WriteLine($"🚚 [Logistics] Arranging pickup for material: '{materialName}' (quantity: {quantity}) from {supplierName}");
+            
             var pickupReq = new LogisticsPickupRequest
             {
                 OriginalExternalOrderId = order.OrderId.ToString(),

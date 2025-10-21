@@ -25,7 +25,7 @@ public class SupplierOrderResponse
 
 public class LogisticsItem
 {
-    [JsonPropertyName("name")]
+    [JsonPropertyName("itemName")]
     public required string Name { get; set; }
     [JsonPropertyName("quantity")]
     public int Quantity { get; set; }

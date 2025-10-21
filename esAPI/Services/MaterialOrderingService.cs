@@ -218,6 +218,8 @@ namespace esAPI.Services
         {
             try
             {
+                _logger.LogInformation($"🚚 [Logistics] Arranging pickup for material: '{materialName}' (quantity: {quantity}) from {originCompany}");
+                
                 var pickupRequest = new LogisticsPickupRequest
                 {
                     OriginalExternalOrderId = externalOrderId,
