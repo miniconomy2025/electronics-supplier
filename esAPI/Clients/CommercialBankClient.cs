@@ -20,7 +20,9 @@ namespace esAPI.Clients
         public async Task<decimal> GetAccountBalanceAsync()
         {
             Console.WriteLine($"[CommercialBankClient] Checking account balance");
-            var response = await _client.GetAsync("account/me/balance");
+            var fullUrl = $"{_client.BaseAddress}/account/me/balance";
+            Console.WriteLine($"[CommercialBankClient] GetBalance using full URL: {fullUrl}");
+            var response = await _client.GetAsync(fullUrl);
             Console.WriteLine($"[CommercialBankClient] Balance response status: {response.StatusCode}");
 
             if (!response.IsSuccessStatusCode)
@@ -117,9 +119,10 @@ namespace esAPI.Clients
             Console.WriteLine($"[CommercialBankClient] Requesting loan of {amount}");
             Console.WriteLine($"[CommercialBankClient] Request body: {JsonSerializer.Serialize(requestBody)}");
             Console.WriteLine($"[CommercialBankClient] Base address: {_client.BaseAddress}");
-            Console.WriteLine($"[CommercialBankClient] Full loan URL: {_client.BaseAddress}loan");
+            var fullLoanUrl = $"{_client.BaseAddress}/loan";
+            Console.WriteLine($"[CommercialBankClient] Full loan URL: {fullLoanUrl}");
 
-            var response = await _client.PostAsJsonAsync("/loan", requestBody);
+            var response = await _client.PostAsJsonAsync(fullLoanUrl, requestBody);
             Console.WriteLine($"[CommercialBankClient] Loan request response status: {response.StatusCode}");
 
             var content = await response.Content.ReadAsStringAsync();
@@ -208,7 +211,8 @@ namespace esAPI.Clients
                 amount,
                 description
             };
-            var response = await _client.PostAsJsonAsync("transaction", paymentReq);
+            var fullTransactionUrl = $"{_client.BaseAddress}/transaction";
+            var response = await _client.PostAsJsonAsync(fullTransactionUrl, paymentReq);
             response.EnsureSuccessStatusCode();
             var content = await response.Content.ReadAsStringAsync();
             using var doc = System.Text.Json.JsonDocument.Parse(content);
@@ -223,8 +227,10 @@ namespace esAPI.Clients
 
         public async Task<string?> GetAccountDetailsAsync()
         {
-            Console.WriteLine("[CommercialBankClient] Getting account details from /account/me");
-            var response = await _client.GetAsync("account/me");
+            Console.WriteLine("[CommercialBankClient] Getting account details from /api/account/me");
+            var fullUrl = $"{_client.BaseAddress}/account/me";
+            Console.WriteLine($"[CommercialBankClient] GetAccountDetails using full URL: {fullUrl}");
+            var response = await _client.GetAsync(fullUrl);
             Console.WriteLine($"[CommercialBankClient] Account details response status: {response.StatusCode}");
             
             if (!response.IsSuccessStatusCode)
@@ -263,7 +269,22 @@ namespace esAPI.Clients
 
         public async Task<HttpResponseMessage> GetAccountAsync()
         {
-            return await _client.GetAsync("account/me");
+            try
+            {
+                // Use the correct endpoint - construct full URL like CreateAccountAsync does
+                var fullUrl = $"{_client.BaseAddress}/account/me";
+                Console.WriteLine($"[CommercialBankClient] GetAccount using full URL: {fullUrl}");
+
+                var response = await _client.GetAsync(fullUrl);
+                Console.WriteLine($"[CommercialBankClient] GetAccount response status: {response.StatusCode}");
+                Console.WriteLine($"[CommercialBankClient] GetAccount response URL: {response.RequestMessage?.RequestUri}");
+                return response;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[CommercialBankClient] Exception during GET: {ex.GetType().Name}: {ex.Message}");
+                throw;
+            }
         }
     }
 }
