@@ -93,7 +93,7 @@ namespace esAPI.Clients
             try
             {
                 // Use the correct endpoint (base address already includes /api)
-                var fullUrl = $"{_client.BaseAddress}/account/me";
+                var fullUrl = $"{_client.BaseAddress}/account";
                 Console.WriteLine($"[CommercialBankClient] Using full URL: {fullUrl}");
 
                 var request = new HttpRequestMessage(HttpMethod.Post, fullUrl);
