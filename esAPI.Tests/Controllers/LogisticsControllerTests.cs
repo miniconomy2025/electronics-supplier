@@ -62,7 +62,7 @@ namespace esAPI.Tests.Controllers
             _stateMock.Setup(s => s.CurrentDay).Returns(10);
 
             var controller = new LogisticsController(_context, _stateMock.Object);
-            var req = new LogisticsRequestDto { Type = "DELIVERY", Id = "123", Items = new List<LogisticsItemDto> { new LogisticsItemDto { Quantity = 1 } } };
+            var req = new LogisticsRequestDto { Type = "DELIVERY", Id = 123, Items = new List<LogisticsItemDto> { new LogisticsItemDto { Quantity = 1 } } };
 
             var result = await controller.HandleLogisticsRequest(req);
 
@@ -87,7 +87,7 @@ namespace esAPI.Tests.Controllers
             _stateMock.Setup(s => s.CurrentDay).Returns(20);
 
             var controller = new LogisticsController(_context, _stateMock.Object);
-            var req = new LogisticsRequestDto { Type = "DELIVERY", Id = "200", Items = new List<LogisticsItemDto> { new LogisticsItemDto { Quantity = 2 } } };
+            var req = new LogisticsRequestDto { Type = "DELIVERY", Id = 200, Items = new List<LogisticsItemDto> { new LogisticsItemDto { Quantity = 2 } } };
 
             var result = await controller.HandleLogisticsRequest(req);
 
@@ -106,7 +106,7 @@ namespace esAPI.Tests.Controllers
         public async Task HandlePickup_RequestNotFound_ReturnsNotFound()
         {
             var controller = new LogisticsController(_context, _stateMock.Object);
-            var req = new LogisticsRequestDto { Type = "PICKUP", Id = "999", Items = new List<LogisticsItemDto> { new LogisticsItemDto { Quantity = 1 } } };
+            var req = new LogisticsRequestDto { Type = "PICKUP", Id = 999, Items = new List<LogisticsItemDto> { new LogisticsItemDto { Quantity = 1 } } };
 
             var result = await controller.HandleLogisticsRequest(req);
 
@@ -125,7 +125,7 @@ namespace esAPI.Tests.Controllers
             await _context.SaveChangesAsync();
 
             var controller = new LogisticsController(_context, _stateMock.Object);
-            var req = new LogisticsRequestDto { Type = "PICKUP", Id = "300", Items = new List<LogisticsItemDto> { new LogisticsItemDto { Quantity = 2 } } };
+            var req = new LogisticsRequestDto { Type = "PICKUP", Id = 300, Items = new List<LogisticsItemDto> { new LogisticsItemDto { Quantity = 2 } } };
 
             var result = await controller.HandleLogisticsRequest(req);
 
@@ -144,7 +144,7 @@ namespace esAPI.Tests.Controllers
             _stateMock.Setup(s => s.IsRunning).Returns(false);
 
             var controller = new LogisticsController(_context, _stateMock.Object);
-            var req = new LogisticsRequestDto { Type = "PICKUP", Id = "400", Items = new List<LogisticsItemDto> { new LogisticsItemDto { Quantity = 1 } } };
+            var req = new LogisticsRequestDto { Type = "PICKUP", Id = 400, Items = new List<LogisticsItemDto> { new LogisticsItemDto { Quantity = 1 } } };
 
             var result = await controller.HandleLogisticsRequest(req);
 
