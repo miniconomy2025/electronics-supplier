@@ -3,6 +3,7 @@ using System.Text.Json;
 using esAPI.Data;
 using esAPI.Clients;
 using esAPI.Interfaces;
+using esAPI.Logging;
 
 namespace esAPI.Services
 {
@@ -17,23 +18,23 @@ namespace esAPI.Services
         {
             try
             {
-                _logger.LogInformation("🏦 Setting up bank account with commercial bank...");
+                _logger.LogInformation("[BankAccountService] Setting up bank account with commercial bank");
 
                 var company = await _db.Companies.FirstOrDefaultAsync(c => c.CompanyId == 1, cancellationToken);
                 if (company == null)
                 {
-                    _logger.LogError("❌ Electronics Supplier company (ID=1) not found in database.");
+                    _logger.LogErrorColored("[BankAccountService] Electronics Supplier company (ID=1) not found in database");
                     return (false, null, "Company not found in database");
                 }
 
                 // Check if we already have a bank account
                 if (!string.IsNullOrWhiteSpace(company.BankAccountNumber))
                 {
-                    _logger.LogInformation("🏦 Bank account already exists: {AccountNumber}", company.BankAccountNumber);
+                    _logger.LogInformation("[BankAccountService] Bank account already exists: {AccountNumber}", company.BankAccountNumber);
                     return (true, company.BankAccountNumber, null);
                 }
 
-                _logger.LogInformation("🏦 Creating bank account with notification URL...");
+                _logger.LogInformation("[BankAccountService] Creating bank account with notification URL");
 
                 // Create account with notification URL
                 var createAccountRequest = new
@@ -41,15 +42,15 @@ namespace esAPI.Services
                     notification_url = "https://electronics-supplier.tevlen.co.za/payments"
                 };
 
-                _logger.LogInformation("🏦 Request body: {@Request}", createAccountRequest);
-                _logger.LogInformation("🏦 About to make HTTP request to commercial bank...");
+                _logger.LogInformation("[BankAccountService] Request body: {@Request}", createAccountRequest);
+                _logger.LogInformation("[BankAccountService] Making HTTP request to commercial bank");
 
                 var createResponse = await _bankClient.CreateAccountAsync(createAccountRequest);
 
                 if (createResponse.IsSuccessStatusCode)
                 {
                     var responseContent = await createResponse.Content.ReadAsStringAsync();
-                    _logger.LogInformation("🏦 Bank account created successfully: {Response}", responseContent);
+                    _logger.LogInformation("[BankAccountService] Bank account created successfully: {Response}", responseContent);
 
                     // Parse JSON and extract account number
                     var accountNumber = await ParseAndStoreAccountNumberAsync(responseContent, company, cancellationToken);
@@ -64,14 +65,14 @@ namespace esAPI.Services
                 }
                 else if (createResponse.StatusCode == System.Net.HttpStatusCode.Conflict)
                 {
-                    _logger.LogInformation("🏦 Account already exists, retrieving account number...");
+                    _logger.LogInformation("[BankAccountService] Account already exists, retrieving account number");
 
                     // Get existing account number
                     var getResponse = await _bankClient.GetAccountAsync();
                     if (getResponse.IsSuccessStatusCode)
                     {
                         var responseContent = await getResponse.Content.ReadAsStringAsync();
-                        _logger.LogInformation("🏦 Retrieved existing account number: {Response}", responseContent);
+                        _logger.LogInformation("[BankAccountService] Retrieved existing account number: {Response}", responseContent);
 
                         // Parse JSON and extract account number
                         var accountNumber = await ParseAndStoreAccountNumberAsync(responseContent, company, cancellationToken);
@@ -100,11 +101,11 @@ namespace esAPI.Services
                             if (_retryQueuePublisher != null)
                             {
                                 await _retryQueuePublisher.PublishAsync(retryJob);
-                                _logger.LogInformation("🔄 Retry job enqueued for bank account creation.");
+                                _logger.LogInformation("[BankAccountService] Retry job enqueued for bank account creation");
                             }
                             else
                             {
-                                _logger.LogWarning("⚠️ Retry functionality not available, no retry job enqueued.");
+                                _logger.LogWarning("[BankAccountService] Retry functionality not available, no retry job enqueued");
                             }
                         }
 
@@ -113,13 +114,13 @@ namespace esAPI.Services
                 }
                 else
                 {
-                    _logger.LogError("❌ Failed to create bank account. Status: {Status}", createResponse.StatusCode);
+                    _logger.LogErrorColored("[BankAccountService] Failed to create bank account. Status: {0}", createResponse.StatusCode);
                     return (false, null, $"Failed to create bank account. Status: {createResponse.StatusCode}");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Exception during bank account setup");
+                _logger.LogErrorColored(ex, "[BankAccountService] Exception during bank account setup");
                 return (false, null, ex.Message);
             }
         }
@@ -128,7 +129,7 @@ namespace esAPI.Services
         {
             try
             {
-                _logger.LogInformation("💾 Parsing and storing bank account number: {Response}", responseContent);
+                _logger.LogInformation("[BankAccountService] Parsing and storing bank account number: {Response}", responseContent);
 
                 // Parse the JSON response to extract the account number
                 var responseData = JsonSerializer.Deserialize<JsonElement>(responseContent);
@@ -136,19 +137,19 @@ namespace esAPI.Services
 
                 if (string.IsNullOrWhiteSpace(actualAccountNumber))
                 {
-                    _logger.LogError("❌ No account number found in response");
+                    _logger.LogErrorColored("[BankAccountService] No account number found in response");
                     return null;
                 }
 
                 company.BankAccountNumber = actualAccountNumber;
                 await _db.SaveChangesAsync(cancellationToken);
 
-                _logger.LogInformation("✅ Bank account number stored successfully in Company table: {AccountNumber}", actualAccountNumber);
+                _logger.LogInformation("[BankAccountService] Bank account number stored successfully in Company table: {AccountNumber}", actualAccountNumber);
                 return actualAccountNumber;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Failed to parse and store account number");
+                _logger.LogErrorColored(ex, "[BankAccountService] Failed to parse and store account number");
                 return null;
             }
         }

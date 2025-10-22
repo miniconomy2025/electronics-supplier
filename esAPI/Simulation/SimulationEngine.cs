@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using esAPI.Services;
 using esAPI.Interfaces;
+using esAPI.Logging;
 
 namespace esAPI.Simulation
 {
@@ -14,17 +15,17 @@ namespace esAPI.Simulation
 
         public async Task RunDayAsync(int dayNumber)
         {
-            _logger.LogInformation("\n =============== 🏃‍♂️ Starting simulation day {DayNumber} ===============\n", dayNumber);
+            _logger.LogInformation("[SimulationEngine] Starting simulation day {DayNumber}", dayNumber);
 
             try
             {
                 if (dayNumber == 1)
                 {
-                    _logger.LogInformation("🎬 Executing startup sequence for day 1");
+                    _logger.LogInformation("[SimulationEngine] Executing startup sequence for day 1");
                     var startupSuccess = await _startupService.ExecuteStartupSequenceAsync();
                     if (!startupSuccess)
                     {
-                        _logger.LogError("❌ Startup sequence failed for day {DayNumber}", dayNumber);
+                        _logger.LogErrorColored("[SimulationEngine] Startup sequence failed for day {0}", dayNumber);
                         return;
                     }
                 }
@@ -33,22 +34,22 @@ namespace esAPI.Simulation
                 var daySuccess = await _dayService.ExecuteDayAsync(dayNumber);
                 if (!daySuccess)
                 {
-                    _logger.LogError("❌ Daily operations failed for day {DayNumber}", dayNumber);
+                    _logger.LogErrorColored("[SimulationEngine] Daily operations failed for day {0}", dayNumber);
                     return;
                 }
 
                 // Trigger any day advanced events
                 if (OnDayAdvanced != null)
                 {
-                    _logger.LogInformation("📡 Triggering OnDayAdvanced event for day {DayNumber}", dayNumber);
+                    _logger.LogInformation("[SimulationEngine] Triggering OnDayAdvanced event for day {DayNumber}", dayNumber);
                     await OnDayAdvanced(dayNumber);
                 }
 
-                _logger.LogInformation("✅ Simulation day {DayNumber} completed successfully", dayNumber);
+                _logger.LogInformation("[SimulationEngine] Simulation day {DayNumber} completed successfully", dayNumber);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Critical error during simulation day {DayNumber}", dayNumber);
+                _logger.LogErrorColored(ex, "[SimulationEngine] Critical error during simulation day {0}", dayNumber);
                 throw;
             }
         }

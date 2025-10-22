@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using esAPI.Clients;
 using esAPI.Data;
 using esAPI.Interfaces;
+using esAPI.Logging;
 using Microsoft.Extensions.Logging;
 using System;
 
@@ -25,21 +26,24 @@ namespace esAPI.Services
         {
             try
             {
-                _logger.LogInformation("🔍 Querying THOH for electronics machine details...");
+                _logger.LogInformation("[ElectronicsMachine] Querying THOH for electronics machine details");
                 var electronicsMachine = await _thohApiClient.GetElectronicsMachineAsync();
                 if (electronicsMachine == null)
                 {
-                    _logger.LogError("❌ Could not retrieve electronics machine details from THOH API.");
+                    _logger.LogErrorColored("[ElectronicsMachine] Could not retrieve electronics machine details from THOH API");
                     return false;
                 }
-                _logger.LogInformation($"✅ Retrieved electronics machine: ProductionRate={electronicsMachine.ProductionRate}, Price={electronicsMachine.Price}, InputRatio={string.Join(", ", electronicsMachine.InputRatio.Select(kv => kv.Key + ":" + kv.Value))}");
+                _logger.LogInformation("[ElectronicsMachine] Retrieved electronics machine: ProductionRate={ProductionRate}, Price={Price}, InputRatio={InputRatio}", 
+                    electronicsMachine.ProductionRate, 
+                    electronicsMachine.Price, 
+                    string.Join(", ", electronicsMachine.InputRatio.Select(kv => kv.Key + ":" + kv.Value)));
                 // Create or update MachineRatio for each input
                 foreach (var input in electronicsMachine.InputRatio)
                 {
                     var material = _context.Materials.FirstOrDefault(mat => mat.MaterialName.ToLower() == input.Key.ToLower());
                     if (material == null)
                     {
-                        _logger.LogWarning($"⚠️ Material '{input.Key}' not found in DB, skipping ratio.");
+                        _logger.LogWarningColored("[ElectronicsMachine] Material '{0}' not found in DB, skipping ratio", input.Key);
                         continue;
                     }
                     var ratio = _context.MachineRatios.FirstOrDefault(r => r.MaterialId == material.MaterialId);
@@ -52,12 +56,12 @@ namespace esAPI.Services
                         };
                         _context.MachineRatios.Add(ratio);
                         await _context.SaveChangesAsync();
-                        _logger.LogInformation($"🆕 Created MachineRatio for material '{input.Key}'");
+                        _logger.LogInformation("[ElectronicsMachine] Created MachineRatio for material '{MaterialKey}'", input.Key);
                     }
                     else
                     {
                         ratio.Ratio = input.Value;
-                        _logger.LogInformation($"🔄 Updated MachineRatio for material '{input.Key}'");
+                        _logger.LogInformation("[ElectronicsMachine] Updated MachineRatio for material '{MaterialKey}'", input.Key);
                     }
                 }
                 await _context.SaveChangesAsync();
@@ -72,20 +76,21 @@ namespace esAPI.Services
                     };
                     _context.MachineDetails.Add(detail);
                     await _context.SaveChangesAsync();
-                    _logger.LogInformation($"🆕 Created MachineDetails with output {detail.MaximumOutput}");
+                    _logger.LogInformation("[ElectronicsMachine] Created MachineDetails with output {MaximumOutput}", detail.MaximumOutput);
                 }
                 else
                 {
                     detail.MaximumOutput = electronicsMachine.ProductionRate;
-                    _logger.LogInformation($"🔄 Updated MachineDetails output to {detail.MaximumOutput}");
+                    _logger.LogInformation("[ElectronicsMachine] Updated MachineDetails output to {MaximumOutput}", detail.MaximumOutput);
                 }
                 await _context.SaveChangesAsync();
-                _logger.LogInformation("✅ Electronics machine details synced.");
+                _logger.LogInformation("[ElectronicsMachine] Electronics machine details synced");
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Failed to sync electronics machine details from THOH API. Continuing simulation without update.");
+                _logger.LogErrorColored("[ElectronicsMachine] Failed to sync electronics machine details from THOH API. Continuing simulation without update");
+                _logger.LogError(ex, "[ElectronicsMachine] Exception details: {Message}", ex.Message);
                 return false;
             }
         }

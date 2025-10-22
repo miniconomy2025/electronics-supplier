@@ -3,6 +3,7 @@ using esAPI.Models;
 using esAPI.Interfaces;
 using esAPI.Clients;
 using Microsoft.Extensions.Logging;
+using esAPI.Logging;
 
 namespace esAPI.Services
 {
@@ -16,14 +17,14 @@ namespace esAPI.Services
 
         public async Task<decimal> GetAndStoreBalance(int simulationDay)
         {
-            _logger.LogInformation("🏦 Retrieving bank balance for simulation day {SimulationDay}", simulationDay);
+            _logger.LogInformation("[BankService] Retrieving bank balance for simulation day {SimulationDay}", simulationDay);
 
             try
             {
                 var balance = await _bankClient.GetAccountBalanceAsync();
-                _logger.LogInformation("💰 Retrieved bank balance: {Balance}", balance);
+                _logger.LogInformation("[BankService] Retrieved bank balance: {Balance}", balance);
 
-                _logger.LogInformation("💾 Storing bank balance snapshot in database");
+                _logger.LogInformation("[BankService] Storing bank balance snapshot in database");
                 var snapshot = new BankBalanceSnapshot
                 {
                     SimulationDay = simulationDay,
@@ -33,14 +34,14 @@ namespace esAPI.Services
                 _db.BankBalanceSnapshots.Add(snapshot);
                 await _db.SaveChangesAsync();
 
-                _logger.LogInformation("✅ Bank balance snapshot stored: Day={Day}, Balance={Balance}, Timestamp={Timestamp}",
+                _logger.LogInformation("[BankService] Bank balance snapshot stored: Day={Day}, Balance={Balance}, Timestamp={Timestamp}",
                     simulationDay, balance, simulationDay);
 
                 return balance;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Failed to get or store bank balance, enqueuing retry job");
+                _logger.LogErrorColored(ex, "[BankService] Failed to get or store bank balance, enqueuing retry job");
 
                 var retryJob = new BankBalanceRetryJob
                 {
@@ -51,15 +52,15 @@ namespace esAPI.Services
                 if (_retryQueuePublisher != null)
                 {
                     await _retryQueuePublisher.PublishAsync(retryJob);
-                    _logger.LogInformation("🔄 Bank balance retry job enqueued.");
+                    _logger.LogInformation("[BankService] Bank balance retry job enqueued");
                 }
                 else
                 {
-                    _logger.LogWarning("⚠️ Retry functionality not available, no retry job enqueued.");
+                    _logger.LogWarningColored("[BankService] Retry functionality not available, no retry job enqueued");
                 }
 
                 // Return a sentinel value instead of throwing to allow simulation to continue
-                _logger.LogWarning("⚠️ Returning sentinel balance value (-1) to allow simulation to continue");
+                _logger.LogWarningColored("[BankService] Returning sentinel balance value (-1) to allow simulation to continue");
                 return -1m;
             }
         }

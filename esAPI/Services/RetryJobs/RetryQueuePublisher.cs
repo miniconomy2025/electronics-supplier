@@ -23,11 +23,11 @@ namespace esAPI.Services
             
             if (_sqs == null)
             {
-                _logger.LogWarning("🔧 RetryQueuePublisher created without AWS SQS client - retry functionality disabled");
+                _logger.LogWarning("[RetryQueuePublisher] Created without AWS SQS client - retry functionality disabled");
             }
             else if (string.IsNullOrEmpty(_queueUrl))
             {
-                _logger.LogWarning("🔧 RetryQueuePublisher created without queue URL - retry functionality disabled");
+                _logger.LogWarning("[RetryQueuePublisher] Created without queue URL - retry functionality disabled");
             }
         }
 
@@ -36,20 +36,20 @@ namespace esAPI.Services
             // Only publish retry jobs when simulation is running
             if (!_stateService.IsRunning)
             {
-                _logger.LogDebug("🔄 Simulation not running, skipping retry job publication for {JobType}", job.JobType);
+                _logger.LogDebug("[RetryQueuePublisher] Simulation not running, skipping retry job publication for {JobType}", job.JobType);
                 return;
             }
 
             // Check if AWS SQS is available
             if (_sqs == null)
             {
-                _logger.LogDebug("🔧 AWS SQS not available, skipping retry job publication for {JobType}", job.JobType);
+                _logger.LogDebug("[RetryQueuePublisher] AWS SQS not available, skipping retry job publication for {JobType}", job.JobType);
                 return;
             }
 
             if (string.IsNullOrEmpty(_queueUrl))
             {
-                _logger.LogDebug("🔧 Queue URL not configured, skipping retry job publication for {JobType}", job.JobType);
+                _logger.LogDebug("[RetryQueuePublisher] Queue URL not configured, skipping retry job publication for {JobType}", job.JobType);
                 return;
             }
 

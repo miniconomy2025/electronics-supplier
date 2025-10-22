@@ -9,6 +9,7 @@ using esAPI.Interfaces;
 using esAPI.Interfaces.Services;
 using esAPI.Clients;
 using esAPI.DTOs.Simulation;
+using esAPI.Logging;
 using System.Net.Http;
 
 namespace esAPI.Controllers
@@ -38,17 +39,17 @@ namespace esAPI.Controllers
         [HttpPost]
         public async Task<IActionResult> StartSimulation([FromBody] SimulationStartRequestDto? request = null)
         {
-            _logger.LogInformation("🚀 ===== MAIN SIMULATION ENDPOINT CALLED =====");
+            _logger.LogInformation("[SimulationController] Main simulation endpoint called");
 
             // Start simulation with or without external epoch time
             if (request?.EpochStartTime != null)
             {
-                _logger.LogInformation("📅 Starting simulation with external epoch start time: {EpochStartTime}", request.EpochStartTime);
+                _logger.LogInformation("[SimulationController] Starting simulation with external epoch start time: {EpochStartTime}", request.EpochStartTime);
                 _stateService.Start(request.EpochStartTime.Value);
             }
             else
             {
-                _logger.LogInformation("📅 Starting simulation with current time");
+                _logger.LogInformation("[SimulationController] Starting simulation with current time");
                 _stateService.Start();
             }
 
@@ -56,11 +57,11 @@ namespace esAPI.Controllers
             var result = await _simulationStartupService.StartSimulationAsync();
             if (!result.Success)
             {
-                _logger.LogError("❌ Failed to start simulation. Error: {Error}", result.Error);
+                _logger.LogErrorColored("[SimulationController] Failed to start simulation. Error: {0}", result.Error ?? "Unknown error");
                 return StatusCode(502, $"Failed to start simulation. Error: {result.Error}");
             }
 
-            _logger.LogInformation("✅ Simulation started with bank account: {AccountNumber}", result.AccountNumber);
+            _logger.LogInformation("[SimulationController] Simulation started with bank account: {AccountNumber}", result.AccountNumber);
             return Ok(new { 
                 message = "Simulation started", 
                 bankAccount = result.AccountNumber 
@@ -71,7 +72,7 @@ namespace esAPI.Controllers
         [HttpGet]
         public ActionResult<DTOs.SimulationStateDto> GetSimulation()
         {
-            _logger.LogDebug("📊 Retrieving current simulation state");
+            _logger.LogDebug("[SimulationController] Retrieving current simulation state");
 
             var simTime = _stateService.GetCurrentSimulationTime(3);
             var canonicalSimDate = simTime.ToCanonicalTime();
@@ -87,7 +88,7 @@ namespace esAPI.Controllers
                 CanonicalSimulationDate = canonicalSimDate
             };
 
-            _logger.LogDebug("📊 Simulation state: Running={IsRunning}, Day={CurrentDay}, Time={SimTime}",
+            _logger.LogDebug("[SimulationController] Simulation state: Running={IsRunning}, Day={CurrentDay}, Time={SimTime}",
                 dto.IsRunning, dto.CurrentDay, simTime);
 
             return Ok(dto);
@@ -107,23 +108,23 @@ namespace esAPI.Controllers
                 _stateService.CurrentDay, _stateService.CurrentDay + 1);
 
             await _simulationEngine.RunDayAsync(_stateService.CurrentDay);
-            _logger.LogInformation("✅ Day {Day} simulation logic completed", _stateService.CurrentDay);
+            _logger.LogInformation("[SimulationController] Day {Day} simulation logic completed", _stateService.CurrentDay);
 
             _stateService.AdvanceDay();
-            _logger.LogInformation("📈 Simulation advanced to day {NewDay}", _stateService.CurrentDay);
+            _logger.LogInformation("[SimulationController] Simulation advanced to day {NewDay}", _stateService.CurrentDay);
 
             // Backup to DB
-            _logger.LogInformation("💾 Updating simulation progress in database");
+            _logger.LogInformation("[SimulationController] Updating simulation progress in database");
             var sim = _context.Simulations.FirstOrDefault();
             if (sim != null)
             {
                 sim.DayNumber = _stateService.CurrentDay;
                 await _context.SaveChangesAsync();
-                _logger.LogInformation("✅ Simulation progress saved to database");
+                _logger.LogInformation("[SimulationController] Simulation progress saved to database");
             }
             else
             {
-                _logger.LogWarning("⚠️ No simulation record found in database for backup");
+                _logger.LogWarning("[SimulationController] No simulation record found in database for backup");
             }
 
             return Ok(new { currentDay = _stateService.CurrentDay });
@@ -133,20 +134,20 @@ namespace esAPI.Controllers
         [HttpDelete]
         public async Task<IActionResult> StopAndDeleteSimulation()
         {
-            _logger.LogInformation("🛑 Stopping simulation and cleaning up data");
+            _logger.LogInformation("[SimulationController] Stopping simulation and cleaning up data");
             
             if (_stateService.IsRunning)
             {
                 _stateService.Stop();
-                _logger.LogInformation("� Simulation state service stopped");
+                _logger.LogInformation("[SimulationController] Simulation state service stopped");
             }
             else
             {
-                _logger.LogInformation("📊 Simulation was not running, proceeding with data cleanup");
+                _logger.LogInformation("[SimulationController] Simulation was not running, proceeding with data cleanup");
             }
 
             // Backup to DB
-            _logger.LogInformation("💾 Updating simulation stop in database");
+            _logger.LogInformation("[SimulationController] Updating simulation stop in database");
             var sim = _context.Simulations.FirstOrDefault();
             if (sim != null)
             {
@@ -154,27 +155,27 @@ namespace esAPI.Controllers
                 sim.StartedAt = null;
                 sim.DayNumber = 0;
                 await _context.SaveChangesAsync();
-                _logger.LogInformation("✅ Simulation stop saved to database");
+                _logger.LogInformation("[SimulationController] Simulation stop saved to database");
             }
             else
             {
-                _logger.LogWarning("⚠️ No simulation record found in database for cleanup");
+                _logger.LogWarning("[SimulationController] No simulation record found in database for cleanup");
             }
 
             // Clean up simulation data according to requirements
-            _logger.LogInformation("🗑️ Cleaning up simulation data from database");
+            _logger.LogInformation("[SimulationController] Cleaning up simulation data from database");
             
             try
             {
                 // First check which tables exist
-                _logger.LogInformation("🔍 Checking which tables exist in database");
+                _logger.LogInformation("[SimulationController] Checking which tables exist in database");
                 var existingTables = await _context.Database.SqlQueryRaw<string>(@"
                     SELECT table_name 
                     FROM information_schema.tables 
                     WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
                 ").ToListAsync();
                 
-                _logger.LogInformation("📋 Found {Count} tables: {Tables}", existingTables.Count, string.Join(", ", existingTables));
+                _logger.LogInformation("[SimulationController] Found {Count} tables: {Tables}", existingTables.Count, string.Join(", ", existingTables));
 
                 // Define safe list of tables to truncate (prevents SQL injection)
                 var safeTableNames = new HashSet<string>
@@ -192,7 +193,7 @@ namespace esAPI.Controllers
                     {
                         try
                         {
-                            _logger.LogInformation("🗑️ Truncating table: {TableName}", table);
+                            _logger.LogInformation("[SimulationController] Truncating table: {TableName}", table);
                             // Safe: table name is validated against predefined whitelist
                             #pragma warning disable EF1002
                             await _context.Database.ExecuteSqlRawAsync($"TRUNCATE TABLE {table} RESTART IDENTITY CASCADE;");
@@ -200,24 +201,24 @@ namespace esAPI.Controllers
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogWarning("⚠️ Failed to truncate table {TableName}: {Error}", table, ex.Message);
+                            _logger.LogWarningColored("[SimulationController] Failed to truncate table {0}: {1}", table, ex.Message);
                         }
                     }
                     else
                     {
-                        _logger.LogInformation("⏭️ Skipping non-existent table: {TableName}", table);
+                        _logger.LogInformation("[SimulationController] Skipping non-existent table: {TableName}", table);
                     }
                 }
 
                 // Clear bank account numbers from companies table but keep company names
-                _logger.LogInformation("🏢 Clearing bank account numbers from companies table");
+                _logger.LogInformation("[SimulationController] Clearing bank account numbers from companies table");
                 await _context.Database.ExecuteSqlRawAsync("UPDATE companies SET bank_account_number = NULL;");
                 
-                _logger.LogInformation("✅ Simulation data cleanup completed (company names and lookup values preserved)");
+                _logger.LogInformation("[SimulationController] Simulation data cleanup completed (company names and lookup values preserved)");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error during database cleanup");
+                _logger.LogErrorColored(ex, "[SimulationController] Error during database cleanup");
                 return StatusCode(500, new { message = "Error during database cleanup", error = ex.Message });
             }
 

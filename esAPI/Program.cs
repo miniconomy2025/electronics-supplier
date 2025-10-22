@@ -2,6 +2,10 @@ using esAPI.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure console logging with colors
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+
 // Configure all services using extension methods to reduce coupling
 builder.Services
     .AddExternalApiClients(builder.Configuration)

@@ -4,6 +4,7 @@ using esAPI.Services;
 using esAPI.Simulation;
 using esAPI.Interfaces;
 using esAPI.Clients;
+using esAPI.Logging;
 
 namespace esAPI.Services
 {
@@ -39,34 +40,34 @@ namespace esAPI.Services
         {
             try
             {
-                _logger.LogInformation("🚀 Starting simulation startup process...");
+                _logger.LogInformation("[SimulationStartup] Starting simulation startup process");
 
                 // Note: Simulation state service already started by controller
                 // Note: Order expiration background service starts automatically as a hosted service
 
                 // Ensure company exists in database
-                _logger.LogInformation("🏢 Ensuring company record exists...");
+                _logger.LogInformation("[SimulationStartup] Ensuring company record exists");
                 await EnsureCompanyExistsAsync();
 
                 // Set up bank account with commercial bank
-                _logger.LogInformation("🏦 Setting up bank account with commercial bank...");
+                _logger.LogInformation("[SimulationStartup] Setting up bank account with commercial bank");
                 var bankSetupResult = await _bankAccountService.SetupBankAccountAsync();
                 if (!bankSetupResult.Success)
                 {
-                    _logger.LogError("❌ Failed to set up bank account. Error: {Error}", bankSetupResult.Error);
+                    _logger.LogErrorColored("[SimulationStartup] Failed to set up bank account. Error: {0}", bankSetupResult.Error ?? "Unknown error");
                     return (false, null, $"Failed to set up bank account. Error: {bankSetupResult.Error}");
                 }
 
-                _logger.LogInformation("✅ Bank account setup completed successfully");
+                _logger.LogInformation("[SimulationStartup] Bank account setup completed successfully");
 
                 // Check current balance and request loan if needed
-                _logger.LogInformation("💰 Checking current account balance...");
+                _logger.LogInformation("[SimulationStartup] Checking current account balance");
                 var currentBalance = await _bankClient.GetAccountBalanceAsync();
-                _logger.LogInformation("💰 Current account balance: {Balance}", currentBalance);
+                _logger.LogInformation("[SimulationStartup] Current account balance: {Balance}", currentBalance);
 
                 if (currentBalance <= 10000m)
                 {
-                    _logger.LogInformation("💰 Balance is {Balance} (≤ 10,000), requesting startup loan...", currentBalance);
+                    _logger.LogInformation("[SimulationStartup] Balance is {Balance} (≤ 10,000), requesting startup loan", currentBalance);
                     try
                     {
                         const decimal initialLoanAmount = 20000000m; // 20 million
@@ -93,46 +94,46 @@ namespace esAPI.Services
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "❌ Exception during startup loan request - simulation will continue without loan");
+                        _logger.LogError(ex, "[SimulationStartup] Exception during startup loan request - simulation will continue without loan");
                     }
                 }
                 else
                 {
-                    _logger.LogInformation("💰 Balance is {Balance}, no loan needed", currentBalance);
+                    _logger.LogInformation("[SimulationStartup] Balance is {Balance}, no loan needed", currentBalance);
                 }
 
                 // Query and sync electronics machine details
-                _logger.LogInformation("🔄 Syncing electronics machine details from THOH...");
+                _logger.LogInformation("[SimulationStartup] Syncing electronics machine details from THOH");
                 var machineDetailsSynced = await _machineDetailsService.SyncElectronicsMachineDetailsAsync();
                 if (!machineDetailsSynced)
                 {
-                    _logger.LogWarning("⚠️ Could not sync electronics machine details from THOH. Continuing simulation startup.");
+                    _logger.LogWarning("[SimulationStartup] Could not sync electronics machine details from THOH. Continuing simulation startup");
                 }
                 else
                 {
-                    _logger.LogInformation("✅ Electronics machine details synced.");
+                    _logger.LogInformation("[SimulationStartup] Electronics machine details synced");
                 }
 
                 // Persist simulation start to the database
                 await PersistSimulationStartAsync();
 
-                _logger.LogInformation("✅ Simulation started successfully with bank account: {AccountNumber}", bankSetupResult.AccountNumber);
+                _logger.LogInformation("[SimulationStartup] Simulation started successfully with bank account: {AccountNumber}", bankSetupResult.AccountNumber);
                 return (true, bankSetupResult.AccountNumber, null);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Exception during simulation startup");
+                _logger.LogErrorColored(ex, "[SimulationStartup] Exception during simulation startup");
                 return (false, null, ex.Message);
             }
         }
 
         private async Task PersistSimulationStartAsync()
         {
-            _logger.LogInformation("💾 Persisting simulation start to database");
+            _logger.LogInformation("[SimulationStartup] Persisting simulation start to database");
             var sim = await _context.Simulations.FirstOrDefaultAsync();
             if (sim == null)
             {
-                _logger.LogInformation("📝 Creating new simulation record in database");
+                _logger.LogInformation("[SimulationStartup] Creating new simulation record in database");
                 sim = new Models.Simulation
                 {
                     IsRunning = true,
@@ -143,7 +144,7 @@ namespace esAPI.Services
             }
             else
             {
-                _logger.LogInformation("🔄 Updating existing simulation record in database");
+                _logger.LogInformation("[SimulationStartup] Updating existing simulation record in database");
                 sim.IsRunning = true;
                 sim.StartedAt = DateTime.UtcNow;
                 sim.DayNumber = 1;
@@ -157,7 +158,7 @@ namespace esAPI.Services
             var company = await _context.Companies.FirstOrDefaultAsync(c => c.CompanyId == 1);
             if (company == null)
             {
-                _logger.LogInformation("📝 Creating Electronics Supplier company record (ID=1)");
+                _logger.LogInformation("[SimulationStartup] Creating Electronics Supplier company record (ID=1)");
                 company = new Models.Company
                 {
                     CompanyId = 1,
@@ -166,11 +167,11 @@ namespace esAPI.Services
                 };
                 _context.Companies.Add(company);
                 await _context.SaveChangesAsync();
-                _logger.LogInformation("✅ Electronics Supplier company record created");
+                _logger.LogInformation("[SimulationStartup] Electronics Supplier company record created");
             }
             else
             {
-                _logger.LogInformation("✅ Electronics Supplier company record already exists");
+                _logger.LogInformation("[SimulationStartup] Electronics Supplier company record already exists");
             }
         }
     }

@@ -4,6 +4,7 @@ using esAPI.Data;
 using esAPI.Clients;
 using esAPI.Interfaces;
 using esAPI.DTOs;
+using esAPI.Logging;
 using esAPI.Models;
 
 namespace esAPI.Services
@@ -86,7 +87,7 @@ namespace esAPI.Services
 
                 if (thohOrderResp == null || string.IsNullOrEmpty(thohOrderResp.BankAccount))
                 {
-                    _logger.LogWarning($"[Order] Failed to place THOH order for {materialName}");
+                    _logger.LogWarningColored("[Order] Failed to place THOH order for {0}", materialName);
                     return false;
                 }
 
@@ -110,7 +111,8 @@ namespace esAPI.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"[Order] Exception during THOH order for {materialName}. Will attempt Recycler fallback.");
+                _logger.LogErrorColored("[Order] Exception during THOH order for {0}. Will attempt Recycler fallback.", materialName);
+                _logger.LogError(ex, "[Order] THOH order exception details: {Message}", ex.Message);
                 return false;
             }
         }
@@ -143,7 +145,7 @@ namespace esAPI.Services
 
                 if (orderResponse?.IsSuccess != true || orderResponse.Data == null)
                 {
-                    _logger.LogWarning($"[Order] Failed to place recycler order for {mat.MaterialName}");
+                    _logger.LogWarningColored("[Order] Failed to place recycler order for {0}", mat.MaterialName);
                     return false;
                 }
 
@@ -171,7 +173,8 @@ namespace esAPI.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"[Order] Exception during Recycler order for {materialName}");
+                _logger.LogErrorColored("[Order] Exception during Recycler order for {0}", materialName);
+                _logger.LogError(ex, "[Order] Recycler order exception details: {Message}", ex.Message);
                 return false;
             }
         }
@@ -221,12 +224,13 @@ namespace esAPI.Services
                 {
                     var supplierExists = supplier != null ? "found" : "NOT FOUND";
                     var materialExists = material != null ? "found" : "NOT FOUND";
-                    _logger.LogWarning($"[DB] Could not insert material order for {supplierName}: Supplier={supplierExists}, Material={materialName} {materialExists}");
+                    _logger.LogWarningColored("[DB] Could not insert material order for {0}: Supplier={1}, Material={2} {3}", supplierName, supplierExists, materialName, materialExists);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"[DB] Exception inserting material order for {supplierName}: Material={materialName}");
+                _logger.LogErrorColored("[DB] Exception inserting material order for {0}: Material={1}", supplierName, materialName);
+                _logger.LogError(ex, "[DB] Material order exception details: {Message}", ex.Message);
             }
         }
 
@@ -234,7 +238,7 @@ namespace esAPI.Services
         {
             try
             {
-                _logger.LogInformation($"🚚 [Logistics] Arranging pickup for material: '{materialName}' (quantity: {quantity}) from {originCompany}");
+                _logger.LogInformation("[MaterialOrdering] Arranging pickup for material: '{MaterialName}' (quantity: {Quantity}) from {OriginCompany}", materialName, quantity, originCompany);
                 
                 var pickupRequest = new LogisticsPickupRequest
                 {
@@ -261,7 +265,8 @@ namespace esAPI.Services
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError(ex, $"[Logistics] Error paying Bulk Logistics for pickup of order {externalOrderId}");
+                            _logger.LogErrorColored("[Logistics] Error paying Bulk Logistics for pickup of order {0}", externalOrderId);
+                            _logger.LogError(ex, "[Logistics] Payment exception details: {Message}", ex.Message);
                         }
 
                         // Insert pickup request record
@@ -269,17 +274,18 @@ namespace esAPI.Services
                     }
                     else
                     {
-                        _logger.LogWarning($"[Logistics] Pickup response received but bank account number is null/empty for order {externalOrderId}");
+                        _logger.LogWarningColored("[Logistics] Pickup response received but bank account number is null/empty for order {0}", externalOrderId);
                     }
                 }
                 else
                 {
-                    _logger.LogWarning($"[Logistics] Failed to arrange pickup with Bulk Logistics for order {externalOrderId} - response was null");
+                    _logger.LogWarningColored("[Logistics] Failed to arrange pickup with Bulk Logistics for order {0} - response was null", externalOrderId);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"[Logistics] Exception during Bulk Logistics integration for order {externalOrderId}");
+                _logger.LogErrorColored("[Logistics] Exception during Bulk Logistics integration for order {0}", externalOrderId);
+                _logger.LogError(ex, "[Logistics] Bulk Logistics exception details: {Message}", ex.Message);
             }
         }
 
@@ -305,7 +311,8 @@ namespace esAPI.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"[DB] Error inserting pickup request for Bulk Logistics: OrderId={externalOrderId}, Material={materialName}");
+                _logger.LogErrorColored("[DB] Error inserting pickup request for Bulk Logistics: OrderId={0}, Material={1}", externalOrderId, materialName);
+                _logger.LogError(ex, "[DB] Pickup request exception details: {Message}", ex.Message);
             }
         }
     }

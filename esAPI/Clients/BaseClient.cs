@@ -43,7 +43,7 @@ namespace esAPI.Clients
                     return default;
                 }
                 
-                Console.WriteLine($"🔍 External API success response (Status {(int)response.StatusCode}): {responseContent}");
+                Console.WriteLine($"[BaseClient] External API success response (Status {(int)response.StatusCode}): {responseContent}");
                 
                 return System.Text.Json.JsonSerializer.Deserialize<TResponse>(responseContent, new System.Text.Json.JsonSerializerOptions
                 {

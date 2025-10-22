@@ -33,7 +33,7 @@ namespace esAPI.Services
             
             if (!_isEnabled)
             {
-                _logger.LogWarning("🔧 RetryJobDispatcher created but AWS SQS or queue URL not available - retry processing disabled");
+                _logger.LogWarning("[RetryJobDispatcher] Created but AWS SQS or queue URL not available - retry processing disabled");
             }
         }
 
@@ -41,7 +41,7 @@ namespace esAPI.Services
         {
             if (!_isEnabled)
             {
-                _logger.LogInformation("🔧 RetryJobDispatcher disabled - AWS SQS not available");
+                _logger.LogInformation("[RetryJobDispatcher] Disabled - AWS SQS not available");
                 // Just wait indefinitely since the service is disabled
                 await Task.Delay(Timeout.Infinite, stoppingToken);
                 return;
@@ -52,7 +52,7 @@ namespace esAPI.Services
                 // Only process retry jobs when simulation is running
                 if (!_stateService.IsRunning)
                 {
-                    _logger.LogDebug("🔄 Simulation not running, skipping retry job processing");
+                    _logger.LogDebug("[RetryJobDispatcher] Simulation not running, skipping retry job processing");
                     await Task.Delay(5000, stoppingToken); // Wait 5 seconds before checking again
                     continue;
                 }

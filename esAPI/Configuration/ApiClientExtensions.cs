@@ -19,7 +19,7 @@ namespace esAPI.Configuration
             }
 
             // Log the configured endpoints (without sensitive info)
-            Console.WriteLine("🔗 External API Configuration:");
+            Console.WriteLine("[ApiClientExtensions] External API Configuration:");
             Console.WriteLine($"  Commercial Bank: {externalApiConfig.CommercialBank}");
             Console.WriteLine($"  Bulk Logistics: {externalApiConfig.BulkLogistics}");
             Console.WriteLine($"  THOH: {externalApiConfig.THOH}");

@@ -22,24 +22,24 @@ namespace esAPI.Services
 
         public Task<bool> ExecuteStartupSequenceAsync()
         {
-            _logger.LogInformation("🏦 Day 1 startup sequence - bank account and initial loan already handled during simulation startup");
+            _logger.LogInformation("[SimulationDayStartup] Day 1 startup sequence - bank account and initial loan already handled during simulation startup");
 
             // COMMENTED OUT: Startup cost planning for now
             /*
-            // _logger.LogInformation("💰 Generating startup cost plans");
+            // _logger.LogInformation("[SimulationDayStartup] Generating startup cost plans");
             // var allPlans = await _costCalculator.GenerateAllPossibleStartupPlansAsync();
             // if (!allPlans.Any())
             // {
-            //     _logger.LogError("❌ No startup cost plans generated");
+            //     _logger.LogError("[SimulationDayStartup] No startup cost plans generated");
             //     return false;
             // }
-            // _logger.LogInformation("✅ Generated {PlanCount} startup cost plans", allPlans.Count());
+            // _logger.LogInformation("[SimulationDayStartup] Generated {PlanCount} startup cost plans", allPlans.Count());
 
             // var bestPlan = allPlans.OrderBy(p => p.TotalCost).First();
-            // _logger.LogInformation("💡 Selected best startup plan with cost: {TotalCost}", bestPlan.TotalCost);
+            // _logger.LogInformation("[SimulationDayStartup] Selected best startup plan with cost: {TotalCost}", bestPlan.TotalCost);
             */
 
-            _logger.LogInformation("✅ Day 1 startup sequence completed successfully - no additional actions needed");
+            _logger.LogInformation("[SimulationDayStartup] Day 1 startup sequence completed successfully - no additional actions needed");
             return Task.FromResult(true);
         }
     }

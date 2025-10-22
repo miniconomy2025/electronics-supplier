@@ -19,9 +19,9 @@ namespace esAPI.Clients
 
         public async Task<decimal> GetAccountBalanceAsync()
         {
-            Console.WriteLine($"🔧 CommercialBankClient: Checking account balance...");
+            Console.WriteLine($"[CommercialBankClient] Checking account balance");
             var response = await _client.GetAsync("account/me/balance");
-            Console.WriteLine($"🔧 CommercialBankClient: Balance response status: {response.StatusCode}");
+            Console.WriteLine($"[CommercialBankClient] Balance response status: {response.StatusCode}");
 
             if (!response.IsSuccessStatusCode)
             {
