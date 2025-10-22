@@ -12,7 +12,7 @@ namespace esAPI.Tests.Services
 {
     public class SimulationStartupServiceUnitTests
     {
-         private readonly AppDbContext _context; 
+        private readonly AppDbContext _context;
         private readonly Mock<IBankAccountService> _mockBankAccountService;
         private readonly Mock<ISimulationStateService> _mockStateService;
         private readonly Mock<ICommercialBankClient> _mockBankClient;
@@ -29,7 +29,6 @@ namespace esAPI.Tests.Services
                 .Options;
             _context = new AppDbContext(options);
 
-            // Mock dependencies
             _mockBankAccountService = new Mock<IBankAccountService>();
             _mockStateService = new Mock<ISimulationStateService>();
             _mockBankClient = new Mock<ICommercialBankClient>();
@@ -38,9 +37,9 @@ namespace esAPI.Tests.Services
             _mockThohApiClient = new Mock<IThohApiClient>();
 
             _mockMachineDetailsService = new Mock<IElectronicsMachineDetailsService>();
-            
+
             _service = new SimulationStartupService(
-                _context ,
+                _context,
                 _mockBankAccountService.Object,
                 _mockStateService.Object,
                 _mockBankClient.Object,
@@ -67,7 +66,6 @@ namespace esAPI.Tests.Services
             accountNumber.Should().Be("ACC-123");
             error.Should().BeNull();
 
-            // Verify that key methods were called
             _mockStateService.Verify(s => s.Start(), Times.Once);
             _mockBankAccountService.Verify(s => s.SetupBankAccountAsync(default), Times.Once);
             _mockMachineDetailsService.Verify(s => s.SyncElectronicsMachineDetailsAsync(), Times.Once);
@@ -75,7 +73,7 @@ namespace esAPI.Tests.Services
             var simulationInDb = await _context.Simulations.FirstOrDefaultAsync();
             simulationInDb.Should().NotBeNull();
             simulationInDb.IsRunning.Should().BeTrue();
-            simulationInDb.DayNumber.Should().Be(1); 
+            simulationInDb.DayNumber.Should().Be(1);
         }
 
         [Fact]
@@ -93,7 +91,6 @@ namespace esAPI.Tests.Services
             accountNumber.Should().BeNull();
             error.Should().Contain("Bank API is down");
 
-            // Verify the process stopped and did not continue
             _mockMachineDetailsService.Verify(s => s.SyncElectronicsMachineDetailsAsync(), Times.Never);
         }
 
