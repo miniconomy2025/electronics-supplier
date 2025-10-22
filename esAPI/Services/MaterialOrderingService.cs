@@ -96,16 +96,16 @@ namespace esAPI.Services
                 // Store order in database
                 await CreateMaterialOrderRecordAsync("thoh", materialName, thohQty, thohOrderResp.OrderId, dayNumber);
 
-                // Arrange logistics
-                await ArrangeLogisticsAsync(thohOrderResp.OrderId.ToString(), "thoh", materialName, thohQty);
-
-                // Make payment
+                // Step 1: Make payment to supplier first
                 if (thohOrderResp.Price > 0)
                 {
                     _logger.LogInformation($"[Payment] Paying THOH {thohOrderResp.Price} for order {thohOrderResp.OrderId}");
                     await _bankClient.MakePaymentAsync(thohOrderResp.BankAccount, "thoh", thohOrderResp.Price, thohOrderResp.OrderId.ToString());
-                    _logger.LogInformation($"[Payment] Payment sent for THOH order {thohOrderResp.OrderId}");
+                    _logger.LogInformation($"[Payment] Payment sent to THOH for order {thohOrderResp.OrderId}");
                 }
+
+                // Step 2: Arrange logistics and pay Bulk Logistics
+                await ArrangeLogisticsAsync(thohOrderResp.OrderId.ToString(), "thoh", materialName, thohQty);
 
                 return true;
             }
@@ -161,16 +161,16 @@ namespace esAPI.Services
                 // Store order in database
                 await CreateMaterialOrderRecordAsync("recycler", mat.MaterialName, orderQty, orderId, dayNumber);
 
-                // Arrange logistics
-                await ArrangeLogisticsAsync(orderId.ToString(), "recycler", mat.MaterialName.ToLower(), orderQty);
-
-                // Make payment
+                // Step 1: Make payment to supplier first
                 if (!string.IsNullOrEmpty(accountNumber) && total > 0)
                 {
-                    _logger.LogInformation($"[Payment] Paying recycler {total} for order {orderId}");
+                    _logger.LogInformation($"[Payment] Paying Recycler {total} for order {orderId}");
                     await _bankClient.MakePaymentAsync(accountNumber, "commercial-bank", total, orderId.ToString());
-                    _logger.LogInformation($"[Payment] Payment sent for recycler order {orderId}");
+                    _logger.LogInformation($"[Payment] Payment sent to Recycler for order {orderId}");
                 }
+
+                // Step 2: Arrange logistics and pay Bulk Logistics
+                await ArrangeLogisticsAsync(orderId.ToString(), "recycler", mat.MaterialName.ToLower(), orderQty);
 
                 return true;
             }
@@ -259,17 +259,17 @@ namespace esAPI.Services
                     
                     if (!string.IsNullOrEmpty(pickupResponse.BulkLogisticsBankAccountNumber))
                     {
-                        _logger.LogInformation($"[Logistics] Pickup arranged. Paying {pickupResponse.Cost} to Bulk Logistics.");
+                        _logger.LogInformation($"[Payment] Paying Bulk Logistics {pickupResponse.Cost} for pickup service (Order: {externalOrderId})");
 
                         try
                         {
                             await _bankClient.MakePaymentAsync(pickupResponse.BulkLogisticsBankAccountNumber, "commercial-bank", pickupResponse.Cost, $"Pickup for {originCompany} order {externalOrderId}");
-                            _logger.LogInformation($"[Logistics] Payment sent to Bulk Logistics for pickup of order {externalOrderId}");
+                            _logger.LogInformation($"[Payment] Payment sent to Bulk Logistics for pickup of order {externalOrderId}");
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogErrorColored("[Logistics] Error paying Bulk Logistics for pickup of order {0}", externalOrderId);
-                            _logger.LogError(ex, "[Logistics] Payment exception details: {Message}", ex.Message);
+                            _logger.LogErrorColored("[Payment] Error paying Bulk Logistics for pickup of order {0}", externalOrderId);
+                            _logger.LogError(ex, "[Payment] Bulk Logistics payment exception details: {Message}", ex.Message);
                         }
 
                         // Insert pickup request record
