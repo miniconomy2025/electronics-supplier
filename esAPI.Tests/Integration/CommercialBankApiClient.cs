@@ -125,7 +125,7 @@ namespace esAPI.Tests.Integration
             Func<Task> act = async () => await _client.MakePaymentAsync("to-acc", "to-bank", 100, "test");
 
             // Assert
-            
+
         }
 
         [Fact]
@@ -159,7 +159,7 @@ namespace esAPI.Tests.Integration
 
         public BankAccountServiceTests(WireMockServerFixture fixture)
         {
-            _server = fixture.Server; 
+            _server = fixture.Server;
             _server.Reset();
 
             // Setup in-memory database
@@ -176,7 +176,7 @@ namespace esAPI.Tests.Integration
             services.AddHttpClient("commercial-bank", client => client.BaseAddress = new Uri(_server.Url!));
             var serviceProvider = services.BuildServiceProvider();
             var httpClientFactory = serviceProvider.GetRequiredService<IHttpClientFactory>();
-            _mockStateService = new Mock<ISimulationStateService>(); 
+            _mockStateService = new Mock<ISimulationStateService>();
 
             var realBankClient = new CommercialBankClient(httpClientFactory);
 
@@ -185,7 +185,7 @@ namespace esAPI.Tests.Integration
             var mockConfiguration = new Mock<Microsoft.Extensions.Configuration.IConfiguration>();
             mockConfiguration.Setup(c => c["Retry:QueueUrl"]).Returns("https://test-queue-url");
 
-            var mockRetryPublisher= new Mock<RetryQueuePublisher>(
+            var mockRetryPublisher = new Mock<RetryQueuePublisher>(
                 Mock.Of<Amazon.SQS.IAmazonSQS>(),
                 Mock.Of<ILogger<RetryQueuePublisher>>(),
                 mockConfiguration.Object,

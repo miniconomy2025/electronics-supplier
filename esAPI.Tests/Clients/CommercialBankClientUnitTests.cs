@@ -29,7 +29,7 @@ namespace esAPI.Tests.Clients
 
             _client = new CommercialBankClient(_mockHttpClientFactory.Object);
         }
-        
+
         // Helper to setup a mock HTTP response
         private void SetupMockHttpResponse(HttpResponseMessage response)
         {
@@ -70,8 +70,8 @@ namespace esAPI.Tests.Clients
             {
                 Content = new StringContent(jsonResponse, Encoding.UTF8, "application/json")
             };
-            
-            
+
+
             _mockHttpMessageHandler.Protected()
                 .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
                 .ReturnsAsync(response);
