@@ -64,7 +64,7 @@ namespace esAPI.Services
                 {
                     _logger.LogInformation($"[Machine] THOH machine order attempt {attempt}/{maxRetries}");
                     var thohHttpClient = _httpClientFactory.CreateClient("thoh");
-                    var machineOrderReq = new { machineName = "electronics_machine", quantity = quantity };
+                    var machineOrderReq = new { machineName = "electronics_machine", quantity };
 
                     var response = await thohHttpClient.PostAsJsonAsync("/machines", machineOrderReq);
 

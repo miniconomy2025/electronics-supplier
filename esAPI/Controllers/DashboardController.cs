@@ -46,8 +46,8 @@ namespace esAPI.Controllers
                 .GroupBy(s => new { s.MaterialId, s.Material!.MaterialName })
                 .Select(g => new
                 {
-                    MaterialId = g.Key.MaterialId,
-                    MaterialName = g.Key.MaterialName,
+                    g.Key.MaterialId,
+                    g.Key.MaterialName,
                     AvailableSupply = g.Count()
                 })
                 .ToListAsync();
@@ -106,11 +106,11 @@ namespace esAPI.Controllers
                 select new
                 {
                     DateOfTransaction = o.OrderedAt,
-                    CompanyName = c.CompanyName,
+                    c.CompanyName,
                     Item = "Phone electronics",
                     AccountNo = c.BankAccountNumber,
                     Amount = o.TotalAmount,
-                    Status = s.Status
+                    s.Status
                 }
 
             ).ToListAsync();

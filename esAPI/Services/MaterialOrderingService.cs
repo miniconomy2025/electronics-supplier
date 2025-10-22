@@ -193,7 +193,7 @@ namespace esAPI.Services
                 if (supplier != null && material == null)
                 {
                     _logger.LogInformation($"[DB] Creating missing material: {materialName}");
-                    material = new Models.Material
+                    material = new Material
                     {
                         MaterialName = materialName.ToLower(),
                         PricePerKg = 10.0m // Default price

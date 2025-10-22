@@ -16,12 +16,12 @@ namespace esAPI.Controllers
 {
     [ApiController]
     [Route("simulation")]
-    public class SimulationController(SimulationStartupService simulationStartupService, SimulationDayOrchestrator dayOrchestrator, ISimulationStateService stateService, esAPI.Interfaces.Services.IStartupCostCalculator costCalculator, ICommercialBankClient bankClient, AppDbContext context, BankService bankService, BankAccountService bankAccountService, RecyclerApiClient recyclerClient, IBulkLogisticsClient bulkLogisticsClient, IElectronicsService electronicsService, IHttpClientFactory httpClientFactory, ThohApiClient thohApiClient, SimulationEngine simulationEngine, ILogger<SimulationController> logger, ILoggerFactory loggerFactory) : ControllerBase
+    public class SimulationController(SimulationStartupService simulationStartupService, SimulationDayOrchestrator dayOrchestrator, ISimulationStateService stateService, IStartupCostCalculator costCalculator, ICommercialBankClient bankClient, AppDbContext context, BankService bankService, BankAccountService bankAccountService, RecyclerApiClient recyclerClient, IBulkLogisticsClient bulkLogisticsClient, IElectronicsService electronicsService, IHttpClientFactory httpClientFactory, ThohApiClient thohApiClient, SimulationEngine simulationEngine, ILogger<SimulationController> logger, ILoggerFactory loggerFactory) : ControllerBase
     {
         private readonly SimulationStartupService _simulationStartupService = simulationStartupService;
         private readonly SimulationDayOrchestrator _dayOrchestrator = dayOrchestrator;
         private readonly ISimulationStateService _stateService = stateService;
-        private readonly esAPI.Interfaces.Services.IStartupCostCalculator _costCalculator = costCalculator;
+        private readonly IStartupCostCalculator _costCalculator = costCalculator;
         private readonly ICommercialBankClient _bankClient = bankClient;
         private readonly AppDbContext _context = context;
         private readonly BankService _bankService = bankService;

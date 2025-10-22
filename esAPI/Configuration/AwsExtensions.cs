@@ -14,7 +14,7 @@ namespace esAPI.Configuration
                 try
                 {
                     // Try to create SQS client - this will fail if no credentials are available
-                    var sqsClient = new Amazon.SQS.AmazonSQSClient();
+                    var sqsClient = new AmazonSQSClient();
                     Console.WriteLine("✅ AWS SQS client created successfully");
                     return sqsClient;
                 }

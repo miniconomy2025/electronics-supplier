@@ -56,7 +56,7 @@ namespace esAPI.Services
             };
             _context.MaterialSupplies.Add(supply);
             await _context.SaveChangesAsync();
-            return await GetSupplyByIdAsync(supply.SupplyId) ?? throw new System.Exception("Failed to create supply.");
+            return await GetSupplyByIdAsync(supply.SupplyId) ?? throw new Exception("Failed to create supply.");
         }
 
         public async Task<bool> DeleteSupplyByIdAsync(int id)

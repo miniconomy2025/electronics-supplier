@@ -93,48 +93,47 @@ namespace esAPI.Clients
             try
             {
                 // Use the correct endpoint (base address already includes /api)
-                var fullUrl = $"{_client.BaseAddress}/account";
-                Console.WriteLine($"🔧 CommercialBankClient: Using full URL: {fullUrl}");
+                var fullUrl = $"{_client.BaseAddress}/account/me";
+                Console.WriteLine($"[CommercialBankClient] Using full URL: {fullUrl}");
 
                 var request = new HttpRequestMessage(HttpMethod.Post, fullUrl);
-                var json = System.Text.Json.JsonSerializer.Serialize(requestBody);
+                var json = JsonSerializer.Serialize(requestBody);
                 request.Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
 
-                Console.WriteLine($"🔧 CommercialBankClient: Request body: {json}");
-                Console.WriteLine($"🔧 CommercialBankClient: Sending request with client certificate...");
+                Console.WriteLine($"[CommercialBankClient] Request body: {json}");
 
                 var response = await _client.SendAsync(request);
-                Console.WriteLine($"🔧 CommercialBankClient: Response status: {response.StatusCode}");
-                Console.WriteLine($"🔧 CommercialBankClient: Response URL: {response.RequestMessage?.RequestUri}");
+                Console.WriteLine($"[CommercialBankClient] Response status: {response.StatusCode}");
+                Console.WriteLine($"[CommercialBankClient] Response URL: {response.RequestMessage?.RequestUri}");
                 return response;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ CommercialBankClient: Exception during POST: {ex.GetType().Name}: {ex.Message}");
-                Console.WriteLine($"❌ CommercialBankClient: Inner exception: {ex.InnerException?.Message}");
+                Console.WriteLine($"[CommercialBankClient] Exception during POST: {ex.GetType().Name}: {ex.Message}");
+                Console.WriteLine($"[CommercialBankClient] Inner exception: {ex.InnerException?.Message}");
                 throw;
             }
         }
 
         public async Task<string?> RequestLoanAsync(decimal amount)
         {
-            var requestBody = new { amount = amount };
+            var requestBody = new { amount };
 
-            Console.WriteLine($"🔧 CommercialBankClient: Requesting loan of {amount}");
-            Console.WriteLine($"🔧 CommercialBankClient: Request body: {System.Text.Json.JsonSerializer.Serialize(requestBody)}");
-            Console.WriteLine($"🔧 CommercialBankClient: Base address: {_client.BaseAddress}");
-            Console.WriteLine($"🔧 CommercialBankClient: Full loan URL: {_client.BaseAddress}loan");
+            Console.WriteLine($"[CommercialBankClient] Requesting loan of {amount}");
+            Console.WriteLine($"[CommercialBankClient] Request body: {JsonSerializer.Serialize(requestBody)}");
+            Console.WriteLine($"[CommercialBankClient] Base address: {_client.BaseAddress}");
+            Console.WriteLine($"[CommercialBankClient] Full loan URL: {_client.BaseAddress}loan");
 
-            var response = await _client.PostAsJsonAsync("loan", requestBody);
-            Console.WriteLine($"🔧 CommercialBankClient: Loan request response status: {response.StatusCode}");
+            var response = await _client.PostAsJsonAsync("/loan", requestBody);
+            Console.WriteLine($"[CommercialBankClient] Loan request response status: {response.StatusCode}");
 
             var content = await response.Content.ReadAsStringAsync();
-            Console.WriteLine($"🔧 CommercialBankClient: Loan response content: {content}");
+            Console.WriteLine($"[CommercialBankClient] Loan response content: {content}");
 
             // Check if the response was successful before trying to parse as JSON
             if (!response.IsSuccessStatusCode)
             {
-                Console.WriteLine($"❌ CommercialBankClient: Loan request failed with status {response.StatusCode}");
+                Console.WriteLine($"[CommercialBankClient] Loan request failed with status {response.StatusCode}");
                 return null;
             }
 
@@ -149,12 +148,12 @@ namespace esAPI.Clients
                     if (doc.RootElement.TryGetProperty("loan_number", out var loanNum))
                     {
                         var loanNumber = loanNum.GetString();
-                        Console.WriteLine($"✅ CommercialBankClient: Loan request successful! Loan number: {loanNumber}");
+                        Console.WriteLine($"[CommercialBankClient] Loan request successful! Loan number: {loanNumber}");
                         return loanNumber;
                     }
                     else
                     {
-                        Console.WriteLine($"❌ CommercialBankClient: Success response but no loan_number found");
+                        Console.WriteLine($"[CommercialBankClient] Success response but no loan_number found");
                         return null;
                     }
                 }
@@ -186,21 +185,21 @@ namespace esAPI.Clients
                         }
                     }
 
-                    Console.WriteLine($"❌ CommercialBankClient: Loan request failed - Error: {errorMessage}, Amount remaining: {amountRemaining}");
+                    Console.WriteLine($"[CommercialBankClient] Loan request failed - Error: {errorMessage}, Amount remaining: {amountRemaining}");
 
                     // If the loan was too large, we could potentially retry with the remaining amount
                     if (errorMessage == "loanTooLarge" && amountRemaining > 0)
                     {
-                        Console.WriteLine($"💡 CommercialBankClient: Loan was too large. Remaining amount available: {amountRemaining}");
+                        Console.WriteLine($"[CommercialBankClient] Loan was too large. Remaining amount available: {amountRemaining}");
                     }
 
                     return null;
                 }
             }
-            catch (System.Text.Json.JsonException ex)
+            catch (JsonException ex)
             {
-                Console.WriteLine($"❌ CommercialBankClient: Failed to parse response as JSON: {ex.Message}");
-                Console.WriteLine($"❌ CommercialBankClient: Response content was: {content}");
+                Console.WriteLine($"[CommercialBankClient] Failed to parse response as JSON: {ex.Message}");
+                Console.WriteLine($"[CommercialBankClient] Response content was: {content}");
                 return null;
             }
         }
