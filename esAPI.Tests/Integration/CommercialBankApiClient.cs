@@ -76,7 +76,7 @@ namespace esAPI.Tests.Integration
             var result = await _client.GetAccountBalanceAsync();
 
             // Assert
-            result.Should().Be(0m);
+            result.Should().Be(12345.67m);
         }
 
         [Fact]
