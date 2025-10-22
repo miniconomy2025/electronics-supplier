@@ -85,11 +85,6 @@ namespace esAPI.Clients
 
         public async Task<HttpResponseMessage> CreateAccountAsync(object requestBody)
         {
-            // Console.WriteLine($"🔧 CommercialBankClient: Making POST request to /account");
-            // Console.WriteLine($"🔧 CommercialBankClient: Base address: {_client.BaseAddress}");
-            // Console.WriteLine($"🔧 CommercialBankClient: Full URL: {_client.BaseAddress}/account");
-            // Console.WriteLine($"🔧 CommercialBankClient: Request URI: {_client.BaseAddress}/account");
-
             try
             {
                 // Use the correct endpoint (base address already includes /api)
@@ -228,11 +223,42 @@ namespace esAPI.Clients
 
         public async Task<string?> GetAccountDetailsAsync()
         {
+            Console.WriteLine("[CommercialBankClient] Getting account details from /account/me");
             var response = await _client.GetAsync("account/me");
-            response.EnsureSuccessStatusCode();
+            Console.WriteLine($"[CommercialBankClient] Account details response status: {response.StatusCode}");
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"❌ CommercialBankClient: Failed to get account details. Status: {response.StatusCode}");
+                return null;
+            }
+
             var content = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"[CommercialBankClient] Account details response content: {content}");
+
             using var doc = System.Text.Json.JsonDocument.Parse(content);
-            return doc.RootElement.TryGetProperty("account_number", out var accNum) ? accNum.GetString() : null;
+            var root = doc.RootElement;
+
+            // Check if the response indicates success (handling new format)
+            if (root.TryGetProperty("success", out var successProp) && successProp.GetBoolean())
+            {
+                if (root.TryGetProperty("account_number", out var accNum))
+                {
+                    var accountNumber = accNum.GetString();
+                    Console.WriteLine($"✅ CommercialBankClient: Account number retrieved: {accountNumber}");
+                    return accountNumber;
+                }
+                else
+                {
+                    Console.WriteLine("❌ CommercialBankClient: Success response but no account_number found");
+                    return null;
+                }
+            }
+            else
+            {
+                Console.WriteLine("❌ CommercialBankClient: Account details request failed - success field is false or missing");
+                return null;
+            }
         }
 
         public async Task<HttpResponseMessage> GetAccountAsync()

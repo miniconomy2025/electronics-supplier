@@ -18,7 +18,7 @@ namespace esAPI.Services
         {
             try
             {
-                _logger.LogInformation("[BankAccountService] Setting up bank account with commercial bank");
+                _logger.LogInformation("[BankAccountService] SetupBankAccountAsync called - checking database for existing account");
 
                 var company = await _db.Companies.FirstOrDefaultAsync(c => c.CompanyId == 1, cancellationToken);
                 if (company == null)
@@ -30,9 +30,11 @@ namespace esAPI.Services
                 // Check if we already have a bank account
                 if (!string.IsNullOrWhiteSpace(company.BankAccountNumber))
                 {
-                    _logger.LogInformation("[BankAccountService] Bank account already exists: {AccountNumber}", company.BankAccountNumber);
+                    _logger.LogInformation("[BankAccountService] Bank account already exists in database: {AccountNumber} - no API call needed", company.BankAccountNumber);
                     return (true, company.BankAccountNumber, null);
                 }
+
+                _logger.LogInformation("[BankAccountService] No existing bank account found in database - proceeding to create with Commercial Bank API");
 
                 _logger.LogInformation("[BankAccountService] Creating bank account with notification URL");
 
@@ -65,19 +67,21 @@ namespace esAPI.Services
                 }
                 else if (createResponse.StatusCode == System.Net.HttpStatusCode.Conflict)
                 {
-                    _logger.LogInformation("[BankAccountService] Account already exists, retrieving account number");
+                    _logger.LogInformation("[BankAccountService] Account creation returned 409 Conflict - account already exists in Commercial Bank API");
+                    _logger.LogInformation("[BankAccountService] Retrieving existing account number from Commercial Bank");
 
                     // Get existing account number
                     var getResponse = await _bankClient.GetAccountAsync();
                     if (getResponse.IsSuccessStatusCode)
                     {
                         var responseContent = await getResponse.Content.ReadAsStringAsync();
-                        _logger.LogInformation("[BankAccountService] Retrieved existing account number: {Response}", responseContent);
+                        _logger.LogInformation("[BankAccountService] Successfully retrieved existing account details: {Response}", responseContent);
 
                         // Parse JSON and extract account number
                         var accountNumber = await ParseAndStoreAccountNumberAsync(responseContent, company, cancellationToken);
                         if (accountNumber != null)
                         {
+                            _logger.LogInformation("[BankAccountService] Successfully resolved existing account conflict - using account: {AccountNumber}", accountNumber);
                             return (true, accountNumber, null);
                         }
                         else
@@ -133,19 +137,55 @@ namespace esAPI.Services
 
                 // Parse the JSON response to extract the account number
                 var responseData = JsonSerializer.Deserialize<JsonElement>(responseContent);
-                var actualAccountNumber = responseData.GetProperty("account_number").GetString();
 
-                if (string.IsNullOrWhiteSpace(actualAccountNumber))
+                // Check for success field first (handles new response format)
+                if (responseData.TryGetProperty("success", out var successProp) && successProp.GetBoolean())
                 {
-                    _logger.LogErrorColored("[BankAccountService] No account number found in response");
-                    return null;
+                    if (responseData.TryGetProperty("account_number", out var accountProp))
+                    {
+                        var actualAccountNumber = accountProp.GetString();
+                        if (string.IsNullOrWhiteSpace(actualAccountNumber))
+                        {
+                            _logger.LogErrorColored("[BankAccountService] Account number is null or empty in response");
+                            return null;
+                        }
+
+                        company.BankAccountNumber = actualAccountNumber;
+                        await _db.SaveChangesAsync(cancellationToken);
+
+                        _logger.LogInformation("[BankAccountService] Bank account number stored successfully in Company table: {AccountNumber}", actualAccountNumber);
+                        return actualAccountNumber;
+                    }
+                    else
+                    {
+                        _logger.LogErrorColored("[BankAccountService] Success response but no account_number property found");
+                        return null;
+                    }
                 }
+                else
+                {
+                    // Fallback: try to get account_number directly (legacy format)
+                    if (responseData.TryGetProperty("account_number", out var accountProp))
+                    {
+                        var actualAccountNumber = accountProp.GetString();
+                        if (string.IsNullOrWhiteSpace(actualAccountNumber))
+                        {
+                            _logger.LogErrorColored("[BankAccountService] No account number found in response");
+                            return null;
+                        }
 
-                company.BankAccountNumber = actualAccountNumber;
-                await _db.SaveChangesAsync(cancellationToken);
+                        company.BankAccountNumber = actualAccountNumber;
+                        await _db.SaveChangesAsync(cancellationToken);
 
-                _logger.LogInformation("[BankAccountService] Bank account number stored successfully in Company table: {AccountNumber}", actualAccountNumber);
-                return actualAccountNumber;
+                        _logger.LogInformation("[BankAccountService] Bank account number stored successfully in Company table: {AccountNumber}", actualAccountNumber);
+                        return actualAccountNumber;
+                    }
+                    else
+                    {
+                        _logger.LogErrorColored("[BankAccountService] Response missing success field and account_number property");
+                        return null;
+                    }
+                }
             }
             catch (Exception ex)
             {
