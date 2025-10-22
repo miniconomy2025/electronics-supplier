@@ -132,14 +132,17 @@ namespace esAPI.Services
                     return false;
                 }
 
-                int orderQty = mat.AvailableQuantity / 2;
+                // Calculate order quantity ensuring it's a multiple of 1000 kg (Recycler requirement)
+                int desiredQty = mat.AvailableQuantity / 2;
+                int orderQty = desiredQty / 1000 * 1000; // Round down to nearest 1000
+                
                 if (orderQty == 0)
                 {
-                    _logger.LogInformation($"[Order] Recycler available quantity for {materialName} is zero after division. Skipping order.");
+                    _logger.LogInformation($"[Order] Recycler available quantity for {materialName} ({mat.AvailableQuantity} kg) results in order size ({desiredQty} kg) below minimum 1000 kg requirement. Skipping order.");
                     return false;
                 }
 
-                _logger.LogInformation($"[Order] Placing recycler order for {orderQty} kg of {mat.MaterialName} (our stock: {ownStock})");
+                _logger.LogInformation($"[Order] Placing recycler order for {orderQty} kg of {mat.MaterialName} (available: {mat.AvailableQuantity} kg, desired: {desiredQty} kg, rounded to 1000kg multiple: {orderQty} kg, our stock: {ownStock})");
 
                 var orderResponse = await _recyclerClient.PlaceRecyclerOrderAsync(mat.MaterialName, orderQty);
 
