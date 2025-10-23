@@ -214,7 +214,6 @@ namespace esAPI.Services
                         MaterialId = material.MaterialId,
                         ExternalOrderId = orderId,
                         RemainingAmount = quantity,
-                        TotalAmount = quantity,
                         OrderStatusId = 1, // Pending
                         OrderedAt = orderedAt,
                     };
