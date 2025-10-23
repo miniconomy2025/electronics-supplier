@@ -81,7 +81,29 @@ namespace esAPI.Services
                 // If external epoch start time is provided, use it as the reference
                 if (_externalEpochStartTime.HasValue)
                 {
-                    referenceStartTime = DateTimeOffset.FromUnixTimeSeconds(_externalEpochStartTime.Value).DateTime;
+                    var epochSeconds = _externalEpochStartTime.Value;
+                    
+                    // Auto-detect and handle millisecond timestamps (backup validation)
+                    const long MillisecondThreshold = 1_000_000_000_000; // 1e12 - likely milliseconds
+                    const long MinValidSeconds = -62135596800; // 0001-01-01 00:00:00 UTC
+                    const long MaxValidSeconds = 253402300799; // 9999-12-31 23:59:59 UTC
+                    
+                    if (epochSeconds > MillisecondThreshold)
+                    {
+                        // This should have been caught at the controller level, but handle as backup
+                        epochSeconds = epochSeconds / 1000;
+                    }
+                    
+                    // Validate the timestamp is within acceptable range for DateTimeOffset.FromUnixTimeSeconds
+                    if (epochSeconds < MinValidSeconds || epochSeconds > MaxValidSeconds)
+                    {
+                        throw new InvalidOperationException(
+                            $"External epoch start time {epochSeconds} is outside valid range. " +
+                            $"Valid Unix timestamps are between {MinValidSeconds} and {MaxValidSeconds} seconds. " +
+                            $"This corresponds to dates between 0001-01-01 and 9999-12-31.");
+                    }
+                    
+                    referenceStartTime = DateTimeOffset.FromUnixTimeSeconds(epochSeconds).DateTime;
                 }
                 else
                 {

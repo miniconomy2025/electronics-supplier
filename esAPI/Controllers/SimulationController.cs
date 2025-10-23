@@ -45,7 +45,36 @@ namespace esAPI.Controllers
             if (request?.EpochStartTime != null)
             {
                 _logger.LogInformation("[SimulationController] Starting simulation with external epoch start time: {EpochStartTime}", request.EpochStartTime);
-                _stateService.Start(request.EpochStartTime.Value);
+                
+                var epochStartTime = request.EpochStartTime.Value;
+                
+                // Auto-detect and convert millisecond timestamps
+                // Timestamps after 2001-09-09 (1 billion seconds) are likely milliseconds if > 1e12
+                const long MillisecondThreshold = 1_000_000_000_000; // 1e12 - likely milliseconds
+                const long MinValidSeconds = -62135596800; // 0001-01-01 00:00:00 UTC
+                const long MaxValidSeconds = 253402300799; // 9999-12-31 23:59:59 UTC
+                
+                if (epochStartTime > MillisecondThreshold)
+                {
+                    // Convert from milliseconds to seconds
+                    var originalTimestamp = epochStartTime;
+                    epochStartTime = epochStartTime / 1000;
+                    
+                    var convertedDate = DateTimeOffset.FromUnixTimeSeconds(epochStartTime);
+                    _logger.LogInformation("[SimulationController] Auto-converted timestamp from milliseconds: {OriginalMs} → {ConvertedSecs} (Date: {ConvertedDate})", 
+                        originalTimestamp, epochStartTime, convertedDate.ToString("yyyy-MM-dd HH:mm:ss K"));
+                }
+                
+                // Validate the final timestamp value
+                if (epochStartTime < MinValidSeconds || epochStartTime > MaxValidSeconds)
+                {
+                    _logger.LogError("[SimulationController] Invalid epoch start time {EpochStartTime}. Valid range: {MinValid} to {MaxValid}", 
+                        epochStartTime, MinValidSeconds, MaxValidSeconds);
+                    return BadRequest($"Invalid epoch start time {epochStartTime}. " +
+                        $"Valid Unix timestamps are between {MinValidSeconds} and {MaxValidSeconds} seconds.");
+                }
+                
+                _stateService.Start(epochStartTime);
             }
             else
             {
