@@ -14,8 +14,6 @@ namespace esAPI.Configuration
             Console.WriteLine($"🗄️ Database: Connecting to {MaskPassword(connectionString)}");
 
             var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
-            // Map the PostgreSQL enum to the C# enum
-            dataSourceBuilder.MapEnum<esAPI.Models.Enums.PickupRequest.PickupType>("request_type");
             var dataSource = dataSourceBuilder.Build();
 
             services.AddDbContext<AppDbContext>(options =>

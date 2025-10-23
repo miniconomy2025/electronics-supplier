@@ -79,7 +79,7 @@ namespace esAPI.Controllers
                 return NotFound($"No pickup request found with ID {request.Id}");
 
             // 2. Handle based on pickup request type
-            if (pickupRequest.Type == Models.Enums.PickupRequest.PickupType.MACHINE)
+            if (pickupRequest.Type == "MACHINE")
             {
                 // 3a. Find matching machine order by external order ID
                 var machineOrder = await _context.MachineOrders

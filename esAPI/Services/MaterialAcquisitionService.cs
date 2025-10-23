@@ -211,15 +211,13 @@ namespace esAPI.Services
 
         private async Task<PickupRequest?> CreatePickupRequestAsync(int externalOrderId, int pickupRequestId, int quantity, string materialName)
         {
-            Models.Enums.PickupRequest.PickupType pickupType;
-
-            // Map the materialName string to PickupType enum
-            if (materialName.Equals("copper", StringComparison.OrdinalIgnoreCase))
-                pickupType = Models.Enums.PickupRequest.PickupType.COPPER;
-            else if (materialName.Equals("silicone", StringComparison.OrdinalIgnoreCase))
-                pickupType = Models.Enums.PickupRequest.PickupType.SILICONE;
-            else
-                throw new ArgumentException($"Unsupported material name: {materialName}");
+            // Map the materialName string to pickup type string
+            string pickupType = materialName.ToLower() switch
+            {
+                "copper" => "COPPER",
+                "silicon" or "silicone" => "SILICONE",
+                _ => throw new ArgumentException($"Unsupported material name: {materialName}")
+            };
 
             var pickupRequest = new PickupRequest
             {

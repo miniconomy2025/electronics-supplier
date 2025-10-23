@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using static esAPI.Models.Enums.PickupRequest;
 
 namespace esAPI.Models
 {
@@ -18,7 +17,8 @@ namespace esAPI.Models
         public int? PickupRequestId { get; set; }
 
         [Column("type")]
-        public PickupType Type { get; set; }  // EF will store it as string if configured
+        [MaxLength(20)]
+        public string Type { get; set; } = string.Empty;
 
         [Column("quantity")]
         public int Quantity { get; set; }

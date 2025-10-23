@@ -40,9 +40,6 @@ namespace esAPI.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // Configure PostgreSQL enum for PickupType
-            modelBuilder.HasPostgresEnum<esAPI.Models.Enums.PickupRequest.PickupType>("request_type");
-
             modelBuilder.Entity<CurrentSupply>().ToView("current_supplies");
             modelBuilder.Entity<EffectiveMaterialStock>().ToView("effective_material_stock");
             modelBuilder.Entity<DailyMaterialConsumption>().ToView("daily_material_consumption");

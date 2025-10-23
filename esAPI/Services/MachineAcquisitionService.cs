@@ -163,7 +163,7 @@ namespace esAPI.Services
             {
                 ExternalRequestId = thohOrderId,
                 PickupRequestId = pickupRequestId,
-                Type = Models.Enums.PickupRequest.PickupType.MACHINE,
+                Type = "MACHINE",
                 Quantity = quantity,
                 PlacedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
             };

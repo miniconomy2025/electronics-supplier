@@ -360,9 +360,14 @@ namespace esAPI.Services
         {
             try
             {
-                var pickupType = materialName.ToLower() == "copper"
-                    ? Models.Enums.PickupRequest.PickupType.COPPER
-                    : Models.Enums.PickupRequest.PickupType.SILICONE;
+                // Map material names to pickup types using string constants
+                var pickupType = materialName.ToLower() switch
+                {
+                    "copper" => "COPPER",
+                    "silicon" or "silicone" => "SILICONE", 
+                    "machine" => "MACHINE",
+                    _ => "SILICONE" // Default fallback
+                };
 
                 var pickupDb = new PickupRequest
                 {
@@ -375,7 +380,7 @@ namespace esAPI.Services
 
                 _context.PickupRequests.Add(pickupDb);
                 await _context.SaveChangesAsync();
-                _logger.LogInformation($"[DB] Inserted pickup request for Bulk Logistics: ExternalOrderId={externalOrderId}, PickupRequestId={pickupRequestId}, Material={materialName}, Qty={quantity}");
+                _logger.LogInformation($"[DB] Inserted pickup request for Bulk Logistics: ExternalOrderId={externalOrderId}, PickupRequestId={pickupRequestId}, Material={materialName}, Type={pickupType}, Qty={quantity}");
             }
             catch (Exception ex)
             {
