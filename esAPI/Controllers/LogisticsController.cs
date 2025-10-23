@@ -113,7 +113,7 @@ namespace esAPI.Controllers
                 // 1. Find the pickup request by ID
                 _logger.LogInformation("[Logistics] Looking up pickup request with ID {PickupRequestId}", pickupReqID);
                 var pickupRequest = await _context.PickupRequests
-                    .FirstOrDefaultAsync(p => p.RequestId == pickupReqID);
+                    .FirstOrDefaultAsync(p => p.PickupRequestId == pickupReqID);
 
                 if (pickupRequest == null)
                 {
@@ -121,8 +121,8 @@ namespace esAPI.Controllers
                     return NotFound($"No pickup request found with ID {request.Id}");
                 }
 
-                _logger.LogInformation("[Logistics] Found pickup request - ID: {PickupRequestId}, ExternalOrderId: {ExternalOrderId}, Type: {Type}, Quantity: {Quantity}",
-                    pickupRequest.RequestId, pickupRequest.ExternalRequestId, pickupRequest.Type, pickupRequest.Quantity);
+                _logger.LogInformation("[Logistics] Found pickup request - BulkLogisticsID: {PickupRequestId}, ExternalOrderId: {ExternalOrderId}, Type: {Type}, Quantity: {Quantity}",
+                    pickupRequest.PickupRequestId, pickupRequest.ExternalRequestId, pickupRequest.Type, pickupRequest.Quantity);
 
                 // 2. Determine what type of pickup this is by checking related orders
                 _logger.LogInformation("[Logistics] Checking for machine order with external order ID {ExternalOrderId}", pickupRequest.ExternalRequestId);
