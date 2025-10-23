@@ -26,11 +26,6 @@ namespace esAPI.Configuration
             Console.WriteLine($"  Recycler: {externalApiConfig.Recycler}");
             Console.WriteLine($"  Client ID: {externalApiConfig.ClientId}");
             
-            // Debug: Show configuration sources for troubleshooting
-            Console.WriteLine("[ApiClientExtensions] Configuration Debug:");
-            Console.WriteLine($"  THOH from config: {configuration["ExternalApis:THOH"]}");
-            Console.WriteLine($"  THOH env var check: {Environment.GetEnvironmentVariable("ExternalApis__THOH") ?? "NOT SET"}");
-            
             // Debug: Show what the actual URIs will be
             Console.WriteLine("[ApiClientExtensions] Resolved Base URIs:");
             Console.WriteLine($"  THOH Base URI: {new Uri(externalApiConfig.THOH)}");

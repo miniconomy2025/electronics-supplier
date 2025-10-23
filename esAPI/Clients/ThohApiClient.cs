@@ -21,13 +21,13 @@ namespace esAPI.Clients
 
         public async Task<ThohMachineDto?> GetElectronicsMachineAsync()
         {
-            var response = await _client.GetFromJsonAsync<ThohMachinesResponse>("machines");
+            var response = await _client.GetFromJsonAsync<ThohMachinesResponse>("api/machines");
             return response?.Machines?.FirstOrDefault(m => m.MachineName == "electronics_machine");
         }
 
         public async Task<List<ThohMachineDto>> GetAvailableMachinesAsync()
         {
-            var response = await _client.GetFromJsonAsync<ThohMachinesResponse>("machines");
+            var response = await _client.GetFromJsonAsync<ThohMachinesResponse>("api/machines");
             return response?.Machines ?? new List<ThohMachineDto>();
         }
 
@@ -35,7 +35,7 @@ namespace esAPI.Clients
         {
             try
             {
-                var response = await _client.GetFromJsonAsync<List<ThohRawMaterialDto>>("raw-materials");
+                var response = await _client.GetFromJsonAsync<List<ThohRawMaterialDto>>("api/raw-materials");
                 var result = new List<SupplierMaterialInfo>();
 
                 if (response == null) return result;
@@ -70,7 +70,7 @@ namespace esAPI.Clients
                     weightQuantity = request.WeightQuantity
                 };
 
-                var response = await _client.PostAsJsonAsync("raw-materials", orderRequest);
+                var response = await _client.PostAsJsonAsync("api/raw-materials", orderRequest);
 
                 if (!response.IsSuccessStatusCode)
                 {
