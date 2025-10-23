@@ -58,7 +58,7 @@ public class LogisticsPickupResponse
     [JsonPropertyName("paymentReferenceId")]
     public string? PaymentReferenceId { get; set; }
 
-    [JsonPropertyName("bulkLogisticsBankAccountNumber")]
+    [JsonPropertyName("accountNumber")]
     public string? BulkLogisticsBankAccountNumber { get; set; }
 
     [JsonPropertyName("status")]
