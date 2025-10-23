@@ -50,6 +50,26 @@ namespace esAPI.Services
                 return true;
             }
 
+            // Check bank balance before ordering
+            try
+            {
+                var currentBalance = await _bankClient.GetAccountBalanceAsync();
+                _logger.LogInformation($"[Order] Current bank balance: {currentBalance}");
+
+                if (currentBalance < 100000)
+                {
+                    _logger.LogWarningColored("[Order] Insufficient funds to place orders. Current balance: {0}, minimum required: 100000", currentBalance);
+                    return false;
+                }
+
+                _logger.LogInformation($"[Order] Bank balance sufficient ({currentBalance} >= 100000), proceeding with material ordering for {materialName}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogErrorColored("[Order] Failed to check bank balance: {0}", ex.Message);
+                return false;
+            }
+
             // Try THOH first
             if (await TryOrderFromThohAsync(materialName, ownStock, dayNumber))
             {
@@ -73,12 +93,22 @@ namespace esAPI.Services
                     return false;
                 }
 
-                int thohQty = thohMat.AvailableQuantity / 2;
+                // Calculate quantity based on 50,000 budget limit
+                const decimal maxBudgetPerMaterial = 50000m;
+                int maxAffordableQty = thohMat.PricePerKg > 0 
+                    ? (int)(maxBudgetPerMaterial / thohMat.PricePerKg) 
+                    : thohMat.AvailableQuantity; // If price is 0, take what's available
+
+                int thohQty = Math.Min(thohMat.AvailableQuantity, maxAffordableQty);
+                
                 if (thohQty <= 0)
                 {
-                    _logger.LogInformation($"[Order] THOH quantity for {materialName} is zero after division. Will attempt Recycler fallback.");
+                    _logger.LogInformation($"[Order] Cannot afford any {materialName} from THOH with budget {maxBudgetPerMaterial}. Price per kg: {thohMat.PricePerKg}. Will attempt Recycler fallback.");
                     return false;
                 }
+
+                decimal estimatedCost = thohQty * thohMat.PricePerKg;
+                _logger.LogInformation($"[Order] THOH budget calculation - Available: {thohMat.AvailableQuantity}kg, Price: {thohMat.PricePerKg}/kg, Budget limit: {maxBudgetPerMaterial}, Ordering: {thohQty}kg, Estimated cost: {estimatedCost}");
 
                 _logger.LogInformation($"[Order] Attempting THOH order for {thohQty} kg of {materialName} (our stock: {ownStock})");
 
@@ -164,15 +194,30 @@ namespace esAPI.Services
                     return false;
                 }
 
-                // Calculate order quantity ensuring it's a multiple of 1000 kg (Recycler requirement)
-                int desiredQty = mat.AvailableQuantity / 2;
+                // Calculate order quantity based on 50,000 budget limit and ensure it's a multiple of 1000 kg (Recycler requirement)
+                const decimal maxBudgetPerMaterial = 50000m;
+                int maxAffordableQty = mat.PricePerKg > 0 
+                    ? (int)(maxBudgetPerMaterial / mat.PricePerKg) 
+                    : mat.AvailableQuantity; // If price is 0, take what's available
+
+                int desiredQty = Math.Min(mat.AvailableQuantity, maxAffordableQty);
                 int orderQty = desiredQty / 1000 * 1000; // Round down to nearest 1000
 
                 if (orderQty == 0)
                 {
-                    _logger.LogInformation($"[Order] Recycler available quantity for {materialName} ({mat.AvailableQuantity} kg) results in order size ({desiredQty} kg) below minimum 1000 kg requirement. Skipping order.");
+                    if (desiredQty < 1000)
+                    {
+                        _logger.LogInformation($"[Order] Recycler {materialName} - Budget {maxBudgetPerMaterial}, Price: {mat.PricePerKg}/kg, Max affordable: {maxAffordableQty}kg, Available: {mat.AvailableQuantity}kg, Desired: {desiredQty}kg - below 1000kg minimum requirement.");
+                    }
+                    else
+                    {
+                        _logger.LogInformation($"[Order] Recycler available quantity for {materialName} ({mat.AvailableQuantity} kg) results in order size ({desiredQty} kg) below minimum 1000 kg requirement. Skipping order.");
+                    }
                     return false;
                 }
+
+                decimal estimatedCost = orderQty * mat.PricePerKg;
+                _logger.LogInformation($"[Order] Recycler budget calculation - Available: {mat.AvailableQuantity}kg, Price: {mat.PricePerKg}/kg, Budget limit: {maxBudgetPerMaterial}, Max affordable: {maxAffordableQty}kg, Ordering: {orderQty}kg, Estimated cost: {estimatedCost}");
 
                 _logger.LogInformation($"[Order] Placing recycler order for {orderQty} kg of {mat.MaterialName} (available: {mat.AvailableQuantity} kg, desired: {desiredQty} kg, rounded to 1000kg multiple: {orderQty} kg, our stock: {ownStock})");
 
