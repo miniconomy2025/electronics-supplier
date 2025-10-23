@@ -22,7 +22,7 @@ namespace esAPI.Services
             _queueUrl = config?["Retry:QueueUrl"] ?? throw new ArgumentNullException(nameof(config), "Configuration is null or Retry:QueueUrl not configured");
         }
 
-        public async Task PublishAsync(IRetryJob job)
+        public virtual async Task PublishAsync(IRetryJob job)
         {
             // Only publish retry jobs when simulation is running
             if (!_stateService.IsRunning)
