@@ -70,7 +70,7 @@ namespace esAPI.Services
                     _logger.LogInformation("[SimulationStartup] Balance is {Balance} (≤ 10,000), requesting startup loan", currentBalance);
                     try
                     {
-                        const decimal initialLoanAmount = 20000000m; // 20 million
+                        const decimal initialLoanAmount = 200000m; // R200k
                         string? loanSuccess = await _bankClient.RequestLoanAsync(initialLoanAmount);
                         if (loanSuccess == null)
                         {
