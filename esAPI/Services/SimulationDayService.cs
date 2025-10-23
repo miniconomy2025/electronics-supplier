@@ -78,7 +78,7 @@ namespace esAPI.Services
                 _logger.LogInformation("[SimulationDay] Bank balance stored for day {DayNumber}: {Balance}", dayNumber, balance);
 
                 // Check if we need a loan on any day (including day 1 as backup)
-                if (balance <= 10000m)
+                if (balance <= 2000000m)
                 {
                     await RequestEmergencyLoanAsync(dayNumber);
                 }
@@ -92,7 +92,7 @@ namespace esAPI.Services
         private async Task RequestEmergencyLoanAsync(int dayNumber)
         {
             _logger.LogInformation("[SimulationDay] Bank balance is low (<= 10,000) on day {DayNumber}. Attempting to request a loan...", dayNumber);
-            const decimal loanAmount = 20000000m; // 20 million
+            const decimal loanAmount = 2000000m; // 2 million
 
             try
             {
