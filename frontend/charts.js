@@ -1,8 +1,44 @@
 const rawMaterialsChartCtx = document.getElementById('rawMaterialsChart').getContext('2d');
 
+const baseUrl = 'https://electronics-supplier.tevlen.co.za/';
+
+async function apiFetch(path, options = {}, overridePath) {
+  // Default headers for all API calls. You can add Authorization or other
+  // headers via the `options.headers` argument. Example usage:
+  // apiFetch('dashboard/earnings/total', { headers: { Authorization: 'Bearer <token>' } })
+  // For cross-origin requests where credentials (cookies) are required, add
+  // `credentials: 'include'` to the options and configure CORS on the server
+  // to allow credentials.
+  const defaultHeaders = {
+    'Accept': 'application/json',
+    'Client-Id': 'electronics-supplier'
+  };
+
+  const merged = {
+    // Keep any provided options (method, body, credentials, mode, etc.)
+    ...options,
+    headers: {
+      ...defaultHeaders,
+      ...(options.headers || {})
+    }
+  };
+
+  const finalPath = overridePath || baseUrl + path;
+
+  const response = await fetch(finalPath, merged);
+  if (!response.ok) {
+    // Try to get error body for a more descriptive message
+    const text = await response.text().catch(() => '');
+    throw new Error(`API ${response.status}: ${text}`);
+  }
+  return response;
+}
+
+
 async function fetchCurrentSupply() {
-  const response = await fetch('https://electronics-supplier.tevlen.co.za/Dashboard/current-supply');
+  const response = await apiFetch(`dashboard/supplies/current`);
   const data = await response.json();
+  
 
   return {
     labels: data.map(x => x.materialName),
@@ -10,11 +46,12 @@ async function fetchCurrentSupply() {
   };
 }
 
+let rawMaterialsChartInstance = null;
 async function initRawMaterialsChart() {
-  const rawMaterialsChartCtx = document.getElementById('rawMaterialsChart').getContext('2d');
+  const ctx = document.getElementById('rawMaterialsChart').getContext('2d');
   const { labels, counts } = await fetchCurrentSupply();
 
-  new Chart(rawMaterialsChartCtx, {
+  const chart = new Chart(ctx, {
     type: 'bar',
     data: {
       labels: labels,
@@ -45,23 +82,16 @@ async function initRawMaterialsChart() {
       }
     }
   });
+
+  return chart;
 }
 
-async function fetchMachinesStatus() {
-  const response = await fetch('https://electronics-supplier.tevlen.co.za/Dashboard/machines-status');
-  const data = await response.json();
-
-  return {
-    labels: data.map(x => x.status),
-    counts: data.map(x => x.count)
-  };
-}
-
+let machinesStatusChartInstance = null;
 async function initMachinesStatusChart() {
   const ctx = document.getElementById('machinesStatusChart').getContext('2d');
   const { labels, counts } = await fetchMachinesStatus();
 
-  new Chart(ctx, {
+  const chart = new Chart(ctx, {
     type: 'pie',
     data: {
       labels: labels,
@@ -83,35 +113,49 @@ async function initMachinesStatusChart() {
       }
     }
   });
+  return chart;
 }
 
 async function fetchEarnings() {
-  const response = await fetch('https://electronics-supplier.tevlen.co.za/Dashboard/total-earnings');
+  const response = await apiFetch(`dashboard/earnings/total`);
   const data = await response.json();
   return data.totalEarnings ?? 0;
 }
 
 async function fetchElectronicsStock() {
-  const response = await fetch('https://electronics-supplier.tevlen.co.za/Dashboard/electronics-stock');
+  const response = await apiFetch(`dashboard/electronics/stock`);
   return await response.json();
 }
 
 async function fetchMachinesStatusRaw() {
-  const response = await fetch('https://electronics-supplier.tevlen.co.za/Dashboard/machines-status');
+  const response = await apiFetch(`dashboard/machines/status`);
   return await response.json();
 }
 
-async function updateDashboardSummary() {
+// Convenience wrapper that returns { labels, counts } suitable for charts
+async function fetchMachinesStatus() {
+  const raw = await fetchMachinesStatusRaw();
+  // Expecting an array like [{ status: 'IN_USE', count: 3 }, ...]
+  const labels = raw.map(r => r.status);
+  const counts = raw.map(r => r.count);
+  return { labels, counts };
+}
+
+async function updatedashboardSummary() {
   const earnings = await fetchEarnings();
   document.getElementById('earningsValue').textContent = earnings.toLocaleString('en-ZA', {
     style: 'currency',
     currency: 'ZAR'
   });
+  console.log('here');
+  
 
   // Fetch and update bank balance
   try {
-    const response = await fetch('https://electronics-supplier.tevlen.co.za/Dashboard/bank-balance');
+    
+    const response = await apiFetch('', {}, `https://commercial-bank-api.subspace.site/api/account/me/balance`);
     const data = await response.json();
+    
     document.getElementById('bankBalanceValue').textContent = data.balance.toLocaleString('en-ZA', {
       style: 'currency',
       currency: 'ZAR'
@@ -139,7 +183,8 @@ async function updateDashboardSummary() {
 }
 
 async function fetchOrders() {
-  const response = await fetch('https://electronics-supplier.tevlen.co.za/Dashboard/orders');
+  // Use apiFetch so default headers / error handling apply
+  const response = await apiFetch(`dashboard/orders`);
   return await response.json();
 }
 
@@ -203,24 +248,82 @@ function convertToDate(decimalTimestamp) {
 }
 
 async function fetchBankBalanceHistory() {
-  const response = await fetch('https://electronics-supplier.tevlen.co.za/Dashboard/payments');
-  const data = await response.json();
-
-  return {
-    labels: data.map(p => {
-      const BASE_UNIX_SECONDS_2050 = 2524608000;
-      const actualUnixTimestamp = BASE_UNIX_SECONDS_2050 + Number(p.timestamp);
-      return new Date(actualUnixTimestamp * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-    }),
-    balances: data.map(p => p.cumulativeBalance)
-  };
+  // Return the client-side maintained bank balance history (labels, balances)
+  // This history is appended by calls to updateBankBalanceHistory() which
+  // fetches the live balance from the bank API and stores a local point.
+  const labels = bankBalanceHistory.map(pt => new Date(pt.ts).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }));
+  const balances = bankBalanceHistory.map(pt => pt.balance);
+  return { labels, balances };
 }
 
+// Bank balance history is kept in memory and persisted to localStorage so the
+// chart has a small historical window even if the server doesn't provide a
+// time series endpoint. Each point: { ts: <ms-since-epoch>, balance: <number> }
+const BANK_API_URL = 'https://commercial-bank-api.subspace.site/api/account/me/balance';
+const BANK_HISTORY_STORAGE_KEY = 'bankBalanceHistory:v1';
+let bankBalanceHistory = [];
+
+// Load persisted history on startup
+try {
+  const raw = localStorage.getItem(BANK_HISTORY_STORAGE_KEY);
+  if (raw) bankBalanceHistory = JSON.parse(raw);
+} catch (e) {
+  console.warn('Failed to load bank balance history from localStorage', e);
+  bankBalanceHistory = [];
+}
+
+function saveBankBalanceHistory() {
+  try {
+    localStorage.setItem(BANK_HISTORY_STORAGE_KEY, JSON.stringify(bankBalanceHistory));
+  } catch (e) {
+    // If storage is full or not available, just ignore silently.
+    console.warn('Failed to save bank balance history', e);
+  }
+}
+
+async function fetchCurrentBankBalancePoint() {
+  // Calls the external bank API (overridePath usage) and returns { ts, balance }
+  try {
+    const response = await apiFetch('', {}, BANK_API_URL);
+    const data = await response.json();
+    // prefer server-provided timestamp if present (ms or seconds), otherwise use now
+    let ts = Date.now();
+    if (data.timestamp) {
+      // timestamp may be seconds or milliseconds; normalize heuristically
+      const asNum = Number(data.timestamp);
+      ts = asNum > 1e12 ? asNum : asNum * 1000; // if small, assume seconds
+    }
+    const balance = Number(data.balance ?? data.amount ?? 0);
+    return { ts, balance };
+  } catch (err) {
+    console.warn('fetchCurrentBankBalancePoint failed', err);
+    throw err;
+  }
+}
+
+async function updateBankBalanceHistory({ limit = 72 } = {}) {
+  // Fetch current balance and append to history. Keep only `limit` latest points.
+  try {
+    const pt = await fetchCurrentBankBalancePoint();
+    // avoid pushing duplicate consecutive timestamps
+    const last = bankBalanceHistory[bankBalanceHistory.length - 1];
+    if (!last || last.ts !== pt.ts) {
+      bankBalanceHistory.push(pt);
+      // cap history length
+      if (bankBalanceHistory.length > limit) bankBalanceHistory = bankBalanceHistory.slice(-limit);
+      saveBankBalanceHistory();
+    }
+  } catch (err) {
+    // Don't throw — callers should handle chart update failures separately
+    console.warn('Unable to update bank balance history', err);
+  }
+}
+
+let bankBalanceChartInstance = null;
 async function initBankBalanceChart() {
   const ctx = document.getElementById('bankAccountChart').getContext('2d');
   const { labels, balances } = await fetchBankBalanceHistory();
-
-  new Chart(ctx, {
+  const chart = new Chart(ctx, {
     type: 'line',
     data: {
       labels: labels,
@@ -228,8 +331,8 @@ async function initBankBalanceChart() {
         label: 'Bank Balance (ZAR)',
         data: balances,
         fill: true,
-        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-        borderColor: 'rgba(75, 192, 192, 1)',
+        backgroundColor: 'rgba(17, 231, 124, 0.2)',
+        borderColor: 'rgba(17, 231, 124, 1)',
         tension: 0.3
       }]
     },
@@ -255,24 +358,94 @@ async function initBankBalanceChart() {
       }
     }
   });
+  return chart;
 }
 
-
-
-
 // Call the initialization on page load
-window.addEventListener('DOMContentLoaded', () => {
-  initMachinesStatusChart();
-  initRawMaterialsChart();
-  initBankBalanceChart();
-  updateDashboardSummary();
+window.addEventListener('DOMContentLoaded', async () => {
+  // create charts and keep references
+  rawMaterialsChartInstance = await initRawMaterialsChart();
+  machinesStatusChartInstance = await initMachinesStatusChart();
+  bankBalanceChartInstance = await initBankBalanceChart();
+
+  // initial UI updates
+  await updatedashboardSummary();
   populateOrdersTable();
   updateSimulationStatus();
+
+  // start refresh loop (recursive setTimeout approach)
+  const REFRESH_MS = 10_000; // 10 seconds
+
+  let stopped = false; // can be used to stop if needed
+
+  async function refreshOnceAndSchedule() {
+    if (stopped) return;
+
+    try {
+      // 1) refresh summary values
+      await updatedashboardSummary();
+
+      // 2) refresh raw materials chart
+      try {
+        const { labels, counts } = await fetchCurrentSupply();
+        if (rawMaterialsChartInstance) {
+          rawMaterialsChartInstance.data.labels = labels;
+          rawMaterialsChartInstance.data.datasets[0].data = counts;
+          rawMaterialsChartInstance.update();
+        }
+      } catch (err) {
+        console.warn('refresh raw materials failed', err);
+      }
+
+      // 3) refresh machines status chart
+      try {
+        const { labels, counts } = await fetchMachinesStatus();
+        if (machinesStatusChartInstance) {
+          machinesStatusChartInstance.data.labels = labels;
+          machinesStatusChartInstance.data.datasets[0].data = counts;
+          machinesStatusChartInstance.update();
+        }
+      } catch (err) {
+        console.warn('refresh machines status failed', err);
+      }
+
+      // 4) refresh bank balance chart
+      try {
+        // first, append the latest bank balance point
+        await updateBankBalanceHistory();
+        const { labels, balances } = await fetchBankBalanceHistory();
+        if (bankBalanceChartInstance) {
+          bankBalanceChartInstance.data.labels = labels;
+          bankBalanceChartInstance.data.datasets[0].data = balances;
+          bankBalanceChartInstance.update();
+        }
+      } catch (err) {
+        console.warn('refresh bank balance failed', err);
+      }
+
+      // 5) refresh orders table (optional if you want live updates)
+      try { await populateOrdersTable(); } catch (err) { console.warn('refresh orders failed', err); }
+
+      // 6) refresh simulation status too
+      try { await updateSimulationStatus(); } catch (err) { console.warn('refresh sim status failed', err); }
+    } catch (err) {
+      console.error('Unexpected refresh error', err);
+    } finally {
+      // schedule next run
+      setTimeout(refreshOnceAndSchedule, REFRESH_MS);
+    }
+  }
+
+  // start the loop
+  setTimeout(refreshOnceAndSchedule, REFRESH_MS);
+
+  // optional: stop when page unloads
+  window.addEventListener('beforeunload', () => { stopped = true; });
 });
 
 async function updateSimulationStatus() {
   try {
-    const response = await fetch('https://electronics-supplier.tevlen.co.za/simulation');
+    const response = await apiFetch(`simulation`);
     const sim = await response.json();
     const statusText = sim.isRunning ? 'Running' : 'Stopped';
     document.getElementById('simulationStatus').textContent = statusText;
