@@ -249,7 +249,7 @@ namespace esAPI.Services
                         {
                             try
                             {
-                                await _bankClient.MakePaymentAsync(pickupResponse.BulkLogisticsBankAccountNumber, "commercial-bank", pickupResponse.Cost, $"Pickup for THOH machine order {externalOrderId}");
+                                await _bankClient.MakePaymentAsync(pickupResponse.BulkLogisticsBankAccountNumber, "commercial-bank", pickupResponse.Cost, pickupResponse.PickupRequestId.ToString());
                                 _logger.LogInformation($"[Machine] Payment sent to Bulk Logistics for pickup request {pickupResponse.PickupRequestId}");
                                 bulkPaymentSuccessful = true;
                             }

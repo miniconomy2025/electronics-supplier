@@ -113,7 +113,7 @@ namespace esAPI.Services
                 thohBankAccount,
                 "thoh",
                 totalPrice,
-                $"Purchase {toBuy} electronics_machine from THOH"
+                orderId?.ToString() ?? "machine-order"
             );
 
 

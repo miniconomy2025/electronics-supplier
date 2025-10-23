@@ -96,7 +96,7 @@ namespace esAPI.Services
             }
 
             // --- Attempt to Pay the Supplier ---
-            var paymentSuccess = await _bankClient.MakePaymentAsync(orderResponse.BankAccount, sourcedInfo.Name, orderResponse.Price, $"Order {orderResponse.OrderId}");
+            var paymentSuccess = await _bankClient.MakePaymentAsync(orderResponse.BankAccount, sourcedInfo.Name, orderResponse.Price, orderResponse.OrderId.ToString());
             if (paymentSuccess == string.Empty)
             {
                 await UpdateOrderStatusAsync(localOrder.OrderId, "REJECTED");
