@@ -27,8 +27,16 @@ namespace esAPI.Clients
 
         public async Task<List<ThohMachineDto>> GetAvailableMachinesAsync()
         {
-            var response = await _client.GetFromJsonAsync<ThohMachinesResponse>("api/machines");
-            return response?.Machines ?? new List<ThohMachineDto>();
+            try
+            {
+                var response = await _client.GetFromJsonAsync<ThohMachinesResponse>("api/machines");
+                return response?.Machines ?? new List<ThohMachineDto>();
+            }
+            catch (Exception)
+            {
+                // Return empty list if API call fails
+                return new List<ThohMachineDto>();
+            }
         }
 
         public async Task<List<SupplierMaterialInfo>> GetAvailableMaterialsAsync()

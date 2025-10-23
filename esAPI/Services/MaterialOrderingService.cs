@@ -70,26 +70,27 @@ namespace esAPI.Services
                 return false;
             }
 
-            // Try THOH first
-            if (await TryOrderFromThohAsync(materialName, ownStock, dayNumber))
+            // Try Recycler first
+            if (await TryOrderFromRecyclerAsync(materialName, ownStock, dayNumber))
             {
                 return true;
             }
 
-            // Fallback to Recycler
-            return await TryOrderFromRecyclerAsync(materialName, ownStock, dayNumber);
+            // Fallback to THOH
+            return await TryOrderFromThohAsync(materialName, ownStock, dayNumber);
         }
 
         private async Task<bool> TryOrderFromThohAsync(string materialName, int ownStock, int dayNumber)
         {
             try
             {
+                _logger.LogInformation($"[Order] Attempting THOH fallback for {materialName}.");
                 var thohMaterials = await _thohApiClient.GetAvailableMaterialsAsync();
                 var thohMat = thohMaterials?.FirstOrDefault(m => m.MaterialName.ToLower() == materialName);
 
                 if (thohMat == null || thohMat.AvailableQuantity <= 0)
                 {
-                    _logger.LogInformation($"[Order] THOH has no available {materialName} or zero quantity. Will attempt Recycler fallback.");
+                    _logger.LogInformation($"[Order] THOH has no available {materialName} or zero quantity. No more fallback options available.");
                     return false;
                 }
 
@@ -103,7 +104,7 @@ namespace esAPI.Services
                 
                 if (thohQty <= 0)
                 {
-                    _logger.LogInformation($"[Order] Cannot afford any {materialName} from THOH with budget {maxBudgetPerMaterial}. Price per kg: {thohMat.PricePerKg}. Will attempt Recycler fallback.");
+                    _logger.LogInformation($"[Order] Cannot afford any {materialName} from THOH with budget {maxBudgetPerMaterial}. Price per kg: {thohMat.PricePerKg}. No more fallback options available.");
                     return false;
                 }
 
@@ -183,14 +184,14 @@ namespace esAPI.Services
         {
             try
             {
-                _logger.LogInformation($"[Order] Attempting Recycler fallback for {materialName}.");
+                _logger.LogInformation($"[Order] Attempting Recycler order for {materialName}.");
 
                 var recyclerMaterials = await _recyclerClient.GetAvailableMaterialsAsync();
                 var mat = recyclerMaterials.FirstOrDefault(m => m.MaterialName.ToLower() == materialName);
 
                 if (mat == null || mat.AvailableQuantity <= 0)
                 {
-                    _logger.LogInformation($"[Order] No order placed for {materialName} (our stock: {ownStock}, recycler available: 0)");
+                    _logger.LogInformation($"[Order] Recycler has no available {materialName} or zero quantity. Will attempt THOH fallback.");
                     return false;
                 }
 
@@ -207,11 +208,11 @@ namespace esAPI.Services
                 {
                     if (desiredQty < 1000)
                     {
-                        _logger.LogInformation($"[Order] Recycler {materialName} - Budget {maxBudgetPerMaterial}, Price: {mat.PricePerKg}/kg, Max affordable: {maxAffordableQty}kg, Available: {mat.AvailableQuantity}kg, Desired: {desiredQty}kg - below 1000kg minimum requirement.");
+                        _logger.LogInformation($"[Order] Recycler {materialName} - Budget {maxBudgetPerMaterial}, Price: {mat.PricePerKg}/kg, Max affordable: {maxAffordableQty}kg, Available: {mat.AvailableQuantity}kg, Desired: {desiredQty}kg - below 1000kg minimum requirement. Will attempt THOH fallback.");
                     }
                     else
                     {
-                        _logger.LogInformation($"[Order] Recycler available quantity for {materialName} ({mat.AvailableQuantity} kg) results in order size ({desiredQty} kg) below minimum 1000 kg requirement. Skipping order.");
+                        _logger.LogInformation($"[Order] Recycler available quantity for {materialName} ({mat.AvailableQuantity} kg) results in order size ({desiredQty} kg) below minimum 1000 kg requirement. Will attempt THOH fallback.");
                     }
                     return false;
                 }

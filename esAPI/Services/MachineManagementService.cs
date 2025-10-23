@@ -75,17 +75,29 @@ namespace esAPI.Services
                 {
                     _logger.LogInformation($"[Machine] THOH machine order attempt {attempt}/{maxRetries}");
 
-                    // First check if machines are available
-                    var availableMachines = await _thohApiClient.GetAvailableMachinesAsync();
-                    var electronicsMachine = availableMachines.FirstOrDefault(m => m.MachineName == "electronics_machine");
-
-                    if (electronicsMachine == null || electronicsMachine.Quantity < quantity)
+                    // Try to check if machines are available (skip if API fails)
+                    try
                     {
-                        _logger.LogWarning($"[Machine] THOH does not have enough electronics_machine available. Available: {electronicsMachine?.Quantity ?? 0}, Needed: {quantity}");
-                        if (attempt == maxRetries)
-                            return false;
-                        await Task.Delay(TimeSpan.FromSeconds(2 * attempt));
-                        continue;
+                        var availableMachines = await _thohApiClient.GetAvailableMachinesAsync();
+                        var electronicsMachine = availableMachines.FirstOrDefault(m => m.MachineName == "electronics_machine");
+
+                        if (availableMachines.Count > 0 && (electronicsMachine == null || electronicsMachine.Quantity < quantity))
+                        {
+                            _logger.LogWarning($"[Machine] THOH does not have enough electronics_machine available. Available: {electronicsMachine?.Quantity ?? 0}, Needed: {quantity}");
+                            if (attempt == maxRetries)
+                                return false;
+                            await Task.Delay(TimeSpan.FromSeconds(2 * attempt));
+                            continue;
+                        }
+
+                        if (availableMachines.Count == 0)
+                        {
+                            _logger.LogWarning($"[Machine] Could not retrieve machine availability from THOH (API may be unavailable). Proceeding with order attempt anyway.");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning($"[Machine] Failed to check machine availability from THOH: {ex.Message}. Proceeding with order attempt anyway.");
                     }
 
                     // Place machine order with THOH API
