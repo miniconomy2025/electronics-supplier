@@ -66,7 +66,7 @@ namespace esAPI.Services
                     var thohHttpClient = _httpClientFactory.CreateClient("thoh");
                     var machineOrderReq = new { machineName = "electronics_machine", quantity };
 
-                    var response = await thohHttpClient.PostAsJsonAsync("/machines", machineOrderReq);
+                    var response = await thohHttpClient.PostAsJsonAsync("api/machines", machineOrderReq);
 
                     if (!response.IsSuccessStatusCode)
                     {
