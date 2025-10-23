@@ -47,7 +47,6 @@ namespace esAPI.Data
             modelBuilder.Entity<PickupRequest>(entity =>
             {
                 entity.Property(e => e.Type)
-                    .HasConversion<string>()
                     .HasColumnType("request_type");
             });
 
