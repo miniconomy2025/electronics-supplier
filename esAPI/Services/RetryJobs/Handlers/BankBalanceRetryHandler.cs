@@ -47,6 +47,7 @@ namespace esAPI.Services
             //     return false; // Will retry again if needed
             // }
 
+            await Task.CompletedTask; // Satisfy async method requirement
             return true; // Return success to prevent further retries
         }
     }
