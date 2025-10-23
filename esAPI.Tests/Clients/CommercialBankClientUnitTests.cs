@@ -9,7 +9,7 @@ using Moq.Protected;
 
 namespace esAPI.Tests.Clients
 {
-    public class CommercialBankClientUnitTests
+    public class CommercialBankClientUnitTests : IDisposable
     {
         private readonly Mock<IHttpClientFactory> _mockHttpClientFactory;
         private readonly Mock<HttpMessageHandler> _mockHttpMessageHandler;
@@ -50,7 +50,7 @@ namespace esAPI.Tests.Clients
             var jsonResponse = """{ "success": true, "balance": "12345.67" }""";
             var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(jsonResponse)
+                Content = new StringContent(jsonResponse, Encoding.UTF8, "application/json")
             };
             SetupMockHttpResponse(response);
 
@@ -62,7 +62,7 @@ namespace esAPI.Tests.Clients
         }
 
         [Fact]
-        public async Task MakePaymentAsync_WhenResponseIsSuccessfulButMissingTransactionNumber_ThrowsApiResponseParseException()
+        public void MakePaymentAsync_WhenResponseIsSuccessfulButMissingTransactionNumber_ThrowsApiResponseParseException()
         {
             // Arrange
             var jsonResponse = """{ "success": true }""";
@@ -82,6 +82,11 @@ namespace esAPI.Tests.Clients
             // // Assert
             // await act.Should().ThrowAsync<ApiResponseParseException>()
             //     .WithMessage("Bank payment was successful but did not return a transaction number.");
+        }
+
+        public void Dispose()
+        {
+            _httpClient?.Dispose();
         }
     }
 }

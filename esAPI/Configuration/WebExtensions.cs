@@ -49,7 +49,7 @@ namespace esAPI.Configuration
                     return new BadRequestObjectResult(new
                     {
                         message = "Validation failed",
-                        errors = errors
+                        errors
                     });
                 };
             });

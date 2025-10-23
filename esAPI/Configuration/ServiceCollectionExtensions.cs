@@ -37,7 +37,7 @@ namespace esAPI.Configuration
             services.AddScoped<IMachineAcquisitionService, MachineAcquisitionService>();
             services.AddScoped<IMaterialAcquisitionService, MaterialAcquisitionService>();
             services.AddScoped<IProductionService, ProductionService>();
-            services.AddScoped<Interfaces.Services.IStartupCostCalculator, StartupCostCalculator>();
+            services.AddScoped<IStartupCostCalculator, StartupCostCalculator>();
 
             // Management services
             services.AddScoped<InventoryManagementService>();

@@ -22,7 +22,7 @@ namespace esAPI.Services
 
         public async Task<bool> HandleAsync(BankBalanceRetryJob job, CancellationToken token)
         {
-            _logger.LogInformation("🔄 Processing BankBalanceRetryJob for day {Day}, attempt {Attempt}", job.SimulationDay, job.RetryAttempt);
+            _logger.LogInformation("[BankBalanceRetryHandler] Processing BankBalanceRetryJob for day {Day}, attempt {Attempt}", job.SimulationDay, job.RetryAttempt);
 
             try
             {

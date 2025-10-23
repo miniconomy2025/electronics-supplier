@@ -18,7 +18,6 @@ namespace esAPI.Tests.Integration
 {
     public class WireMockServerFixture : IDisposable
     {
-        // CHANGE THIS LINE:
         public WireMockServer Server { get; }
 
         public string Url => Server.Url!;
@@ -66,7 +65,7 @@ namespace esAPI.Tests.Integration
         {
             // Arrange
             _server
-                .Given(Request.Create().WithPath("/api/account/me/balance").UsingGet())
+                .Given(Request.Create().WithPath("*/account/me/balance").UsingGet())
                 .RespondWith(Response.Create()
                     .WithStatusCode(200)
                     .WithHeader("Content-Type", "application/json")
@@ -84,7 +83,7 @@ namespace esAPI.Tests.Integration
         {
             // Arrange
             _server
-                .Given(Request.Create().WithPath("/api/account/me/balance").UsingGet())
+                .Given(Request.Create().WithPath("*/account/me/balance").UsingGet())
                 .RespondWith(Response.Create().WithStatusCode(HttpStatusCode.InternalServerError));
 
             // Act
@@ -99,7 +98,7 @@ namespace esAPI.Tests.Integration
         {
             // Arrange
             _server
-                .Given(Request.Create().WithPath("/api/loan").UsingPost())
+                .Given(Request.Create().WithPath("*/loan").UsingPost())
                 .RespondWith(Response.Create()
                     .WithStatusCode(HttpStatusCode.OK)
                     .WithBodyAsJson(new { success = true, loan_number = "LN-98765" }));
@@ -112,11 +111,11 @@ namespace esAPI.Tests.Integration
         }
 
         [Fact]
-        public async Task MakePaymentAsync_WhenResponseIndicatesFailure_ThrowsApiCallFailedException()
+        public void MakePaymentAsync_WhenResponseIndicatesFailure_ThrowsApiCallFailedException()
         {
             // Arrange
             _server
-                .Given(Request.Create().WithPath("/api/transaction").UsingPost())
+                .Given(Request.Create().WithPath("*/transaction").UsingPost())
                 .RespondWith(Response.Create()
                     .WithStatusCode(HttpStatusCode.OK) // The API might return 200 OK for a logical failure
                     .WithBodyAsJson(new { success = false, error = "Insufficient funds" }));
@@ -124,8 +123,8 @@ namespace esAPI.Tests.Integration
             // Act
             Func<Task> act = async () => await _client.MakePaymentAsync("to-acc", "to-bank", 100, "test");
 
-            // Assert
-
+            // Assert - This test needs to verify the exception is thrown
+            act.Should().ThrowAsync<Exception>().WithMessage("*Insufficient funds*");
         }
 
         [Fact]
@@ -133,10 +132,10 @@ namespace esAPI.Tests.Integration
         {
             // Arrange
             _server
-               .Given(Request.Create().WithPath("/api/account/me").UsingGet())
+               .Given(Request.Create().WithPath("*/account/me").UsingGet())
                .RespondWith(Response.Create()
                    .WithStatusCode(HttpStatusCode.OK)
-                   .WithBodyAsJson(new { account_number = "ACC123", owner = "Test Corp" }));
+                   .WithBodyAsJson(new { success = true, account_number = "ACC123", owner = "Test Corp" }));
 
             // Act
             var result = await _client.GetAccountDetailsAsync();
@@ -150,7 +149,7 @@ namespace esAPI.Tests.Integration
 
     #region BankAccountService Integration Tests (with WireMock)
 
-    public class BankAccountServiceTests : IClassFixture<WireMockServerFixture>
+    public class BankAccountServiceTests : IClassFixture<WireMockServerFixture>, IDisposable
     {
         private readonly WireMockServer _server;
         private readonly BankAccountService _service;
@@ -200,7 +199,7 @@ namespace esAPI.Tests.Integration
             // Arrange
             var accountNumber = "ACC-NEW-123";
             _server
-                .Given(Request.Create().WithPath("/api/account").UsingPost())
+                .Given(Request.Create().WithPath("*/account").UsingPost())
                 .RespondWith(Response.Create()
                     .WithStatusCode(HttpStatusCode.Created)
                     .WithBodyAsJson(new { account_number = accountNumber }));
@@ -223,15 +222,15 @@ namespace esAPI.Tests.Integration
 
             // 1. First call to create an account will fail with Conflict
             _server
-                .Given(Request.Create().WithPath("/api/account").UsingPost())
+                .Given(Request.Create().WithPath("*/account").UsingPost())
                 .RespondWith(Response.Create().WithStatusCode(HttpStatusCode.Conflict));
 
             // 2. The subsequent call to get the account will succeed
             _server
-                .Given(Request.Create().WithPath("/api/account/me").UsingGet())
+                .Given(Request.Create().WithPath("*/account/me").UsingGet())
                 .RespondWith(Response.Create()
                     .WithStatusCode(HttpStatusCode.OK)
-                    .WithBodyAsJson(new { account_number = existingAccountNumber }));
+                    .WithBodyAsJson(new { success = true, account_number = existingAccountNumber }));
 
             // Act
             var (success, resultAccountNumber, error) = await _service.SetupBankAccountAsync();
@@ -241,6 +240,11 @@ namespace esAPI.Tests.Integration
             resultAccountNumber.Should().Be(existingAccountNumber);
             error.Should().BeNull();
             (await _dbContext.Companies.FindAsync(1))!.BankAccountNumber.Should().Be(existingAccountNumber);
+        }
+
+        public void Dispose()
+        {
+            _dbContext?.Dispose();
         }
     }
 

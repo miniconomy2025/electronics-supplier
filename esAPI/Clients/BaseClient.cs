@@ -35,16 +35,24 @@ namespace esAPI.Clients
             try
             {
                 var response = await _client.PostAsJsonAsync(requestUri, requestBody);
+                var responseContent = await response.Content.ReadAsStringAsync();
+                
                 if (!response.IsSuccessStatusCode)
                 {
-                    var errorContent = await response.Content.ReadAsStringAsync();
-                    Console.WriteLine($"External API error response (Status {(int)response.StatusCode}): {errorContent}");
+                    Console.WriteLine($"External API error response (Status {(int)response.StatusCode}): {responseContent}");
                     return default;
                 }
-                return await response.Content.ReadFromJsonAsync<TResponse>();
+                
+                Console.WriteLine($"[BaseClient] External API success response (Status {(int)response.StatusCode}): {responseContent}");
+                
+                return System.Text.Json.JsonSerializer.Deserialize<TResponse>(responseContent, new System.Text.Json.JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Console.WriteLine($"❌ External API exception: {ex.Message}");
                 return default;
             }
         }

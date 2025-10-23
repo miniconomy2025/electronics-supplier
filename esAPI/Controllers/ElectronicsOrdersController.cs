@@ -107,7 +107,7 @@ namespace esAPI.Controllers
         }
 
         [HttpGet("{orderId}")]
-        public async Task<ActionResult<DTOs.Orders.ElectronicsOrder>> GetOrderById(int orderId)
+        public async Task<ActionResult<ElectronicsOrder>> GetOrderById(int orderId)
         {
             var dto = await _context.ElectronicsOrders
                 .AsNoTracking()

@@ -64,8 +64,7 @@ namespace esAPI.Controllers
 
         private async Task<IActionResult> HandleDeliveryAsync(LogisticsRequestDto request)
         {
-            if (!int.TryParse(request.Id, out var pickupReqID))
-                return BadRequest("Invalid external order ID format.");
+            var pickupReqID = request.Id; // Now directly an int, no parsing needed
 
             if (!_stateService.IsRunning)
                 return BadRequest("Simulation not running.");
@@ -187,7 +186,7 @@ namespace esAPI.Controllers
         private async Task<IActionResult> HandlePickupAsync(LogisticsRequestDto request)
         {
             var order = await _context.ElectronicsOrders
-                .FirstOrDefaultAsync(o => o.OrderId.ToString() == request.Id);
+                .FirstOrDefaultAsync(o => o.OrderId == request.Id);
 
             if (order == null)
                 return NotFound($"No electronics order found with ID {request.Id}");

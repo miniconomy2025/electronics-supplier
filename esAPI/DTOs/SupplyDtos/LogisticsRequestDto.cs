@@ -8,7 +8,7 @@ namespace esAPI.DTOs.SupplyDtos
 
     public class LogisticsRequestDto
     {
-        public string Id { get; set; } = string.Empty; // Order ID or Pickup Request ID
+        public int Id { get; set; } // Order ID or Pickup Request ID (changed from string to int)
         public string Type { get; set; } = string.Empty; // "PICKUP", "DELIVERY", or "MACHINE"
         public List<LogisticsItemDto> Items { get; set; } = [];
     }

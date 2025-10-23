@@ -7,7 +7,7 @@ namespace esAPI.Services
 {
     public class RetryJobDispatcher : BackgroundService
     {
-        private readonly IAmazonSQS _sqs;
+        private readonly IAmazonSQS? _sqs;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<RetryJobDispatcher> _logger;
         private readonly ISimulationStateService _stateService;
@@ -18,33 +18,48 @@ namespace esAPI.Services
             // add more here
         };
 
-        private readonly string _queueUrl;
+        private readonly string? _queueUrl;
+        private readonly bool _isEnabled;
 
 
-        public RetryJobDispatcher(IAmazonSQS sqs, IServiceProvider serviceProvider, ILogger<RetryJobDispatcher> logger, IConfiguration config, ISimulationStateService stateService)
+        public RetryJobDispatcher(IAmazonSQS? sqs, IServiceProvider serviceProvider, ILogger<RetryJobDispatcher> logger, IConfiguration config, ISimulationStateService stateService)
         {
             _sqs = sqs;
             _serviceProvider = serviceProvider;
             _logger = logger;
             _stateService = stateService;
-            _queueUrl = config["Retry:QueueUrl"] ?? throw new ArgumentNullException(nameof(config), "Retry:QueueUrl not configured");
+            _queueUrl = config["Retry:QueueUrl"];
+            _isEnabled = _sqs != null && !string.IsNullOrEmpty(_queueUrl);
+            
+            if (!_isEnabled)
+            {
+                _logger.LogWarning("[RetryJobDispatcher] Created but AWS SQS or queue URL not available - retry processing disabled");
+            }
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            if (!_isEnabled)
+            {
+                _logger.LogInformation("[RetryJobDispatcher] Disabled - AWS SQS not available");
+                // Just wait indefinitely since the service is disabled
+                await Task.Delay(Timeout.Infinite, stoppingToken);
+                return;
+            }
+
             while (!stoppingToken.IsCancellationRequested)
             {
                 // Only process retry jobs when simulation is running
                 if (!_stateService.IsRunning)
                 {
-                    _logger.LogDebug("🔄 Simulation not running, skipping retry job processing");
+                    _logger.LogDebug("[RetryJobDispatcher] Simulation not running, skipping retry job processing");
                     await Task.Delay(5000, stoppingToken); // Wait 5 seconds before checking again
                     continue;
                 }
 
                 try
                 {
-                    var response = await _sqs.ReceiveMessageAsync(new ReceiveMessageRequest
+                    var response = await _sqs!.ReceiveMessageAsync(new ReceiveMessageRequest
                     {
                         QueueUrl = _queueUrl,
                         MaxNumberOfMessages = 10,
@@ -113,7 +128,7 @@ namespace esAPI.Services
                             var handled = await (Task<bool>)method.Invoke(handler, new object[] { job, stoppingToken })!;
                             if (handled)
                             {
-                                await _sqs.DeleteMessageAsync(_queueUrl, msg.ReceiptHandle, stoppingToken);
+                                await _sqs!.DeleteMessageAsync(_queueUrl!, msg.ReceiptHandle, stoppingToken);
                                 _logger.LogInformation("✅ Retry job {JobType} completed and deleted", typeKey);
                             }
                         }

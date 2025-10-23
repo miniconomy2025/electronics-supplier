@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace esAPI.Clients
 {
     public interface ICommercialBankClient
@@ -17,9 +19,11 @@ namespace esAPI.Clients
 
         public async Task<decimal> GetAccountBalanceAsync()
         {
-            Console.WriteLine($"🔧 CommercialBankClient: Checking account balance...");
-            var response = await _client.GetAsync("api/account/me/balance");
-            Console.WriteLine($"🔧 CommercialBankClient: Balance response status: {response.StatusCode}");
+            Console.WriteLine($"[CommercialBankClient] Checking account balance");
+            var fullUrl = $"{_client.BaseAddress}/account/me/balance";
+            Console.WriteLine($"[CommercialBankClient] GetBalance using full URL: {fullUrl}");
+            var response = await _client.GetAsync(fullUrl);
+            Console.WriteLine($"[CommercialBankClient] Balance response status: {response.StatusCode}");
 
             if (!response.IsSuccessStatusCode)
             {
@@ -37,16 +41,32 @@ namespace esAPI.Clients
             {
                 if (doc.RootElement.TryGetProperty("balance", out var balanceProp))
                 {
-                    // Handle balance as string (e.g., "60000000.00") and parse to decimal
-                    var balanceString = balanceProp.GetString();
-                    if (decimal.TryParse(balanceString, out var balance))
+                    decimal balance = 0m;
+                    
+                    // Handle balance as either number or string
+                    if (balanceProp.ValueKind == JsonValueKind.Number)
                     {
-                        Console.WriteLine($"✅ CommercialBankClient: Account balance: {balance}");
+                        balance = balanceProp.GetDecimal();
+                        Console.WriteLine($"✅ CommercialBankClient: Account balance (number): {balance}");
                         return balance;
+                    }
+                    else if (balanceProp.ValueKind == JsonValueKind.String)
+                    {
+                        var balanceString = balanceProp.GetString();
+                        if (decimal.TryParse(balanceString, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out balance))
+                        {
+                            Console.WriteLine($"✅ CommercialBankClient: Account balance (string): {balance}");
+                            return balance;
+                        }
+                        else
+                        {
+                            Console.WriteLine($"❌ CommercialBankClient: Failed to parse balance string: {balanceString}");
+                            return 0m;
+                        }
                     }
                     else
                     {
-                        Console.WriteLine($"❌ CommercialBankClient: Failed to parse balance string: {balanceString}");
+                        Console.WriteLine($"❌ CommercialBankClient: Balance property has unexpected type: {balanceProp.ValueKind}");
                         return 0m;
                     }
                 }
@@ -67,91 +87,117 @@ namespace esAPI.Clients
 
         public async Task<HttpResponseMessage> CreateAccountAsync(object requestBody)
         {
-            // Console.WriteLine($"🔧 CommercialBankClient: Making POST request to /account");
-            // Console.WriteLine($"🔧 CommercialBankClient: Base address: {_client.BaseAddress}");
-            // Console.WriteLine($"🔧 CommercialBankClient: Full URL: {_client.BaseAddress}/account");
-            // Console.WriteLine($"🔧 CommercialBankClient: Request URI: {_client.BaseAddress}/account");
-
             try
             {
-                // Use the full URL directly to ensure it's correct
-                var fullUrl = $"{_client.BaseAddress}api/account";
-                Console.WriteLine($"🔧 CommercialBankClient: Using full URL: {fullUrl}");
+                // Use the correct endpoint (base address already includes /api)
+                var fullUrl = $"{_client.BaseAddress}/account";
+                Console.WriteLine($"[CommercialBankClient] Using full URL: {fullUrl}");
 
                 var request = new HttpRequestMessage(HttpMethod.Post, fullUrl);
-                var json = System.Text.Json.JsonSerializer.Serialize(requestBody);
+                var json = JsonSerializer.Serialize(requestBody);
                 request.Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
 
-                Console.WriteLine($"🔧 CommercialBankClient: Request body: {json}");
-                Console.WriteLine($"🔧 CommercialBankClient: Sending request with client certificate...");
+                Console.WriteLine($"[CommercialBankClient] Request body: {json}");
 
                 var response = await _client.SendAsync(request);
-                Console.WriteLine($"🔧 CommercialBankClient: Response status: {response.StatusCode}");
-                Console.WriteLine($"🔧 CommercialBankClient: Response URL: {response.RequestMessage?.RequestUri}");
+                Console.WriteLine($"[CommercialBankClient] Response status: {response.StatusCode}");
+                Console.WriteLine($"[CommercialBankClient] Response URL: {response.RequestMessage?.RequestUri}");
                 return response;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ CommercialBankClient: Exception during POST: {ex.GetType().Name}: {ex.Message}");
-                Console.WriteLine($"❌ CommercialBankClient: Inner exception: {ex.InnerException?.Message}");
+                Console.WriteLine($"[CommercialBankClient] Exception during POST: {ex.GetType().Name}: {ex.Message}");
+                Console.WriteLine($"[CommercialBankClient] Inner exception: {ex.InnerException?.Message}");
                 throw;
             }
         }
 
         public async Task<string?> RequestLoanAsync(decimal amount)
         {
-            var requestBody = new { amount = amount };
+            var requestBody = new { amount };
 
-            Console.WriteLine($"🔧 CommercialBankClient: Requesting loan of {amount}");
-            Console.WriteLine($"🔧 CommercialBankClient: Request body: {System.Text.Json.JsonSerializer.Serialize(requestBody)}");
+            Console.WriteLine($"[CommercialBankClient] Requesting loan of {amount}");
+            Console.WriteLine($"[CommercialBankClient] Request body: {JsonSerializer.Serialize(requestBody)}");
+            Console.WriteLine($"[CommercialBankClient] Base address: {_client.BaseAddress}");
+            var fullLoanUrl = $"{_client.BaseAddress}/loan";
+            Console.WriteLine($"[CommercialBankClient] Full loan URL: {fullLoanUrl}");
 
-            var response = await _client.PostAsJsonAsync("api/loan", requestBody);
-            Console.WriteLine($"🔧 CommercialBankClient: Loan request response status: {response.StatusCode}");
+            var response = await _client.PostAsJsonAsync(fullLoanUrl, requestBody);
+            Console.WriteLine($"[CommercialBankClient] Loan request response status: {response.StatusCode}");
 
             var content = await response.Content.ReadAsStringAsync();
-            Console.WriteLine($"🔧 CommercialBankClient: Loan response content: {content}");
+            Console.WriteLine($"[CommercialBankClient] Loan response content: {content}");
 
-            using var doc = System.Text.Json.JsonDocument.Parse(content);
-
-            // Check if the response indicates success
-            if (doc.RootElement.TryGetProperty("success", out var successProp) && successProp.GetBoolean())
+            // Check if the response was successful before trying to parse as JSON
+            if (!response.IsSuccessStatusCode)
             {
-                if (doc.RootElement.TryGetProperty("loan_number", out var loanNum))
+                Console.WriteLine($"[CommercialBankClient] Loan request failed with status {response.StatusCode}");
+                return null;
+            }
+
+            // Only try to parse JSON if we have a successful response
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(content);
+
+                // Check if the response indicates success
+                if (doc.RootElement.TryGetProperty("success", out var successProp) && successProp.GetBoolean())
                 {
-                    var loanNumber = loanNum.GetString();
-                    Console.WriteLine($"✅ CommercialBankClient: Loan request successful! Loan number: {loanNumber}");
-                    return loanNumber;
+                    if (doc.RootElement.TryGetProperty("loan_number", out var loanNum))
+                    {
+                        var loanNumber = loanNum.GetString();
+                        Console.WriteLine($"[CommercialBankClient] Loan request successful! Loan number: {loanNumber}");
+                        return loanNumber;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[CommercialBankClient] Success response but no loan_number found");
+                        return null;
+                    }
                 }
                 else
                 {
-                    Console.WriteLine($"❌ CommercialBankClient: Success response but no loan_number found");
+                    // Handle failure response with detailed error information
+                    var errorMessage = "Unknown error";
+                    var amountRemaining = 0m;
+
+                    if (doc.RootElement.TryGetProperty("error", out var errorProp))
+                    {
+                        errorMessage = errorProp.GetString() ?? "Unknown error";
+                    }
+
+                    if (doc.RootElement.TryGetProperty("amount_remaining", out var amountProp))
+                    {
+                        // Handle amount as either number or string
+                        if (amountProp.ValueKind == JsonValueKind.Number)
+                        {
+                            amountRemaining = amountProp.GetDecimal();
+                        }
+                        else if (amountProp.ValueKind == JsonValueKind.String)
+                        {
+                            var amountString = amountProp.GetString();
+                            if (!decimal.TryParse(amountString, out amountRemaining))
+                            {
+                                amountRemaining = 0m;
+                            }
+                        }
+                    }
+
+                    Console.WriteLine($"[CommercialBankClient] Loan request failed - Error: {errorMessage}, Amount remaining: {amountRemaining}");
+
+                    // If the loan was too large, we could potentially retry with the remaining amount
+                    if (errorMessage == "loanTooLarge" && amountRemaining > 0)
+                    {
+                        Console.WriteLine($"[CommercialBankClient] Loan was too large. Remaining amount available: {amountRemaining}");
+                    }
+
                     return null;
                 }
             }
-            else
+            catch (JsonException ex)
             {
-                // Handle failure response with detailed error information
-                var errorMessage = "Unknown error";
-                var amountRemaining = 0m;
-
-                if (doc.RootElement.TryGetProperty("error", out var errorProp))
-                {
-                    errorMessage = errorProp.GetString() ?? "Unknown error";
-                }
-
-                if (doc.RootElement.TryGetProperty("amount_remaining", out var amountProp))
-                {
-                    amountRemaining = amountProp.GetDecimal();
-                }
-
-                Console.WriteLine($"❌ CommercialBankClient: Loan request failed - Error: {errorMessage}, Amount remaining: {amountRemaining}");
-
-                // If the loan was too large, we could potentially retry with the remaining amount
-                if (errorMessage == "loanTooLarge" && amountRemaining > 0)
-                {
-                    Console.WriteLine($"💡 CommercialBankClient: Loan was too large. Remaining amount available: {amountRemaining}");
-                }
-
+                Console.WriteLine($"[CommercialBankClient] Failed to parse response as JSON: {ex.Message}");
+                Console.WriteLine($"[CommercialBankClient] Response content was: {content}");
                 return null;
             }
         }
@@ -165,7 +211,8 @@ namespace esAPI.Clients
                 amount,
                 description
             };
-            var response = await _client.PostAsJsonAsync("api/transaction", paymentReq);
+            var fullTransactionUrl = $"{_client.BaseAddress}/transaction";
+            var response = await _client.PostAsJsonAsync(fullTransactionUrl, paymentReq);
             response.EnsureSuccessStatusCode();
             var content = await response.Content.ReadAsStringAsync();
             using var doc = System.Text.Json.JsonDocument.Parse(content);
@@ -180,16 +227,64 @@ namespace esAPI.Clients
 
         public async Task<string?> GetAccountDetailsAsync()
         {
-            var response = await _client.GetAsync("api/account/me");
-            response.EnsureSuccessStatusCode();
+            Console.WriteLine("[CommercialBankClient] Getting account details from /api/account/me");
+            var fullUrl = $"{_client.BaseAddress}/account/me";
+            Console.WriteLine($"[CommercialBankClient] GetAccountDetails using full URL: {fullUrl}");
+            var response = await _client.GetAsync(fullUrl);
+            Console.WriteLine($"[CommercialBankClient] Account details response status: {response.StatusCode}");
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"❌ CommercialBankClient: Failed to get account details. Status: {response.StatusCode}");
+                return null;
+            }
+
             var content = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"[CommercialBankClient] Account details response content: {content}");
+
             using var doc = System.Text.Json.JsonDocument.Parse(content);
-            return doc.RootElement.TryGetProperty("account_number", out var accNum) ? accNum.GetString() : null;
+            var root = doc.RootElement;
+
+            // Check if the response indicates success (handling new format)
+            if (root.TryGetProperty("success", out var successProp) && successProp.GetBoolean())
+            {
+                if (root.TryGetProperty("account_number", out var accNum))
+                {
+                    var accountNumber = accNum.GetString();
+                    Console.WriteLine($"✅ CommercialBankClient: Account number retrieved: {accountNumber}");
+                    return accountNumber;
+                }
+                else
+                {
+                    Console.WriteLine("❌ CommercialBankClient: Success response but no account_number found");
+                    return null;
+                }
+            }
+            else
+            {
+                Console.WriteLine("❌ CommercialBankClient: Account details request failed - success field is false or missing");
+                return null;
+            }
         }
 
         public async Task<HttpResponseMessage> GetAccountAsync()
         {
-            return await _client.GetAsync("api/account/me");
+            try
+            {
+                // Use the correct endpoint - construct full URL like CreateAccountAsync does
+                var fullUrl = $"{_client.BaseAddress}/account/me";
+                Console.WriteLine($"[CommercialBankClient] GetAccount using full URL: {fullUrl}");
+
+                var response = await _client.GetAsync(fullUrl);
+                Console.WriteLine($"[CommercialBankClient] GetAccount response status: {response.StatusCode}");
+                Console.WriteLine($"[CommercialBankClient] GetAccount response URL: {response.RequestMessage?.RequestUri}");
+                return response;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[CommercialBankClient] Exception during GET: {ex.GetType().Name}: {ex.Message}");
+                throw;
+            }
         }
     }
 }

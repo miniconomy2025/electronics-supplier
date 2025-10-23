@@ -137,7 +137,7 @@ namespace esAPI.Services
                 destinationCompanyId = "1",
                 items = new[]
                 {
-                    new { name = "electronics_machine", quantity = quantity }
+                    new { name = "electronics_machine", quantity }
                 }
             };
             var pickupResp = await bulkClient.PostAsJsonAsync("/api/pickup-request", pickupReq);

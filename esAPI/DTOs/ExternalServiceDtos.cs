@@ -25,7 +25,7 @@ public class SupplierOrderResponse
 
 public class LogisticsItem
 {
-    [JsonPropertyName("name")]
+    [JsonPropertyName("itemName")]
     public required string Name { get; set; }
     [JsonPropertyName("quantity")]
     public int Quantity { get; set; }
@@ -35,20 +35,32 @@ public class LogisticsPickupRequest
     [JsonPropertyName("originalExternalOrderId")]
     public required string OriginalExternalOrderId { get; set; }
 
-    [JsonPropertyName("originCompanyId")]
-    public required string OriginCompanyId { get; set; }
+    [JsonPropertyName("originCompany")]
+    public required string OriginCompany { get; set; }
 
-    [JsonPropertyName("destinationCompanyId")]
-    public required string DestinationCompanyId { get; set; }
+    [JsonPropertyName("destinationCompany")]
+    public required string DestinationCompany { get; set; }
 
     [JsonPropertyName("items")]
     public required LogisticsItem[] Items { get; set; }
 }
 public class LogisticsPickupResponse
 {
+    [JsonPropertyName("pickupRequestId")]
+    public int PickupRequestId { get; set; }
+
     [JsonPropertyName("cost")]
     public decimal Cost { get; set; }
 
+    [JsonPropertyName("paymentReferenceId")]
+    public string? PaymentReferenceId { get; set; }
+
     [JsonPropertyName("bulkLogisticsBankAccountNumber")]
     public string? BulkLogisticsBankAccountNumber { get; set; }
+
+    [JsonPropertyName("status")]
+    public string? Status { get; set; }
+
+    [JsonPropertyName("statusCheckUrl")]
+    public string? StatusCheckUrl { get; set; }
 }

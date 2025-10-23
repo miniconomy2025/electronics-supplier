@@ -4,6 +4,7 @@ using esAPI.Data;
 using esAPI.Clients;
 using esAPI.Interfaces;
 using esAPI.DTOs;
+using esAPI.Logging;
 using esAPI.Models;
 
 namespace esAPI.Services
@@ -86,7 +87,7 @@ namespace esAPI.Services
 
                 if (thohOrderResp == null || string.IsNullOrEmpty(thohOrderResp.BankAccount))
                 {
-                    _logger.LogWarning($"[Order] Failed to place THOH order for {materialName}");
+                    _logger.LogWarningColored("[Order] Failed to place THOH order for {0}", materialName);
                     return false;
                 }
 
@@ -95,22 +96,23 @@ namespace esAPI.Services
                 // Store order in database
                 await CreateMaterialOrderRecordAsync("thoh", materialName, thohQty, thohOrderResp.OrderId, dayNumber);
 
-                // Arrange logistics
-                await ArrangeLogisticsAsync(thohOrderResp.OrderId.ToString(), "thoh", materialName, thohQty);
-
-                // Make payment
+                // Step 1: Make payment to supplier first
                 if (thohOrderResp.Price > 0)
                 {
                     _logger.LogInformation($"[Payment] Paying THOH {thohOrderResp.Price} for order {thohOrderResp.OrderId}");
                     await _bankClient.MakePaymentAsync(thohOrderResp.BankAccount, "thoh", thohOrderResp.Price, thohOrderResp.OrderId.ToString());
-                    _logger.LogInformation($"[Payment] Payment sent for THOH order {thohOrderResp.OrderId}");
+                    _logger.LogInformation($"[Payment] Payment sent to THOH for order {thohOrderResp.OrderId}");
                 }
+
+                // Step 2: Arrange logistics and pay Bulk Logistics
+                await ArrangeLogisticsAsync(thohOrderResp.OrderId.ToString(), "thoh", materialName, thohQty);
 
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"[Order] Exception during THOH order for {materialName}. Will attempt Recycler fallback.");
+                _logger.LogErrorColored("[Order] Exception during THOH order for {0}. Will attempt Recycler fallback.", materialName);
+                _logger.LogError(ex, "[Order] THOH order exception details: {Message}", ex.Message);
                 return false;
             }
         }
@@ -130,20 +132,23 @@ namespace esAPI.Services
                     return false;
                 }
 
-                int orderQty = mat.AvailableQuantity / 2;
+                // Calculate order quantity ensuring it's a multiple of 1000 kg (Recycler requirement)
+                int desiredQty = mat.AvailableQuantity / 2;
+                int orderQty = desiredQty / 1000 * 1000; // Round down to nearest 1000
+                
                 if (orderQty == 0)
                 {
-                    _logger.LogInformation($"[Order] Recycler available quantity for {materialName} is zero after division. Skipping order.");
+                    _logger.LogInformation($"[Order] Recycler available quantity for {materialName} ({mat.AvailableQuantity} kg) results in order size ({desiredQty} kg) below minimum 1000 kg requirement. Skipping order.");
                     return false;
                 }
 
-                _logger.LogInformation($"[Order] Placing recycler order for {orderQty} kg of {mat.MaterialName} (our stock: {ownStock})");
+                _logger.LogInformation($"[Order] Placing recycler order for {orderQty} kg of {mat.MaterialName} (available: {mat.AvailableQuantity} kg, desired: {desiredQty} kg, rounded to 1000kg multiple: {orderQty} kg, our stock: {ownStock})");
 
                 var orderResponse = await _recyclerClient.PlaceRecyclerOrderAsync(mat.MaterialName, orderQty);
 
                 if (orderResponse?.IsSuccess != true || orderResponse.Data == null)
                 {
-                    _logger.LogWarning($"[Order] Failed to place recycler order for {mat.MaterialName}");
+                    _logger.LogWarningColored("[Order] Failed to place recycler order for {0}", mat.MaterialName);
                     return false;
                 }
 
@@ -156,22 +161,23 @@ namespace esAPI.Services
                 // Store order in database
                 await CreateMaterialOrderRecordAsync("recycler", mat.MaterialName, orderQty, orderId, dayNumber);
 
-                // Arrange logistics
-                await ArrangeLogisticsAsync(orderId.ToString(), "recycler", mat.MaterialName.ToLower(), orderQty);
-
-                // Make payment
+                // Step 1: Make payment to supplier first
                 if (!string.IsNullOrEmpty(accountNumber) && total > 0)
                 {
-                    _logger.LogInformation($"[Payment] Paying recycler {total} for order {orderId}");
+                    _logger.LogInformation($"[Payment] Paying Recycler {total} for order {orderId}");
                     await _bankClient.MakePaymentAsync(accountNumber, "commercial-bank", total, orderId.ToString());
-                    _logger.LogInformation($"[Payment] Payment sent for recycler order {orderId}");
+                    _logger.LogInformation($"[Payment] Payment sent to Recycler for order {orderId}");
                 }
+
+                // Step 2: Arrange logistics and pay Bulk Logistics
+                await ArrangeLogisticsAsync(orderId.ToString(), "recycler", mat.MaterialName.ToLower(), orderQty);
 
                 return true;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"[Order] Exception during Recycler order for {materialName}");
+                _logger.LogErrorColored("[Order] Exception during Recycler order for {0}", materialName);
+                _logger.LogError(ex, "[Order] Recycler order exception details: {Message}", ex.Message);
                 return false;
             }
         }
@@ -182,6 +188,20 @@ namespace esAPI.Services
             {
                 var supplier = await _context.Companies.FirstOrDefaultAsync(c => c.CompanyName.ToLower() == supplierName);
                 var material = await _context.Materials.FirstOrDefaultAsync(m => m.MaterialName.ToLower() == materialName.ToLower());
+
+                // Auto-create missing material if it doesn't exist
+                if (supplier != null && material == null)
+                {
+                    _logger.LogInformation($"[DB] Creating missing material: {materialName}");
+                    material = new Material
+                    {
+                        MaterialName = materialName.ToLower(),
+                        PricePerKg = 10.0m // Default price
+                    };
+                    _context.Materials.Add(material);
+                    await _context.SaveChangesAsync();
+                    _logger.LogInformation($"[DB] Created material: {materialName} with ID {material.MaterialId}");
+                }
 
                 if (supplier != null && material != null)
                 {
@@ -205,12 +225,15 @@ namespace esAPI.Services
                 }
                 else
                 {
-                    _logger.LogWarning($"[DB] Could not insert material order for {supplierName}: missing company or material. Material={materialName}");
+                    var supplierExists = supplier != null ? "found" : "NOT FOUND";
+                    var materialExists = material != null ? "found" : "NOT FOUND";
+                    _logger.LogWarningColored("[DB] Could not insert material order for {0}: Supplier={1}, Material={2} {3}", supplierName, supplierExists, materialName, materialExists);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"[DB] Exception inserting material order for {supplierName}: Material={materialName}");
+                _logger.LogErrorColored("[DB] Exception inserting material order for {0}: Material={1}", supplierName, materialName);
+                _logger.LogError(ex, "[DB] Material order exception details: {Message}", ex.Message);
             }
         }
 
@@ -218,41 +241,54 @@ namespace esAPI.Services
         {
             try
             {
+                _logger.LogInformation("[MaterialOrdering] Arranging pickup for material: '{MaterialName}' (quantity: {Quantity}) from {OriginCompany}", materialName, quantity, originCompany);
+                
                 var pickupRequest = new LogisticsPickupRequest
                 {
                     OriginalExternalOrderId = externalOrderId,
-                    OriginCompanyId = originCompany,
-                    DestinationCompanyId = "electronics-supplier",
+                    OriginCompany = originCompany,
+                    DestinationCompany = "electronics-supplier",
                     Items = new[] { new LogisticsItem { Name = materialName, Quantity = quantity } }
                 };
 
                 var pickupResponse = await _bulkLogisticsClient.ArrangePickupAsync(pickupRequest);
 
-                if (pickupResponse != null && !string.IsNullOrEmpty(pickupResponse.BulkLogisticsBankAccountNumber))
+                if (pickupResponse != null)
                 {
-                    _logger.LogInformation($"[Logistics] Pickup arranged. Paying {pickupResponse.Cost} to Bulk Logistics.");
-
-                    try
+                    _logger.LogInformation($"[Logistics] Pickup response received: ID={pickupResponse.PickupRequestId}, Cost={pickupResponse.Cost}, BankAccount='{pickupResponse.BulkLogisticsBankAccountNumber}', Status='{pickupResponse.Status}'");
+                    
+                    if (!string.IsNullOrEmpty(pickupResponse.BulkLogisticsBankAccountNumber))
                     {
-                        await _bankClient.MakePaymentAsync(pickupResponse.BulkLogisticsBankAccountNumber, "commercial-bank", pickupResponse.Cost, $"Pickup for {originCompany} order {externalOrderId}");
-                        _logger.LogInformation($"[Logistics] Payment sent to Bulk Logistics for pickup of order {externalOrderId}");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, $"[Logistics] Error paying Bulk Logistics for pickup of order {externalOrderId}");
-                    }
+                        _logger.LogInformation($"[Payment] Paying Bulk Logistics {pickupResponse.Cost} for pickup service (Order: {externalOrderId})");
 
-                    // Insert pickup request record
-                    await CreatePickupRequestRecordAsync(int.Parse(externalOrderId), materialName, quantity);
+                        try
+                        {
+                            await _bankClient.MakePaymentAsync(pickupResponse.BulkLogisticsBankAccountNumber, "commercial-bank", pickupResponse.Cost, $"Pickup for {originCompany} order {externalOrderId}");
+                            _logger.LogInformation($"[Payment] Payment sent to Bulk Logistics for pickup of order {externalOrderId}");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogErrorColored("[Payment] Error paying Bulk Logistics for pickup of order {0}", externalOrderId);
+                            _logger.LogError(ex, "[Payment] Bulk Logistics payment exception details: {Message}", ex.Message);
+                        }
+
+                        // Insert pickup request record
+                        await CreatePickupRequestRecordAsync(int.Parse(externalOrderId), materialName, quantity);
+                    }
+                    else
+                    {
+                        _logger.LogWarningColored("[Logistics] Pickup response received but bank account number is null/empty for order {0}", externalOrderId);
+                    }
                 }
                 else
                 {
-                    _logger.LogWarning($"[Logistics] Failed to arrange pickup with Bulk Logistics for order {externalOrderId}");
+                    _logger.LogWarningColored("[Logistics] Failed to arrange pickup with Bulk Logistics for order {0} - response was null", externalOrderId);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"[Logistics] Exception during Bulk Logistics integration for order {externalOrderId}");
+                _logger.LogErrorColored("[Logistics] Exception during Bulk Logistics integration for order {0}", externalOrderId);
+                _logger.LogError(ex, "[Logistics] Bulk Logistics exception details: {Message}", ex.Message);
             }
         }
 
@@ -278,7 +314,8 @@ namespace esAPI.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"[DB] Error inserting pickup request for Bulk Logistics: OrderId={externalOrderId}, Material={materialName}");
+                _logger.LogErrorColored("[DB] Error inserting pickup request for Bulk Logistics: OrderId={0}, Material={1}", externalOrderId, materialName);
+                _logger.LogError(ex, "[DB] Pickup request exception details: {Message}", ex.Message);
             }
         }
     }

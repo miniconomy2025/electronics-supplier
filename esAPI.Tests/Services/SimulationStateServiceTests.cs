@@ -148,7 +148,7 @@ namespace esAPI.Tests.Services
         {
             // Arrange
             var backupTime = DateTime.UtcNow.AddHours(-1);
-            var simulation = new esAPI.Models.Simulation
+            var simulation = new Models.Simulation
             {
                 IsRunning = true,
                 StartedAt = backupTime,

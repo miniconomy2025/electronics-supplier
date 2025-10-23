@@ -45,7 +45,7 @@ namespace esAPI.Services
 
         public async Task<bool> ExecuteDayAsync(int dayNumber)
         {
-            _logger.LogInformation("📊 Running simulation logic for Day {DayNumber}", dayNumber);
+            _logger.LogInformation("[SimulationDay] Running simulation logic for Day {DayNumber}", dayNumber);
 
             // 1. Query bank and store our balance
             await HandleBankingOperationsAsync(dayNumber);
@@ -65,33 +65,33 @@ namespace esAPI.Services
             // 6. Produce electronics at end of day
             await ProduceElectronicsAsync();
 
-            _logger.LogInformation("✅ Simulation day {DayNumber} completed successfully", dayNumber);
+            _logger.LogInformation("[SimulationDay] Simulation day {DayNumber} completed successfully", dayNumber);
             return true;
         }
 
         private async Task HandleBankingOperationsAsync(int dayNumber)
         {
-            _logger.LogInformation("🏦 Querying bank balance for day {DayNumber}", dayNumber);
+            _logger.LogInformation("[SimulationDay] Querying bank balance for day {DayNumber}", dayNumber);
             try
             {
                 var balance = await _bankService.GetAndStoreBalance(dayNumber);
-                _logger.LogInformation("✅ Bank balance stored for day {DayNumber}: {Balance}", dayNumber, balance);
+                _logger.LogInformation("[SimulationDay] Bank balance stored for day {DayNumber}: {Balance}", dayNumber, balance);
 
-                // Check if we need a loan (not on day 1, that's handled in startup)
-                if (dayNumber > 1 && balance <= 10000m)
+                // Check if we need a loan on any day (including day 1 as backup)
+                if (balance <= 10000m)
                 {
                     await RequestEmergencyLoanAsync(dayNumber);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Bank balance retrieval failed for day {DayNumber}, but simulation will continue", dayNumber);
+                _logger.LogError(ex, "[SimulationDay] Bank balance retrieval failed for day {DayNumber}, but simulation will continue", dayNumber);
             }
         }
 
         private async Task RequestEmergencyLoanAsync(int dayNumber)
         {
-            _logger.LogInformation("🏦 Bank balance is low (<= 10,000). Attempting to request a loan...");
+            _logger.LogInformation("[SimulationDay] Bank balance is low (<= 10,000) on day {DayNumber}. Attempting to request a loan...", dayNumber);
             const decimal loanAmount = 20000000m; // 20 million
 
             try
