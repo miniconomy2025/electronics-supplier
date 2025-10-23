@@ -91,19 +91,39 @@ namespace esAPI.Configuration
 
             services.AddCors(options =>
             {
+                // Development CORS policy - more permissive
+                options.AddPolicy("DevelopmentCors", policy =>
+                {
+                    policy.AllowAnyOrigin()
+                          .AllowAnyMethod()
+                          .AllowAnyHeader();
+                });
+
+                // Secure CORS policy for production
                 options.AddPolicy("SecureCorsPolicy", policy =>
                 {
                     var origins = corsConfig.AllowedOrigins.Length > 0
                         ? corsConfig.AllowedOrigins
                         : new[] { "http://localhost:3000", "https://localhost:7000" }; // Fallback for development
 
-                    policy.WithOrigins(origins)
-                          .WithMethods(corsConfig.AllowedMethods)
-                          .WithHeaders(corsConfig.AllowedHeaders);
-
-                    if (corsConfig.AllowCredentials)
+                    // Check if wildcard is configured (common in production for simplicity)
+                    if (origins.Contains("*"))
                     {
-                        policy.AllowCredentials();
+                        policy.AllowAnyOrigin()
+                              .WithMethods(corsConfig.AllowedMethods)
+                              .WithHeaders(corsConfig.AllowedHeaders);
+                        // Note: AllowCredentials() cannot be used with AllowAnyOrigin()
+                    }
+                    else
+                    {
+                        policy.WithOrigins(origins)
+                              .WithMethods(corsConfig.AllowedMethods)
+                              .WithHeaders(corsConfig.AllowedHeaders);
+
+                        if (corsConfig.AllowCredentials)
+                        {
+                            policy.AllowCredentials();
+                        }
                     }
                 });
             });
