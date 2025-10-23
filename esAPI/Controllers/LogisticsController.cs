@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 using esAPI.Data;
 using esAPI.DTOs.SupplyDtos;
@@ -15,26 +16,57 @@ namespace esAPI.Controllers
 {
     [ApiController]
     [Route("logistics")]
-    public class LogisticsController(AppDbContext context, ISimulationStateService stateService) : ControllerBase
+    public class LogisticsController(AppDbContext context, ISimulationStateService stateService, ILogger<LogisticsController> logger) : ControllerBase
     {
         private readonly AppDbContext _context = context;
         private readonly ISimulationStateService _stateService = stateService;
+        private readonly ILogger<LogisticsController> _logger = logger;
 
         [HttpPost]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> HandleLogisticsRequest([FromBody] LogisticsRequestDto request)
         {
-            if (!IsValidRequest(request, out var validationError))
-                return BadRequest(validationError);
+            try
+            {
+                // Log the incoming request
+                _logger.LogInformation("[Logistics] POST /logistics endpoint called");
+                _logger.LogInformation("[Logistics] Request body: {RequestBody}", JsonSerializer.Serialize(request, new JsonSerializerOptions { WriteIndented = true }));
+                
+                // Validate request
+                if (!IsValidRequest(request, out var validationError))
+                {
+                    _logger.LogWarning("[Logistics] Request validation failed: {ValidationError}", validationError);
+                    _logger.LogWarning("[Logistics] Invalid request details - Type: {Type}, Id: {Id}, Items: {ItemCount}", 
+                        request.Type, request.Id, request.Items?.Count ?? 0);
+                    return BadRequest(validationError);
+                }
 
-            if (request.Type == "DELIVERY")
-                return await HandleDeliveryAsync(request);
+                _logger.LogInformation("[Logistics] Request validation passed - Type: {Type}, Id: {Id}, Items: {ItemCount}", 
+                    request.Type, request.Id, request.Items.Count);
 
-            if (request.Type == "PICKUP")
-                return await HandlePickupAsync(request);
+                // Route to appropriate handler
+                if (request.Type == "DELIVERY")
+                {
+                    _logger.LogInformation("[Logistics] Routing to delivery handler for request ID {RequestId}", request.Id);
+                    return await HandleDeliveryAsync(request);
+                }
 
-            return Ok(new { Message = "PICKUP logic not yet implemented." });
+                if (request.Type == "PICKUP")
+                {
+                    _logger.LogInformation("[Logistics] Routing to pickup handler for request ID {RequestId}", request.Id);
+                    return await HandlePickupAsync(request);
+                }
+
+                _logger.LogWarning("[Logistics] Unhandled request type: {Type} for request ID {RequestId}", request.Type, request.Id);
+                return Ok(new { Message = "PICKUP logic not yet implemented." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[Logistics] Unhandled exception in HandleLogisticsRequest for request: {RequestBody}", 
+                    JsonSerializer.Serialize(request ?? new LogisticsRequestDto(), new JsonSerializerOptions { WriteIndented = true }));
+                return StatusCode(500, "An internal error occurred while processing the logistics request");
+            }
         }
 
         private static bool IsValidRequest(LogisticsRequestDto request, out string error)
@@ -64,27 +96,43 @@ namespace esAPI.Controllers
 
         private async Task<IActionResult> HandleDeliveryAsync(LogisticsRequestDto request)
         {
-            var pickupReqID = request.Id; // Now directly an int, no parsing needed
-
-            if (!_stateService.IsRunning)
-                return BadRequest("Simulation not running.");
-
-            int currentDay = _stateService.CurrentDay;
-
-            // 1. Find the pickup request by ID
-            var pickupRequest = await _context.PickupRequests
-                .FirstOrDefaultAsync(p => p.RequestId == pickupReqID);
-
-            if (pickupRequest == null)
-                return NotFound($"No pickup request found with ID {request.Id}");
-
-            // 2. Determine what type of pickup this is by checking related orders
-            // First check if it's a machine order
-            var machineOrder = await _context.MachineOrders
-                .FirstOrDefaultAsync(o => o.ExternalOrderId == pickupRequest.ExternalRequestId);
-            
-            if (machineOrder != null)
+            try
             {
+                var pickupReqID = request.Id; // Now directly an int, no parsing needed
+                _logger.LogInformation("[Logistics] Starting delivery processing for pickup request ID {PickupRequestId}", pickupReqID);
+
+                if (!_stateService.IsRunning)
+                {
+                    _logger.LogWarning("[Logistics] Delivery request rejected - simulation not running for pickup request ID {PickupRequestId}", pickupReqID);
+                    return BadRequest("Simulation not running.");
+                }
+
+                int currentDay = _stateService.CurrentDay;
+                _logger.LogInformation("[Logistics] Processing delivery on day {CurrentDay} for pickup request ID {PickupRequestId}", currentDay, pickupReqID);
+
+                // 1. Find the pickup request by ID
+                _logger.LogInformation("[Logistics] Looking up pickup request with ID {PickupRequestId}", pickupReqID);
+                var pickupRequest = await _context.PickupRequests
+                    .FirstOrDefaultAsync(p => p.RequestId == pickupReqID);
+
+                if (pickupRequest == null)
+                {
+                    _logger.LogWarning("[Logistics] No pickup request found with ID {PickupRequestId}", pickupReqID);
+                    return NotFound($"No pickup request found with ID {request.Id}");
+                }
+
+                _logger.LogInformation("[Logistics] Found pickup request - ID: {PickupRequestId}, ExternalOrderId: {ExternalOrderId}, Type: {Type}, Quantity: {Quantity}", 
+                    pickupRequest.RequestId, pickupRequest.ExternalRequestId, pickupRequest.Type, pickupRequest.Quantity);
+
+                // 2. Determine what type of pickup this is by checking related orders
+                _logger.LogInformation("[Logistics] Checking for machine order with external order ID {ExternalOrderId}", pickupRequest.ExternalRequestId);
+                var machineOrder = await _context.MachineOrders
+                    .FirstOrDefaultAsync(o => o.ExternalOrderId == pickupRequest.ExternalRequestId);
+                
+                if (machineOrder != null)
+                {
+                    _logger.LogInformation("[Logistics] Found machine order - ID: {OrderId}, Remaining: {RemainingAmount}, Status: {StatusId}", 
+                        machineOrder.OrderId, machineOrder.RemainingAmount, machineOrder.OrderStatusId);
                 // 3a. Handle machine delivery
                 if (machineOrder.OrderStatusId == (int)Order.Status.Completed)
                     return BadRequest($"Order {request.Id} is already marked as completed.");
@@ -120,25 +168,40 @@ namespace esAPI.Controllers
                     machineOrder.OrderStatusId = (int)Order.Status.InProgress;
                 }
 
-                await _context.SaveChangesAsync();
+                    await _context.SaveChangesAsync();
 
-                return Ok(new
+                    _logger.LogInformation("[Logistics] Successfully delivered {DeliverAmount} machines for supplier ID {SupplierId} from pickup request {RequestId}. Remaining: {Remaining}", 
+                        deliverAmount, machineOrder.SupplierId, request.Id, machineOrder.RemainingAmount);
+
+                    return Ok(new
+                    {
+                        Message = $"Delivered {deliverAmount} machines for supplier ID {machineOrder.SupplierId} from order {request.Id}",
+                        Remaining = machineOrder.RemainingAmount
+                    });
+                }
+                else
                 {
-                    Message = $"Delivered {deliverAmount} machines for supplier ID {machineOrder.SupplierId} from order {request.Id}",
-                    Remaining = machineOrder.RemainingAmount
-                });
-            }
-            else
-            {
-                // 3b. Handle material delivery — find matching material order by external order ID
-                var materialOrder = await _context.MaterialOrders
-                    .FirstOrDefaultAsync(o => o.ExternalOrderId == pickupRequest.ExternalRequestId);
+                    // 3b. Handle material delivery — find matching material order by external order ID
+                    _logger.LogInformation("[Logistics] No machine order found, checking for material order with external order ID {ExternalOrderId}", pickupRequest.ExternalRequestId);
+                    var materialOrder = await _context.MaterialOrders
+                        .FirstOrDefaultAsync(o => o.ExternalOrderId == pickupRequest.ExternalRequestId);
 
-                if (materialOrder == null)
-                    return NotFound($"No material order found for pickup request {request.Id}");
+                    if (materialOrder == null)
+                    {
+                        _logger.LogWarning("[Logistics] No material order found for external order ID {ExternalOrderId} (pickup request {RequestId})", 
+                            pickupRequest.ExternalRequestId, request.Id);
+                        return NotFound($"No material order found for pickup request {request.Id}");
+                    }
 
-                if (materialOrder.OrderStatusId == (int)Order.Status.Completed)
-                    return BadRequest($"Order {request.Id} is already fully delivered.");
+                    _logger.LogInformation("[Logistics] Found material order - ID: {OrderId}, MaterialId: {MaterialId}, Remaining: {RemainingAmount}, Status: {StatusId}", 
+                        materialOrder.OrderId, materialOrder.MaterialId, materialOrder.RemainingAmount, materialOrder.OrderStatusId);
+
+                    if (materialOrder.OrderStatusId == (int)Order.Status.Completed)
+                    {
+                        _logger.LogWarning("[Logistics] Material order {OrderId} is already completed (pickup request {RequestId})", 
+                            materialOrder.OrderId, request.Id);
+                        return BadRequest($"Order {request.Id} is already fully delivered.");
+                    }
 
                 // Sum total quantity from request items (in case of multiple items)
                 int requestedQuantity = request.Items.Sum(i => i.Quantity);
@@ -171,11 +234,20 @@ namespace esAPI.Controllers
 
                 await _context.SaveChangesAsync();
 
-                return Ok(new
-                {
-                    Message = $"Delivered {deliverAmount} supplies for material ID {materialOrder.MaterialId} from order {request.Id}",
-                    Remaining = materialOrder.RemainingAmount
-                });
+                _logger.LogInformation("[Logistics] Successfully delivered {DeliverAmount} supplies for material ID {MaterialId} from pickup request {RequestId}. Remaining: {Remaining}", 
+                    deliverAmount, materialOrder.MaterialId, request.Id, materialOrder.RemainingAmount);
+                
+                    return Ok(new
+                    {
+                        Message = $"Delivered {deliverAmount} supplies for material ID {materialOrder.MaterialId} from order {request.Id}",
+                        Remaining = materialOrder.RemainingAmount
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[Logistics] Error processing delivery for pickup request ID {PickupRequestId}", request.Id);
+                return StatusCode(500, $"An internal error occurred while processing delivery for pickup request {request.Id}");
             }
         }
 
@@ -183,14 +255,25 @@ namespace esAPI.Controllers
 
         private async Task<IActionResult> HandlePickupAsync(LogisticsRequestDto request)
         {
+            _logger.LogInformation("[Logistics] Starting pickup processing for electronics order ID {OrderId}", request.Id);
+            
             var order = await _context.ElectronicsOrders
                 .FirstOrDefaultAsync(o => o.OrderId == request.Id);
 
             if (order == null)
+            {
+                _logger.LogWarning("[Logistics] No electronics order found with ID {OrderId} for pickup", request.Id);
                 return NotFound($"No electronics order found with ID {request.Id}");
+            }
+
+            _logger.LogInformation("[Logistics] Found electronics order - ID: {OrderId}, Remaining: {RemainingAmount}, Status: {StatusId}", 
+                order.OrderId, order.RemainingAmount, order.OrderStatusId);
 
             if (order.RemainingAmount <= 0)
+            {
+                _logger.LogWarning("[Logistics] Electronics order {OrderId} has no remaining items for pickup", request.Id);
                 return BadRequest($"Order {request.Id} is already fully picked up.");
+            }
 
             int pickupAmount = Math.Min(order.RemainingAmount, request.Items[0].Quantity);
 
@@ -231,6 +314,9 @@ namespace esAPI.Controllers
             }
 
             await _context.SaveChangesAsync();
+
+            _logger.LogInformation("[Logistics] Successfully picked up {PickupAmount} electronics for manufacturer ID {ManufacturerId} from order {OrderId}. Remaining: {Remaining}", 
+                pickupAmount, order.ManufacturerId, request.Id, order.RemainingAmount);
 
             return Ok(new
             {

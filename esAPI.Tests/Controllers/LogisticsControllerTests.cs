@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 using esAPI.Controllers;
@@ -19,6 +20,7 @@ namespace esAPI.Tests.Controllers
     {
         private readonly AppDbContext _context;
         private readonly Mock<ISimulationStateService> _stateMock;
+        private readonly Mock<ILogger<LogisticsController>> _loggerMock;
 
         public LogisticsControllerTests()
         {
@@ -28,6 +30,7 @@ namespace esAPI.Tests.Controllers
 
             _context = new AppDbContext(options);
             _stateMock = new Mock<ISimulationStateService>();
+            _loggerMock = new Mock<ILogger<LogisticsController>>();
         }
 
         public void Dispose()
@@ -39,7 +42,7 @@ namespace esAPI.Tests.Controllers
         [Fact]
         public async Task HandleLogisticsRequest_InvalidType_ReturnsBadRequest()
         {
-            var controller = new LogisticsController(_context, _stateMock.Object);
+            var controller = new LogisticsController(_context, _stateMock.Object, _loggerMock.Object);
             var req = new LogisticsRequestDto { Type = "INVALID", Items = new List<LogisticsItemDto> { new LogisticsItemDto { Quantity = 1 } } };
 
             var result = await controller.HandleLogisticsRequest(req);
@@ -61,7 +64,7 @@ namespace esAPI.Tests.Controllers
             _stateMock.Setup(s => s.IsRunning).Returns(true);
             _stateMock.Setup(s => s.CurrentDay).Returns(10);
 
-            var controller = new LogisticsController(_context, _stateMock.Object);
+            var controller = new LogisticsController(_context, _stateMock.Object, _loggerMock.Object);
             var req = new LogisticsRequestDto { Type = "DELIVERY", Id = 123, Items = new List<LogisticsItemDto> { new LogisticsItemDto { Quantity = 1 } } };
 
             var result = await controller.HandleLogisticsRequest(req);
@@ -86,7 +89,7 @@ namespace esAPI.Tests.Controllers
             _stateMock.Setup(s => s.IsRunning).Returns(true);
             _stateMock.Setup(s => s.CurrentDay).Returns(20);
 
-            var controller = new LogisticsController(_context, _stateMock.Object);
+            var controller = new LogisticsController(_context, _stateMock.Object, _loggerMock.Object);
             var req = new LogisticsRequestDto { Type = "DELIVERY", Id = 200, Items = new List<LogisticsItemDto> { new LogisticsItemDto { Quantity = 2 } } };
 
             var result = await controller.HandleLogisticsRequest(req);
@@ -105,7 +108,7 @@ namespace esAPI.Tests.Controllers
         [Fact]
         public async Task HandlePickup_RequestNotFound_ReturnsNotFound()
         {
-            var controller = new LogisticsController(_context, _stateMock.Object);
+            var controller = new LogisticsController(_context, _stateMock.Object, _loggerMock.Object);
             var req = new LogisticsRequestDto { Type = "PICKUP", Id = 999, Items = new List<LogisticsItemDto> { new LogisticsItemDto { Quantity = 1 } } };
 
             var result = await controller.HandleLogisticsRequest(req);
@@ -124,7 +127,7 @@ namespace esAPI.Tests.Controllers
             _context.Electronics.Add(new Electronic { ProducedAt = 1m, ElectronicsStatusId = 0 });
             await _context.SaveChangesAsync();
 
-            var controller = new LogisticsController(_context, _stateMock.Object);
+            var controller = new LogisticsController(_context, _stateMock.Object, _loggerMock.Object);
             var req = new LogisticsRequestDto { Type = "PICKUP", Id = 300, Items = new List<LogisticsItemDto> { new LogisticsItemDto { Quantity = 2 } } };
 
             var result = await controller.HandleLogisticsRequest(req);
@@ -143,7 +146,7 @@ namespace esAPI.Tests.Controllers
 
             _stateMock.Setup(s => s.IsRunning).Returns(false);
 
-            var controller = new LogisticsController(_context, _stateMock.Object);
+            var controller = new LogisticsController(_context, _stateMock.Object, _loggerMock.Object);
             var req = new LogisticsRequestDto { Type = "PICKUP", Id = 400, Items = new List<LogisticsItemDto> { new LogisticsItemDto { Quantity = 1 } } };
 
             var result = await controller.HandleLogisticsRequest(req);
