@@ -96,15 +96,47 @@ namespace esAPI.Services
                 // Store order in database
                 await CreateMaterialOrderRecordAsync("thoh", materialName, thohQty, thohOrderResp.OrderId, dayNumber);
 
-                // Step 1: Make payment to supplier first
+                // Step 1: Make payment to supplier first with retry logic
                 if (thohOrderResp.Price > 0)
                 {
                     _logger.LogInformation($"[Payment] Paying THOH {thohOrderResp.Price} for order {thohOrderResp.OrderId}");
-                    await _bankClient.MakePaymentAsync(thohOrderResp.BankAccount, "thoh", thohOrderResp.Price, thohOrderResp.OrderId.ToString());
-                    _logger.LogInformation($"[Payment] Payment sent to THOH for order {thohOrderResp.OrderId}");
+                    
+                    bool paymentSuccessful = false;
+                    int retryCount = 0;
+                    const int maxRetries = 3;
+                    
+                    while (!paymentSuccessful && retryCount < maxRetries)
+                    {
+                        try
+                        {
+                            await _bankClient.MakePaymentAsync(thohOrderResp.BankAccount, "thoh", thohOrderResp.Price, thohOrderResp.OrderId.ToString());
+                            _logger.LogInformation($"[Payment] Payment sent to THOH for order {thohOrderResp.OrderId}");
+                            paymentSuccessful = true;
+                        }
+                        catch (Exception ex)
+                        {
+                            retryCount++;
+                            _logger.LogWarningColored("[Payment] Payment attempt {0}/{1} failed for THOH order {2}: {3}", retryCount, maxRetries, thohOrderResp.OrderId, ex.Message);
+                            
+                            if (retryCount >= maxRetries)
+                            {
+                                _logger.LogErrorColored("[Payment] Failed to pay THOH after {0} attempts for order {1}. Skipping logistics arrangement.", maxRetries, thohOrderResp.OrderId);
+                                return false;
+                            }
+                            
+                            // Wait before retry (exponential backoff)
+                            await Task.Delay(1000 * retryCount);
+                        }
+                    }
+                    
+                    if (!paymentSuccessful)
+                    {
+                        _logger.LogErrorColored("[Payment] Payment to THOH failed after all retries for order {0}", thohOrderResp.OrderId);
+                        return false;
+                    }
                 }
 
-                // Step 2: Arrange logistics and pay Bulk Logistics
+                // Step 2: Arrange logistics and pay Bulk Logistics only if payment was successful
                 await ArrangeLogisticsAsync(thohOrderResp.OrderId.ToString(), "thoh", materialName, thohQty);
 
                 return true;
@@ -161,15 +193,47 @@ namespace esAPI.Services
                 // Store order in database
                 await CreateMaterialOrderRecordAsync("recycler", mat.MaterialName, orderQty, orderId, dayNumber);
 
-                // Step 1: Make payment to supplier first
+                // Step 1: Make payment to supplier first with retry logic
                 if (!string.IsNullOrEmpty(accountNumber) && total > 0)
                 {
                     _logger.LogInformation($"[Payment] Paying Recycler {total} for order {orderId}");
-                    await _bankClient.MakePaymentAsync(accountNumber, "commercial-bank", total, orderId.ToString());
-                    _logger.LogInformation($"[Payment] Payment sent to Recycler for order {orderId}");
+                    
+                    bool paymentSuccessful = false;
+                    int retryCount = 0;
+                    const int maxRetries = 3;
+                    
+                    while (!paymentSuccessful && retryCount < maxRetries)
+                    {
+                        try
+                        {
+                            await _bankClient.MakePaymentAsync(accountNumber, "commercial-bank", total, orderId.ToString());
+                            _logger.LogInformation($"[Payment] Payment sent to Recycler for order {orderId}");
+                            paymentSuccessful = true;
+                        }
+                        catch (Exception ex)
+                        {
+                            retryCount++;
+                            _logger.LogWarningColored("[Payment] Payment attempt {0}/{1} failed for Recycler order {2}: {3}", retryCount, maxRetries, orderId, ex.Message);
+                            
+                            if (retryCount >= maxRetries)
+                            {
+                                _logger.LogErrorColored("[Payment] Failed to pay Recycler after {0} attempts for order {1}. Skipping logistics arrangement.", maxRetries, orderId);
+                                return false;
+                            }
+                            
+                            // Wait before retry (exponential backoff)
+                            await Task.Delay(1000 * retryCount);
+                        }
+                    }
+                    
+                    if (!paymentSuccessful)
+                    {
+                        _logger.LogErrorColored("[Payment] Payment to Recycler failed after all retries for order {0}", orderId);
+                        return false;
+                    }
                 }
 
-                // Step 2: Arrange logistics and pay Bulk Logistics
+                // Step 2: Arrange logistics and pay Bulk Logistics only if payment was successful
                 await ArrangeLogisticsAsync(orderId.ToString(), "recycler", mat.MaterialName.ToLower(), orderQty);
 
                 return true;
