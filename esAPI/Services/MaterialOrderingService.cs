@@ -338,6 +338,9 @@ namespace esAPI.Services
 
                         // Insert pickup request record
                         await CreatePickupRequestRecordAsync(int.Parse(externalOrderId), pickupResponse.PickupRequestId, materialName, quantity);
+                        
+                        // Update material order with pickup request ID
+                        await UpdateMaterialOrderWithPickupRequestId(int.Parse(externalOrderId), pickupResponse.PickupRequestId);
                     }
                     else
                     {
@@ -377,6 +380,31 @@ namespace esAPI.Services
             {
                 _logger.LogErrorColored("[DB] Error inserting pickup request for Bulk Logistics: ExternalOrderId={0}, PickupRequestId={1}, Material={2}", externalOrderId, pickupRequestId, materialName);
                 _logger.LogError(ex, "[DB] Pickup request exception details: {Message}", ex.Message);
+            }
+        }
+
+        private async Task UpdateMaterialOrderWithPickupRequestId(int externalOrderId, int pickupRequestId)
+        {
+            try
+            {
+                var materialOrder = await _context.MaterialOrders
+                    .FirstOrDefaultAsync(o => o.ExternalOrderId == externalOrderId);
+
+                if (materialOrder != null)
+                {
+                    materialOrder.PickupRequestId = pickupRequestId;
+                    await _context.SaveChangesAsync();
+                    _logger.LogInformation($"[DB] Updated material order {materialOrder.OrderId} with pickup request ID {pickupRequestId}");
+                }
+                else
+                {
+                    _logger.LogWarningColored("[DB] Could not find material order with external order ID {0} to update with pickup request ID {1}", externalOrderId, pickupRequestId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogErrorColored("[DB] Error updating material order with pickup request ID: ExternalOrderId={0}, PickupRequestId={1}", externalOrderId, pickupRequestId);
+                _logger.LogError(ex, "[DB] Material order update exception details: {Message}", ex.Message);
             }
         }
     }

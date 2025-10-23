@@ -141,6 +141,9 @@ namespace esAPI.Services
             if (pickupRequest == null)
                 return false;
 
+            // Update the material order with the pickup request ID
+            await UpdateMaterialOrderWithPickupRequestId(order.OrderId, pickupResp.PickupRequestId);
+
             var paymentSuccess = await _bankClient.MakePaymentAsync(pickupResp.BulkLogisticsBankAccountNumber, "commercial-bank", pickupResp.Cost, pickupResp.PickupRequestId.ToString());
 
             return paymentSuccess == string.Empty;
@@ -226,6 +229,30 @@ namespace esAPI.Services
             return pickupRequest;
         }
 
+        private async Task UpdateMaterialOrderWithPickupRequestId(int externalOrderId, int pickupRequestId)
+        {
+            try
+            {
+                var materialOrder = await _dbContext.MaterialOrders
+                    .FirstOrDefaultAsync(o => o.ExternalOrderId == externalOrderId);
+
+                if (materialOrder != null)
+                {
+                    materialOrder.PickupRequestId = pickupRequestId;
+                    await _dbContext.SaveChangesAsync();
+                    Console.WriteLine($"[DB] Updated material order {materialOrder.OrderId} with pickup request ID {pickupRequestId}");
+                }
+                else
+                {
+                    Console.WriteLine($"⚠️ [DB] Could not find material order with external order ID {externalOrderId} to update with pickup request ID {pickupRequestId}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ [DB] Error updating material order with pickup request ID: ExternalOrderId={externalOrderId}, PickupRequestId={pickupRequestId}");
+                Console.WriteLine($"❌ [DB] Material order update exception details: {ex.Message}");
+            }
+        }
 
     }
 }

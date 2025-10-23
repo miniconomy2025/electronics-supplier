@@ -170,9 +170,37 @@ namespace esAPI.Services
 
             _context.PickupRequests.Add(pickupRequest);
             await _context.SaveChangesAsync();
+
+            // 4. Update the machine order with pickup request ID
+            await UpdateMachineOrderWithPickupRequestId(thohOrderId, pickupRequestId);
         }
 
 
         public Task QueryOrderDetailsFromTHOH() => Task.CompletedTask;
+
+        private async Task UpdateMachineOrderWithPickupRequestId(int externalOrderId, int pickupRequestId)
+        {
+            try
+            {
+                var machineOrder = await _context.MachineOrders
+                    .FirstOrDefaultAsync(o => o.ExternalOrderId == externalOrderId);
+
+                if (machineOrder != null)
+                {
+                    machineOrder.PickupRequestId = pickupRequestId;
+                    await _context.SaveChangesAsync();
+                    Console.WriteLine($"[DB] Updated machine order {machineOrder.OrderId} with pickup request ID {pickupRequestId}");
+                }
+                else
+                {
+                    Console.WriteLine($"⚠️ [DB] Could not find machine order with external order ID {externalOrderId} to update with pickup request ID {pickupRequestId}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ [DB] Error updating machine order with pickup request ID: ExternalOrderId={externalOrderId}, PickupRequestId={pickupRequestId}");
+                Console.WriteLine($"❌ [DB] Machine order update exception details: {ex.Message}");
+            }
+        }
     }
 }
