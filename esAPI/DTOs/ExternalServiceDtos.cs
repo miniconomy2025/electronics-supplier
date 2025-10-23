@@ -43,6 +43,9 @@ public class LogisticsPickupRequest
     [JsonPropertyName("destinationCompany")]
     public required string DestinationCompany { get; set; }
 
+    [JsonPropertyName("type")]
+    public string Type { get; set; } = "PICKUP";
+
     [JsonPropertyName("items")]
     public required LogisticsItem[] Items { get; set; }
 }

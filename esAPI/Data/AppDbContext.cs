@@ -38,8 +38,18 @@ namespace esAPI.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-
             base.OnModelCreating(modelBuilder);
+
+            // Configure PostgreSQL enum for PickupType
+            modelBuilder.HasPostgresEnum<esAPI.Models.Enums.PickupRequest.PickupType>("request_type");
+
+            // Configure PickupRequest entity with proper enum mapping
+            modelBuilder.Entity<PickupRequest>(entity =>
+            {
+                entity.Property(e => e.Type)
+                    .HasConversion<string>()
+                    .HasColumnType("request_type");
+            });
 
             modelBuilder.Entity<CurrentSupply>().ToView("current_supplies");
             modelBuilder.Entity<EffectiveMaterialStock>().ToView("effective_material_stock");
