@@ -14,6 +14,9 @@ namespace esAPI.Models
         [Column("external_request_id")]
         public int ExternalRequestId { get; set; }
 
+        [Column("pickup_request_id")]
+        public int? PickupRequestId { get; set; }
+
         [Column("type")]
         public PickupType Type { get; set; }  // EF will store it as string if configured
 

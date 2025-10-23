@@ -19,7 +19,7 @@ namespace esAPI.Services
         public async Task<bool> CheckTHOHForMachines()
         {
             var client = _httpClientFactory.CreateClient("thoh");
-            var response = await client.GetAsync("/machines");
+            var response = await client.GetAsync("api/machines");
             response.EnsureSuccessStatusCode();
             var content = await response.Content.ReadAsStringAsync();
             using var doc = JsonDocument.Parse(content);
@@ -43,7 +43,7 @@ namespace esAPI.Services
 
             // 2. Get machine price and available quantity from THOH
             var thohClient = _httpClientFactory.CreateClient("thoh");
-            var machinesResp = await thohClient.GetAsync("/machines");
+            var machinesResp = await thohClient.GetAsync("api/machines");
             machinesResp.EnsureSuccessStatusCode();
             var machinesContent = await machinesResp.Content.ReadAsStringAsync();
             using var machinesDoc = JsonDocument.Parse(machinesContent);
@@ -72,7 +72,7 @@ namespace esAPI.Services
                 machineName = "electronics_machine",
                 quantity = toBuy
             };
-            var orderResp = await thohClient.PostAsJsonAsync("/machines", orderReq);
+            var orderResp = await thohClient.PostAsJsonAsync("api/machines", orderReq);
             orderResp.EnsureSuccessStatusCode();
             var orderContent = await orderResp.Content.ReadAsStringAsync();
             using var orderDoc = JsonDocument.Parse(orderContent);
@@ -148,20 +148,21 @@ namespace esAPI.Services
 
             var pickupRequestId = pickup.GetProperty("pickupRequestId").GetInt32();
             var cost = pickup.GetProperty("cost").GetDecimal();
-            var bulkBankAccount = pickup.GetProperty("bulkLogisticsBankAccountNumber").GetString();
+            var bulkBankAccount = pickup.GetProperty("accountNumber").GetString();
 
             // 2. Pay Bulk Logistics
             await _bankClient.MakePaymentAsync(
                 bulkBankAccount!,
                 "commercial-bank",
                 cost,
-                $"Pickup {quantity} electronics_machine from THOH order {thohOrderId}"
+                pickupRequestId.ToString()
             );
 
             // 3. Store the pickup request in the pickup_requests table
             var pickupRequest = new Models.PickupRequest
             {
                 ExternalRequestId = thohOrderId,
+                PickupRequestId = pickupRequestId,
                 Type = Models.Enums.PickupRequest.PickupType.MACHINE,
                 Quantity = quantity,
                 PlacedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds()

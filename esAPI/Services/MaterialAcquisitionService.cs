@@ -136,12 +136,12 @@ namespace esAPI.Services
             var pickupResp = await _logisticsClient.ArrangePickupAsync(pickupReq);
             if (pickupResp == null || string.IsNullOrEmpty(pickupResp.BulkLogisticsBankAccountNumber)) return false;
 
-            var pickupRequest = await CreatePickupRequestAsync(order.OrderId, quantity, materialName);
+            var pickupRequest = await CreatePickupRequestAsync(order.OrderId, pickupResp.PickupRequestId, quantity, materialName);
 
             if (pickupRequest == null)
                 return false;
 
-            var paymentSuccess = await _bankClient.MakePaymentAsync(pickupResp.BulkLogisticsBankAccountNumber, "commercial-bank", pickupResp.Cost, $"Pickup for order {order.OrderId}");
+            var paymentSuccess = await _bankClient.MakePaymentAsync(pickupResp.BulkLogisticsBankAccountNumber, "commercial-bank", pickupResp.Cost, pickupResp.PickupRequestId.ToString());
 
             return paymentSuccess == string.Empty;
         }
@@ -208,7 +208,7 @@ namespace esAPI.Services
             return 0;
         }
 
-        private async Task<PickupRequest?> CreatePickupRequestAsync(int externalOrderId, int quantity, string materialName)
+        private async Task<PickupRequest?> CreatePickupRequestAsync(int externalOrderId, int pickupRequestId, int quantity, string materialName)
         {
             Models.Enums.PickupRequest.PickupType pickupType;
 
@@ -223,6 +223,7 @@ namespace esAPI.Services
             var pickupRequest = new PickupRequest
             {
                 ExternalRequestId = externalOrderId,
+                PickupRequestId = pickupRequestId,
                 Type = pickupType,
                 Quantity = quantity,
                 PlacedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds()

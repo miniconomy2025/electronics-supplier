@@ -247,7 +247,7 @@ namespace esAPI.Services
                     OriginalExternalOrderId = externalOrderId,
                     OriginCompany = originCompany,
                     DestinationCompany = "electronics-supplier",
-                    Items = new[] { new LogisticsItem { Name = materialName, Quantity = quantity } }
+                    Items = [new LogisticsItem { Name = materialName, Quantity = quantity }]
                 };
 
                 var pickupResponse = await _bulkLogisticsClient.ArrangePickupAsync(pickupRequest);
@@ -272,7 +272,7 @@ namespace esAPI.Services
                         }
 
                         // Insert pickup request record
-                        await CreatePickupRequestRecordAsync(int.Parse(externalOrderId), materialName, quantity);
+                        await CreatePickupRequestRecordAsync(int.Parse(externalOrderId), pickupResponse.PickupRequestId, materialName, quantity);
                     }
                     else
                     {
@@ -291,7 +291,7 @@ namespace esAPI.Services
             }
         }
 
-        private async Task CreatePickupRequestRecordAsync(int externalOrderId, string materialName, int quantity)
+        private async Task CreatePickupRequestRecordAsync(int externalOrderId, int pickupRequestId, string materialName, int quantity)
         {
             try
             {
@@ -302,6 +302,7 @@ namespace esAPI.Services
                 var pickupDb = new PickupRequest
                 {
                     ExternalRequestId = externalOrderId,
+                    PickupRequestId = pickupRequestId,
                     Type = pickupType,
                     Quantity = quantity,
                     PlacedAt = (double)_simulationStateService.GetCurrentSimulationTime(3)
@@ -309,11 +310,11 @@ namespace esAPI.Services
 
                 _context.PickupRequests.Add(pickupDb);
                 await _context.SaveChangesAsync();
-                _logger.LogInformation($"[DB] Inserted pickup request for Bulk Logistics: OrderId={externalOrderId}, Material={materialName}, Qty={quantity}");
+                _logger.LogInformation($"[DB] Inserted pickup request for Bulk Logistics: ExternalOrderId={externalOrderId}, PickupRequestId={pickupRequestId}, Material={materialName}, Qty={quantity}");
             }
             catch (Exception ex)
             {
-                _logger.LogErrorColored("[DB] Error inserting pickup request for Bulk Logistics: OrderId={0}, Material={1}", externalOrderId, materialName);
+                _logger.LogErrorColored("[DB] Error inserting pickup request for Bulk Logistics: ExternalOrderId={0}, PickupRequestId={1}, Material={2}", externalOrderId, pickupRequestId, materialName);
                 _logger.LogError(ex, "[DB] Pickup request exception details: {Message}", ex.Message);
             }
         }
