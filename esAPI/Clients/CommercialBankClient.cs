@@ -53,7 +53,7 @@ namespace esAPI.Clients
                     else if (balanceProp.ValueKind == JsonValueKind.String)
                     {
                         var balanceString = balanceProp.GetString();
-                        if (decimal.TryParse(balanceString, out balance))
+                        if (decimal.TryParse(balanceString, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out balance))
                         {
                             Console.WriteLine($"✅ CommercialBankClient: Account balance (string): {balance}");
                             return balance;

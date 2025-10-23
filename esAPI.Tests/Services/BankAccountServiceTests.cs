@@ -14,7 +14,7 @@ using Moq;
 
 namespace esAPI.Tests.Services
 {
-    public class BankAccountServiceUnitTests
+    public class BankAccountServiceUnitTests : IDisposable
     {
         private readonly Mock<ICommercialBankClient> _mockBankClient;
         private readonly Mock<ILogger<BankAccountService>> _mockLogger;
@@ -92,6 +92,11 @@ namespace esAPI.Tests.Services
             error.Should().Contain("retry scheduled");
 
             _mockRetryQueuePublisher.Verify(p => p.PublishAsync(It.IsAny<BankAccountRetryJob>()), Times.Once);
+        }
+
+        public void Dispose()
+        {
+            _dbContext?.Dispose();
         }
     }
 }
