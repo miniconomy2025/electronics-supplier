@@ -126,7 +126,7 @@ namespace esAPI.Services
                         {
                             try
                             {
-                                await _bankClient.MakePaymentAsync(bankAccount, "thoh", totalPrice, orderId.ToString());
+                                await _bankClient.MakePaymentAsync(bankAccount, "thoh", totalPrice,orderId.ToString());
                                 _logger.LogInformation($"[Machine] Payment sent to THOH for order {orderId}");
                                 paymentSuccessful = true;
                             }
