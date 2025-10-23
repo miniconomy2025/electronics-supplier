@@ -262,8 +262,8 @@ namespace esAPI.Services
 
                         try
                         {
-                            await _bankClient.MakePaymentAsync(pickupResponse.BulkLogisticsBankAccountNumber, "commercial-bank", pickupResponse.Cost, $"Pickup for {originCompany} order {externalOrderId}");
-                            _logger.LogInformation($"[Payment] Payment sent to Bulk Logistics for pickup of order {externalOrderId}");
+                            await _bankClient.MakePaymentAsync(pickupResponse.BulkLogisticsBankAccountNumber, "commercial-bank", pickupResponse.Cost, pickupResponse.PickupRequestId.ToString());
+                            _logger.LogInformation($"[Payment] Payment sent to Bulk Logistics for pickup request ID {pickupResponse.PickupRequestId}");
                         }
                         catch (Exception ex)
                         {
