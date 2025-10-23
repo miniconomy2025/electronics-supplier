@@ -4,6 +4,7 @@ using esAPI.Data;
 using esAPI.Clients;
 using esAPI.Interfaces;
 using esAPI.Models;
+using esAPI.DTOs;
 
 namespace esAPI.Services
 {
@@ -16,6 +17,8 @@ namespace esAPI.Services
     {
         private readonly AppDbContext _context;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IThohApiClient _thohApiClient;
+        private readonly IBulkLogisticsClient _bulkLogisticsClient;
         private readonly ICommercialBankClient _bankClient;
         private readonly ILogger<MachineManagementService> _logger;
         private readonly ISimulationStateService _stateService;
@@ -23,12 +26,16 @@ namespace esAPI.Services
         public MachineManagementService(
             AppDbContext context,
             IHttpClientFactory httpClientFactory,
+            IThohApiClient thohApiClient,
+            IBulkLogisticsClient bulkLogisticsClient,
             ICommercialBankClient bankClient,
             ISimulationStateService stateService,
             ILogger<MachineManagementService> logger)
         {
             _context = context;
             _httpClientFactory = httpClientFactory;
+            _thohApiClient = thohApiClient;
+            _bulkLogisticsClient = bulkLogisticsClient;
             _bankClient = bankClient;
             _stateService = stateService;
             _logger = logger;
@@ -67,6 +74,21 @@ namespace esAPI.Services
                 try
                 {
                     _logger.LogInformation($"[Machine] THOH machine order attempt {attempt}/{maxRetries}");
+
+                    // First check if machines are available
+                    var availableMachines = await _thohApiClient.GetAvailableMachinesAsync();
+                    var electronicsMachine = availableMachines.FirstOrDefault(m => m.MachineName == "electronics_machine");
+
+                    if (electronicsMachine == null || electronicsMachine.Quantity < quantity)
+                    {
+                        _logger.LogWarning($"[Machine] THOH does not have enough electronics_machine available. Available: {electronicsMachine?.Quantity ?? 0}, Needed: {quantity}");
+                        if (attempt == maxRetries)
+                            return false;
+                        await Task.Delay(TimeSpan.FromSeconds(2 * attempt));
+                        continue;
+                    }
+
+                    // Place machine order with THOH API
                     var thohHttpClient = _httpClientFactory.CreateClient("thoh");
                     var machineOrderReq = new { machineName = "electronics_machine", quantity };
 
@@ -77,6 +99,7 @@ namespace esAPI.Services
                         _logger.LogWarning($"[Machine] Failed to order machines from THOH attempt {attempt}. Status: {response.StatusCode}");
                         if (attempt == maxRetries)
                             return false;
+                        await Task.Delay(TimeSpan.FromSeconds(2 * attempt));
                         continue;
                     }
 
@@ -94,21 +117,44 @@ namespace esAPI.Services
 
                     if (!string.IsNullOrEmpty(bankAccount) && totalPrice > 0)
                     {
-                        try
+                        // Step 1: Make payment to THOH with retry logic
+                        bool paymentSuccessful = false;
+                        int paymentRetryCount = 0;
+                        const int maxPaymentRetries = 3;
+
+                        while (!paymentSuccessful && paymentRetryCount < maxPaymentRetries)
                         {
-                            await _bankClient.MakePaymentAsync(bankAccount, "thoh", totalPrice, $"Purchase {quantity} electronics_machine from THOH");
-                            _logger.LogInformation($"[Machine] Payment sent to THOH for order {orderId}");
+                            try
+                            {
+                                await _bankClient.MakePaymentAsync(bankAccount, "thoh", totalPrice, $"Purchase {quantity} electronics_machine from THOH");
+                                _logger.LogInformation($"[Machine] Payment sent to THOH for order {orderId}");
+                                paymentSuccessful = true;
+                            }
+                            catch (Exception ex)
+                            {
+                                paymentRetryCount++;
+                                _logger.LogWarning($"[Machine] Payment attempt {paymentRetryCount}/{maxPaymentRetries} failed for THOH order {orderId}: {ex.Message}");
 
-                            // Arrange pickup with bulk logistics
-                            await ArrangePickupWithBulkLogistics(orderId, quantity);
+                                if (paymentRetryCount >= maxPaymentRetries)
+                                {
+                                    _logger.LogError($"[Machine] Failed to pay THOH after {maxPaymentRetries} attempts for order {orderId}. Skipping logistics arrangement.");
+                                    return false;
+                                }
 
-                            return true;
+                                // Wait before retry (exponential backoff)
+                                await Task.Delay(1000 * paymentRetryCount);
+                            }
                         }
-                        catch (Exception ex)
+
+                        if (!paymentSuccessful)
                         {
-                            _logger.LogError(ex, $"[Machine] Error paying THOH for machine order {orderId}");
+                            _logger.LogError($"[Machine] Payment to THOH failed after all retries for order {orderId}");
                             return false;
                         }
+
+                        // Step 2: Arrange pickup with bulk logistics only if payment was successful
+                        await ArrangePickupWithBulkLogistics(orderId, quantity);
+                        return true;
                     }
                     else
                     {
@@ -178,48 +224,72 @@ namespace esAPI.Services
             {
                 _logger.LogInformation("[Machine] Arranging pickup with Bulk Logistics for THOH order {ExternalOrderId}", externalOrderId);
 
-                var bulkClient = _httpClientFactory.CreateClient("bulk-logistics");
-                var pickupReq = new
+                var pickupRequest = new LogisticsPickupRequest
                 {
-                    originalExternalOrderId = externalOrderId.ToString(),
-                    originCompanyId = "thoh",
-                    destinationCompanyId = "electronics-supplier",
-                    items = new[]
-                    {
-                        new { name = "electronics_machine", quantity }
-                    }
+                    OriginalExternalOrderId = externalOrderId.ToString(),
+                    OriginCompany = "thoh",
+                    DestinationCompany = "electronics-supplier",
+                    Items = [new LogisticsItem { Name = "electronics_machine", Quantity = quantity }]
                 };
 
-                var pickupResp = await bulkClient.PostAsJsonAsync("/api/pickup-request", pickupReq);
+                var pickupResponse = await _bulkLogisticsClient.ArrangePickupAsync(pickupRequest);
 
-                if (pickupResp.IsSuccessStatusCode)
+                if (pickupResponse != null)
                 {
-                    var pickupContent = await pickupResp.Content.ReadAsStringAsync();
-                    using var pickupDoc = System.Text.Json.JsonDocument.Parse(pickupContent);
-                    var pickup = pickupDoc.RootElement;
+                    _logger.LogInformation($"[Machine] Pickup arranged: PickupRequestId={pickupResponse.PickupRequestId}, Cost={pickupResponse.Cost}");
 
-                    var pickupRequestId = pickup.GetProperty("pickupRequestId").GetInt32();
-                    var cost = pickup.GetProperty("cost").GetDecimal();
-                    var bulkBankAccount = pickup.GetProperty("bulkLogisticsBankAccountNumber").GetString();
-
-                    _logger.LogInformation($"[Machine] Pickup arranged: PickupRequestId={pickupRequestId}, Cost={cost}");
-
-                    if (!string.IsNullOrEmpty(bulkBankAccount))
+                    if (!string.IsNullOrEmpty(pickupResponse.BulkLogisticsBankAccountNumber))
                     {
-                        // Pay Bulk Logistics
-                        await _bankClient.MakePaymentAsync(bulkBankAccount, "commercial-bank", cost, $"Pickup for THOH machine order {externalOrderId}");
-                        _logger.LogInformation($"[Machine] Payment sent to Bulk Logistics for pickup request {pickupRequestId}");
+                        // Pay Bulk Logistics with retry logic
+                        bool bulkPaymentSuccessful = false;
+                        int bulkRetryCount = 0;
+                        const int maxBulkRetries = 3;
 
-                        // Store pickup request record
-                        await CreatePickupRequestRecordAsync(externalOrderId, pickupRequestId, quantity);
+                        while (!bulkPaymentSuccessful && bulkRetryCount < maxBulkRetries)
+                        {
+                            try
+                            {
+                                await _bankClient.MakePaymentAsync(pickupResponse.BulkLogisticsBankAccountNumber, "commercial-bank", pickupResponse.Cost, $"Pickup for THOH machine order {externalOrderId}");
+                                _logger.LogInformation($"[Machine] Payment sent to Bulk Logistics for pickup request {pickupResponse.PickupRequestId}");
+                                bulkPaymentSuccessful = true;
+                            }
+                            catch (Exception ex)
+                            {
+                                bulkRetryCount++;
+                                _logger.LogWarning($"[Machine] Bulk Logistics payment attempt {bulkRetryCount}/{maxBulkRetries} failed for pickup request {pickupResponse.PickupRequestId}: {ex.Message}");
 
-                        // Update machine order with pickup request ID
-                        await UpdateMachineOrderWithPickupRequestId(externalOrderId, pickupRequestId);
+                                if (bulkRetryCount >= maxBulkRetries)
+                                {
+                                    _logger.LogError($"[Machine] Failed to pay Bulk Logistics after {maxBulkRetries} attempts for pickup request {pickupResponse.PickupRequestId}.");
+                                    return; // Don't fail completely, but log the error
+                                }
+
+                                // Wait before retry (exponential backoff)
+                                await Task.Delay(1000 * bulkRetryCount);
+                            }
+                        }
+
+                        if (bulkPaymentSuccessful)
+                        {
+                            // Store pickup request record only if payment was successful
+                            await CreatePickupRequestRecordAsync(externalOrderId, pickupResponse.PickupRequestId, quantity);
+
+                            // Update machine order with pickup request ID
+                            await UpdateMachineOrderWithPickupRequestId(externalOrderId, pickupResponse.PickupRequestId);
+                        }
+                        else
+                        {
+                            _logger.LogError($"[Machine] Bulk Logistics payment failed after all retries for pickup request {pickupResponse.PickupRequestId}");
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning("[Machine] Pickup response received but bank account number is null/empty for order {ExternalOrderId}", externalOrderId);
                     }
                 }
                 else
                 {
-                    _logger.LogWarning("[Machine] Failed to arrange pickup with Bulk Logistics for THOH order {ExternalOrderId}. Status: {StatusCode}", externalOrderId, pickupResp.StatusCode);
+                    _logger.LogWarning("[Machine] Failed to arrange pickup with Bulk Logistics for THOH order {ExternalOrderId} - response was null", externalOrderId);
                 }
             }
             catch (Exception ex)
