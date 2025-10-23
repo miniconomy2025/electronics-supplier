@@ -18,7 +18,7 @@ namespace esAPI.Models
 
         [Column("type")]
         [MaxLength(20)]
-        public string Type { get; set; } = string.Empty;
+        public string Type { get; set; } = "PICKUP"; // Operation type (PICKUP/DELIVERY) for Bulk Logistics API
 
         [Column("quantity")]
         public int Quantity { get; set; }

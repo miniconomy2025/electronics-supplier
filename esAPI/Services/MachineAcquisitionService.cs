@@ -163,7 +163,7 @@ namespace esAPI.Services
             {
                 ExternalRequestId = thohOrderId,
                 PickupRequestId = pickupRequestId,
-                Type = "MACHINE",
+                Type = "PICKUP", // Operation type for Bulk Logistics API
                 Quantity = quantity,
                 PlacedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
             };

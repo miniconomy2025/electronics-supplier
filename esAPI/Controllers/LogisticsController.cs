@@ -78,16 +78,14 @@ namespace esAPI.Controllers
             if (pickupRequest == null)
                 return NotFound($"No pickup request found with ID {request.Id}");
 
-            // 2. Handle based on pickup request type
-            if (pickupRequest.Type == "MACHINE")
+            // 2. Determine what type of pickup this is by checking related orders
+            // First check if it's a machine order
+            var machineOrder = await _context.MachineOrders
+                .FirstOrDefaultAsync(o => o.ExternalOrderId == pickupRequest.ExternalRequestId);
+            
+            if (machineOrder != null)
             {
-                // 3a. Find matching machine order by external order ID
-                var machineOrder = await _context.MachineOrders
-                    .FirstOrDefaultAsync(o => o.ExternalOrderId == pickupRequest.ExternalRequestId);
-
-                if (machineOrder == null)
-                    return NotFound($"No machine order found for pickup request {request.Id}");
-
+                // 3a. Handle machine delivery
                 if (machineOrder.OrderStatusId == (int)Order.Status.Completed)
                     return BadRequest($"Order {request.Id} is already marked as completed.");
 
