@@ -50,7 +50,7 @@ namespace esAPI.Configuration
             services.AddScoped<SimulationDayService>();
             services.AddScoped<SimulationDayOrchestrator>();
             services.AddScoped<OrderExpirationService>();
-            services.AddScoped<ElectronicsMachineDetailsService>();
+            services.AddScoped<IElectronicsMachineDetailsService, ElectronicsMachineDetailsService>();
 
             // Material services
             services.AddScoped<IMaterialSourcingService, MaterialSourcingService>();

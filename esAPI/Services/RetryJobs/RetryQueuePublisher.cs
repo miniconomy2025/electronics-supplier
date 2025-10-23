@@ -31,7 +31,7 @@ namespace esAPI.Services
             }
         }
 
-        public async Task PublishAsync(IRetryJob job)
+        public virtual async Task PublishAsync(IRetryJob job)
         {
             // Only publish retry jobs when simulation is running
             if (!_stateService.IsRunning)

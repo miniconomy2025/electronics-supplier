@@ -16,7 +16,7 @@ namespace esAPI.Services
         private readonly ICommercialBankClient _bankClient;
         private readonly ILogger<SimulationStartupService> _logger;
         private readonly IThohApiClient _thohApiClient;
-        private readonly ElectronicsMachineDetailsService _machineDetailsService;
+        private readonly IElectronicsMachineDetailsService _machineDetailsService;
 
         public SimulationStartupService(
             AppDbContext context,
@@ -25,7 +25,7 @@ namespace esAPI.Services
             ICommercialBankClient bankClient,
             ILogger<SimulationStartupService> logger,
             IThohApiClient thohApiClient,
-            ElectronicsMachineDetailsService machineDetailsService)
+            IElectronicsMachineDetailsService machineDetailsService)
         {
             _context = context;
             _bankAccountService = bankAccountService;

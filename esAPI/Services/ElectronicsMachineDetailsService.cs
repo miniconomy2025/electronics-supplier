@@ -9,7 +9,12 @@ using System;
 
 namespace esAPI.Services
 {
-    public class ElectronicsMachineDetailsService
+    public interface IElectronicsMachineDetailsService
+    {
+        Task<bool> SyncElectronicsMachineDetailsAsync();
+    }
+
+    public class ElectronicsMachineDetailsService : IElectronicsMachineDetailsService
     {
         private readonly AppDbContext _context;
         private readonly IThohApiClient _thohApiClient;
