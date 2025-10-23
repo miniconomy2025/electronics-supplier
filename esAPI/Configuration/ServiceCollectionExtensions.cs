@@ -49,6 +49,7 @@ namespace esAPI.Configuration
             services.AddScoped<ISimulationDayService, SimulationDayService>();
             services.AddScoped<SimulationDayService>();
             services.AddScoped<SimulationDayOrchestrator>();
+            services.AddScoped<IOrderExpirationService, OrderExpirationService>();
             services.AddScoped<OrderExpirationService>();
             services.AddScoped<IElectronicsMachineDetailsService, ElectronicsMachineDetailsService>();
 
