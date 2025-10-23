@@ -45,35 +45,35 @@ namespace esAPI.Controllers
             if (request?.EpochStartTime != null)
             {
                 _logger.LogInformation("[SimulationController] Starting simulation with external epoch start time: {EpochStartTime}", request.EpochStartTime);
-                
+
                 var epochStartTime = request.EpochStartTime.Value;
-                
+
                 // Auto-detect and convert millisecond timestamps
                 // Timestamps after 2001-09-09 (1 billion seconds) are likely milliseconds if > 1e12
                 const long MillisecondThreshold = 1_000_000_000_000; // 1e12 - likely milliseconds
                 const long MinValidSeconds = -62135596800; // 0001-01-01 00:00:00 UTC
                 const long MaxValidSeconds = 253402300799; // 9999-12-31 23:59:59 UTC
-                
+
                 if (epochStartTime > MillisecondThreshold)
                 {
                     // Convert from milliseconds to seconds
                     var originalTimestamp = epochStartTime;
                     epochStartTime = epochStartTime / 1000;
-                    
+
                     var convertedDate = DateTimeOffset.FromUnixTimeSeconds(epochStartTime);
-                    _logger.LogInformation("[SimulationController] Auto-converted timestamp from milliseconds: {OriginalMs} → {ConvertedSecs} (Date: {ConvertedDate})", 
+                    _logger.LogInformation("[SimulationController] Auto-converted timestamp from milliseconds: {OriginalMs} → {ConvertedSecs} (Date: {ConvertedDate})",
                         originalTimestamp, epochStartTime, convertedDate.ToString("yyyy-MM-dd HH:mm:ss K"));
                 }
-                
+
                 // Validate the final timestamp value
                 if (epochStartTime < MinValidSeconds || epochStartTime > MaxValidSeconds)
                 {
-                    _logger.LogError("[SimulationController] Invalid epoch start time {EpochStartTime}. Valid range: {MinValid} to {MaxValid}", 
+                    _logger.LogError("[SimulationController] Invalid epoch start time {EpochStartTime}. Valid range: {MinValid} to {MaxValid}",
                         epochStartTime, MinValidSeconds, MaxValidSeconds);
                     return BadRequest($"Invalid epoch start time {epochStartTime}. " +
                         $"Valid Unix timestamps are between {MinValidSeconds} and {MaxValidSeconds} seconds.");
                 }
-                
+
                 _stateService.Start(epochStartTime);
             }
             else
@@ -91,9 +91,10 @@ namespace esAPI.Controllers
             }
 
             _logger.LogInformation("[SimulationController] Simulation started with bank account: {AccountNumber}", result.AccountNumber);
-            return Ok(new { 
-                message = "Simulation started", 
-                bankAccount = result.AccountNumber 
+            return Ok(new
+            {
+                message = "Simulation started",
+                bankAccount = result.AccountNumber
             });
         }
 
@@ -164,7 +165,7 @@ namespace esAPI.Controllers
         public async Task<IActionResult> StopAndDeleteSimulation()
         {
             _logger.LogInformation("[SimulationController] Stopping simulation and cleaning up data");
-            
+
             if (_stateService.IsRunning)
             {
                 _stateService.Stop();
@@ -193,7 +194,7 @@ namespace esAPI.Controllers
 
             // Clean up simulation data according to requirements
             _logger.LogInformation("[SimulationController] Cleaning up simulation data from database");
-            
+
             try
             {
                 // First check which tables exist
@@ -203,7 +204,7 @@ namespace esAPI.Controllers
                     FROM information_schema.tables 
                     WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
                 ").ToListAsync();
-                
+
                 _logger.LogInformation("[SimulationController] Found {Count} tables: {Tables}", existingTables.Count, string.Join(", ", existingTables));
 
                 // Define safe list of tables to truncate (prevents SQL injection)
@@ -211,7 +212,7 @@ namespace esAPI.Controllers
                 {
                     "material_supplies", "material_orders", "machines", "machine_orders",
                     "machine_ratios", "machine_details", "electronics", "electronics_orders",
-                    "simulation", "disasters", "bank_balance_snapshots", "payments", 
+                    "simulation", "disasters", "bank_balance_snapshots", "payments",
                     "pickup_requests"
                 };
 
@@ -224,9 +225,9 @@ namespace esAPI.Controllers
                         {
                             _logger.LogInformation("[SimulationController] Truncating table: {TableName}", table);
                             // Safe: table name is validated against predefined whitelist
-                            #pragma warning disable EF1002
+#pragma warning disable EF1002
                             await _context.Database.ExecuteSqlRawAsync($"TRUNCATE TABLE {table} RESTART IDENTITY CASCADE;");
-                            #pragma warning restore EF1002
+#pragma warning restore EF1002
                         }
                         catch (Exception ex)
                         {
@@ -242,7 +243,7 @@ namespace esAPI.Controllers
                 // Clear bank account numbers from companies table but keep company names
                 _logger.LogInformation("[SimulationController] Clearing bank account numbers from companies table");
                 await _context.Database.ExecuteSqlRawAsync("UPDATE companies SET bank_account_number = NULL;");
-                
+
                 _logger.LogInformation("[SimulationController] Simulation data cleanup completed (company names and lookup values preserved)");
             }
             catch (Exception ex)

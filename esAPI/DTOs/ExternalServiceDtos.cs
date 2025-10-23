@@ -84,12 +84,12 @@ public class StringToDecimalConverter : JsonConverter<decimal>
             }
             throw new JsonException($"Unable to convert \"{stringValue}\" to decimal");
         }
-        
+
         if (reader.TokenType == JsonTokenType.Number)
         {
             return reader.GetDecimal();
         }
-        
+
         throw new JsonException($"Unexpected token type {reader.TokenType} when parsing decimal");
     }
 

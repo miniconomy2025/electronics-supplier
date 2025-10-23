@@ -32,17 +32,17 @@ namespace esAPI.Controllers
                 // Log the incoming request
                 _logger.LogInformation("[Logistics] POST /logistics endpoint called");
                 _logger.LogInformation("[Logistics] Request body: {RequestBody}", JsonSerializer.Serialize(request, new JsonSerializerOptions { WriteIndented = true }));
-                
+
                 // Validate request
                 if (!IsValidRequest(request, out var validationError))
                 {
                     _logger.LogWarning("[Logistics] Request validation failed: {ValidationError}", validationError);
-                    _logger.LogWarning("[Logistics] Invalid request details - Type: {Type}, Id: {Id}, Items: {ItemCount}", 
+                    _logger.LogWarning("[Logistics] Invalid request details - Type: {Type}, Id: {Id}, Items: {ItemCount}",
                         request.Type, request.Id, request.Items?.Count ?? 0);
                     return BadRequest(validationError);
                 }
 
-                _logger.LogInformation("[Logistics] Request validation passed - Type: {Type}, Id: {Id}, Items: {ItemCount}", 
+                _logger.LogInformation("[Logistics] Request validation passed - Type: {Type}, Id: {Id}, Items: {ItemCount}",
                     request.Type, request.Id, request.Items.Count);
 
                 // Route to appropriate handler
@@ -63,7 +63,7 @@ namespace esAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[Logistics] Unhandled exception in HandleLogisticsRequest for request: {RequestBody}", 
+                _logger.LogError(ex, "[Logistics] Unhandled exception in HandleLogisticsRequest for request: {RequestBody}",
                     JsonSerializer.Serialize(request ?? new LogisticsRequestDto(), new JsonSerializerOptions { WriteIndented = true }));
                 return StatusCode(500, "An internal error occurred while processing the logistics request");
             }
@@ -121,56 +121,56 @@ namespace esAPI.Controllers
                     return NotFound($"No pickup request found with ID {request.Id}");
                 }
 
-                _logger.LogInformation("[Logistics] Found pickup request - ID: {PickupRequestId}, ExternalOrderId: {ExternalOrderId}, Type: {Type}, Quantity: {Quantity}", 
+                _logger.LogInformation("[Logistics] Found pickup request - ID: {PickupRequestId}, ExternalOrderId: {ExternalOrderId}, Type: {Type}, Quantity: {Quantity}",
                     pickupRequest.RequestId, pickupRequest.ExternalRequestId, pickupRequest.Type, pickupRequest.Quantity);
 
                 // 2. Determine what type of pickup this is by checking related orders
                 _logger.LogInformation("[Logistics] Checking for machine order with external order ID {ExternalOrderId}", pickupRequest.ExternalRequestId);
                 var machineOrder = await _context.MachineOrders
                     .FirstOrDefaultAsync(o => o.ExternalOrderId == pickupRequest.ExternalRequestId);
-                
+
                 if (machineOrder != null)
                 {
-                    _logger.LogInformation("[Logistics] Found machine order - ID: {OrderId}, Remaining: {RemainingAmount}, Status: {StatusId}", 
+                    _logger.LogInformation("[Logistics] Found machine order - ID: {OrderId}, Remaining: {RemainingAmount}, Status: {StatusId}",
                         machineOrder.OrderId, machineOrder.RemainingAmount, machineOrder.OrderStatusId);
-                // 3a. Handle machine delivery
-                if (machineOrder.OrderStatusId == (int)Order.Status.Completed)
-                    return BadRequest($"Order {request.Id} is already marked as completed.");
+                    // 3a. Handle machine delivery
+                    if (machineOrder.OrderStatusId == (int)Order.Status.Completed)
+                        return BadRequest($"Order {request.Id} is already marked as completed.");
 
-                int machineCount = request.Items.Sum(item => item.Quantity);
-                int deliverAmount = Math.Min(machineOrder.RemainingAmount, machineCount);
+                    int machineCount = request.Items.Sum(item => item.Quantity);
+                    int deliverAmount = Math.Min(machineOrder.RemainingAmount, machineCount);
 
-                if (deliverAmount <= 0)
-                    return BadRequest("Nothing to deliver based on the remaining amount.");
+                    if (deliverAmount <= 0)
+                        return BadRequest("Nothing to deliver based on the remaining amount.");
 
-                var machinesToAdd = Enumerable.Range(0, deliverAmount)
-                    .Select(_ => new Machine
+                    var machinesToAdd = Enumerable.Range(0, deliverAmount)
+                        .Select(_ => new Machine
+                        {
+                            OrderId = machineOrder.OrderId,
+                            MachineStatusId = (int)MS.Status.Standby,
+                            ReceivedAt = currentDay,
+                            PurchasedAt = currentDay,
+                            PurchasePrice = 0
+                        })
+                        .ToList();
+
+                    _context.Machines.AddRange(machinesToAdd);
+
+                    machineOrder.RemainingAmount -= deliverAmount;
+
+                    if (machineOrder.RemainingAmount == 0)
                     {
-                        OrderId = machineOrder.OrderId,
-                        MachineStatusId = (int)MS.Status.Standby,
-                        ReceivedAt = currentDay,
-                        PurchasedAt = currentDay,
-                        PurchasePrice = 0
-                    })
-                    .ToList();
-
-                _context.Machines.AddRange(machinesToAdd);
-
-                machineOrder.RemainingAmount -= deliverAmount;
-
-                if (machineOrder.RemainingAmount == 0)
-                {
-                    machineOrder.ReceivedAt = currentDay;
-                    machineOrder.OrderStatusId = (int)Order.Status.Completed;
-                }
-                else if (machineOrder.OrderStatusId == (int)Order.Status.Pending || machineOrder.OrderStatusId == (int)Order.Status.Accepted)
-                {
-                    machineOrder.OrderStatusId = (int)Order.Status.InProgress;
-                }
+                        machineOrder.ReceivedAt = currentDay;
+                        machineOrder.OrderStatusId = (int)Order.Status.Completed;
+                    }
+                    else if (machineOrder.OrderStatusId == (int)Order.Status.Pending || machineOrder.OrderStatusId == (int)Order.Status.Accepted)
+                    {
+                        machineOrder.OrderStatusId = (int)Order.Status.InProgress;
+                    }
 
                     await _context.SaveChangesAsync();
 
-                    _logger.LogInformation("[Logistics] Successfully delivered {DeliverAmount} machines for supplier ID {SupplierId} from pickup request {RequestId}. Remaining: {Remaining}", 
+                    _logger.LogInformation("[Logistics] Successfully delivered {DeliverAmount} machines for supplier ID {SupplierId} from pickup request {RequestId}. Remaining: {Remaining}",
                         deliverAmount, machineOrder.SupplierId, request.Id, machineOrder.RemainingAmount);
 
                     return Ok(new
@@ -188,55 +188,55 @@ namespace esAPI.Controllers
 
                     if (materialOrder == null)
                     {
-                        _logger.LogWarning("[Logistics] No material order found for external order ID {ExternalOrderId} (pickup request {RequestId})", 
+                        _logger.LogWarning("[Logistics] No material order found for external order ID {ExternalOrderId} (pickup request {RequestId})",
                             pickupRequest.ExternalRequestId, request.Id);
                         return NotFound($"No material order found for pickup request {request.Id}");
                     }
 
-                    _logger.LogInformation("[Logistics] Found material order - ID: {OrderId}, MaterialId: {MaterialId}, Remaining: {RemainingAmount}, Status: {StatusId}", 
+                    _logger.LogInformation("[Logistics] Found material order - ID: {OrderId}, MaterialId: {MaterialId}, Remaining: {RemainingAmount}, Status: {StatusId}",
                         materialOrder.OrderId, materialOrder.MaterialId, materialOrder.RemainingAmount, materialOrder.OrderStatusId);
 
                     if (materialOrder.OrderStatusId == (int)Order.Status.Completed)
                     {
-                        _logger.LogWarning("[Logistics] Material order {OrderId} is already completed (pickup request {RequestId})", 
+                        _logger.LogWarning("[Logistics] Material order {OrderId} is already completed (pickup request {RequestId})",
                             materialOrder.OrderId, request.Id);
                         return BadRequest($"Order {request.Id} is already fully delivered.");
                     }
 
-                // Sum total quantity from request items (in case of multiple items)
-                int requestedQuantity = request.Items.Sum(i => i.Quantity);
-                int deliverAmount = Math.Min(materialOrder.RemainingAmount, requestedQuantity);
+                    // Sum total quantity from request items (in case of multiple items)
+                    int requestedQuantity = request.Items.Sum(i => i.Quantity);
+                    int deliverAmount = Math.Min(materialOrder.RemainingAmount, requestedQuantity);
 
-                if (deliverAmount <= 0)
-                    return BadRequest("Nothing to deliver based on the remaining amount.");
+                    if (deliverAmount <= 0)
+                        return BadRequest("Nothing to deliver based on the remaining amount.");
 
-                var suppliesToAdd = Enumerable.Range(0, deliverAmount)
-                    .Select(_ => new MaterialSupply
+                    var suppliesToAdd = Enumerable.Range(0, deliverAmount)
+                        .Select(_ => new MaterialSupply
+                        {
+                            MaterialId = materialOrder.MaterialId,
+                            ReceivedAt = currentDay
+                        })
+                        .ToList();
+
+                    _context.MaterialSupplies.AddRange(suppliesToAdd);
+
+                    materialOrder.RemainingAmount -= deliverAmount;
+
+                    if (materialOrder.RemainingAmount == 0)
                     {
-                        MaterialId = materialOrder.MaterialId,
-                        ReceivedAt = currentDay
-                    })
-                    .ToList();
+                        materialOrder.ReceivedAt = currentDay;
+                        materialOrder.OrderStatusId = (int)Order.Status.Completed;
+                    }
+                    else if (materialOrder.OrderStatusId == (int)Order.Status.Pending || materialOrder.OrderStatusId == (int)Order.Status.Accepted)
+                    {
+                        materialOrder.OrderStatusId = (int)Order.Status.InProgress;
+                    }
 
-                _context.MaterialSupplies.AddRange(suppliesToAdd);
+                    await _context.SaveChangesAsync();
 
-                materialOrder.RemainingAmount -= deliverAmount;
+                    _logger.LogInformation("[Logistics] Successfully delivered {DeliverAmount} supplies for material ID {MaterialId} from pickup request {RequestId}. Remaining: {Remaining}",
+                        deliverAmount, materialOrder.MaterialId, request.Id, materialOrder.RemainingAmount);
 
-                if (materialOrder.RemainingAmount == 0)
-                {
-                    materialOrder.ReceivedAt = currentDay;
-                    materialOrder.OrderStatusId = (int)Order.Status.Completed;
-                }
-                else if (materialOrder.OrderStatusId == (int)Order.Status.Pending || materialOrder.OrderStatusId == (int)Order.Status.Accepted)
-                {
-                    materialOrder.OrderStatusId = (int)Order.Status.InProgress;
-                }
-
-                await _context.SaveChangesAsync();
-
-                _logger.LogInformation("[Logistics] Successfully delivered {DeliverAmount} supplies for material ID {MaterialId} from pickup request {RequestId}. Remaining: {Remaining}", 
-                    deliverAmount, materialOrder.MaterialId, request.Id, materialOrder.RemainingAmount);
-                
                     return Ok(new
                     {
                         Message = $"Delivered {deliverAmount} supplies for material ID {materialOrder.MaterialId} from order {request.Id}",
@@ -256,7 +256,7 @@ namespace esAPI.Controllers
         private async Task<IActionResult> HandlePickupAsync(LogisticsRequestDto request)
         {
             _logger.LogInformation("[Logistics] Starting pickup processing for electronics order ID {OrderId}", request.Id);
-            
+
             var order = await _context.ElectronicsOrders
                 .FirstOrDefaultAsync(o => o.OrderId == request.Id);
 
@@ -266,7 +266,7 @@ namespace esAPI.Controllers
                 return NotFound($"No electronics order found with ID {request.Id}");
             }
 
-            _logger.LogInformation("[Logistics] Found electronics order - ID: {OrderId}, Remaining: {RemainingAmount}, Status: {StatusId}", 
+            _logger.LogInformation("[Logistics] Found electronics order - ID: {OrderId}, Remaining: {RemainingAmount}, Status: {StatusId}",
                 order.OrderId, order.RemainingAmount, order.OrderStatusId);
 
             if (order.RemainingAmount <= 0)
@@ -315,7 +315,7 @@ namespace esAPI.Controllers
 
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("[Logistics] Successfully picked up {PickupAmount} electronics for manufacturer ID {ManufacturerId} from order {OrderId}. Remaining: {Remaining}", 
+            _logger.LogInformation("[Logistics] Successfully picked up {PickupAmount} electronics for manufacturer ID {ManufacturerId} from order {OrderId}. Remaining: {Remaining}",
                 pickupAmount, order.ManufacturerId, request.Id, order.RemainingAmount);
 
             return Ok(new

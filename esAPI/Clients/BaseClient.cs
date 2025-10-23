@@ -41,18 +41,18 @@ namespace esAPI.Clients
                 var fullUrl = _client.BaseAddress != null ? new Uri(_client.BaseAddress, requestUri).ToString() : requestUri;
                 Console.WriteLine($"[BaseClient] POST Request: {fullUrl}");
                 Console.WriteLine($"[BaseClient] POST Body: {System.Text.Json.JsonSerializer.Serialize(requestBody)}");
-                
+
                 var response = await _client.PostAsJsonAsync(requestUri, requestBody);
                 var responseContent = await response.Content.ReadAsStringAsync();
-                
+
                 if (!response.IsSuccessStatusCode)
                 {
                     Console.WriteLine($"❌ [BaseClient] External API error response for {fullUrl} (Status {(int)response.StatusCode}): {responseContent}");
                     return default;
                 }
-                
+
                 Console.WriteLine($"✅ [BaseClient] External API success response for {fullUrl} (Status {(int)response.StatusCode}): {responseContent}");
-                
+
                 return System.Text.Json.JsonSerializer.Deserialize<TResponse>(responseContent, new System.Text.Json.JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true

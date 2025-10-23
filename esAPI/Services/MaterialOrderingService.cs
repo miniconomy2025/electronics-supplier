@@ -100,11 +100,11 @@ namespace esAPI.Services
                 if (thohOrderResp.Price > 0)
                 {
                     _logger.LogInformation($"[Payment] Paying THOH {thohOrderResp.Price} for order {thohOrderResp.OrderId}");
-                    
+
                     bool paymentSuccessful = false;
                     int retryCount = 0;
                     const int maxRetries = 3;
-                    
+
                     while (!paymentSuccessful && retryCount < maxRetries)
                     {
                         try
@@ -117,18 +117,18 @@ namespace esAPI.Services
                         {
                             retryCount++;
                             _logger.LogWarningColored("[Payment] Payment attempt {0}/{1} failed for THOH order {2}: {3}", retryCount, maxRetries, thohOrderResp.OrderId, ex.Message);
-                            
+
                             if (retryCount >= maxRetries)
                             {
                                 _logger.LogErrorColored("[Payment] Failed to pay THOH after {0} attempts for order {1}. Skipping logistics arrangement.", maxRetries, thohOrderResp.OrderId);
                                 return false;
                             }
-                            
+
                             // Wait before retry (exponential backoff)
                             await Task.Delay(1000 * retryCount);
                         }
                     }
-                    
+
                     if (!paymentSuccessful)
                     {
                         _logger.LogErrorColored("[Payment] Payment to THOH failed after all retries for order {0}", thohOrderResp.OrderId);
@@ -167,7 +167,7 @@ namespace esAPI.Services
                 // Calculate order quantity ensuring it's a multiple of 1000 kg (Recycler requirement)
                 int desiredQty = mat.AvailableQuantity / 2;
                 int orderQty = desiredQty / 1000 * 1000; // Round down to nearest 1000
-                
+
                 if (orderQty == 0)
                 {
                     _logger.LogInformation($"[Order] Recycler available quantity for {materialName} ({mat.AvailableQuantity} kg) results in order size ({desiredQty} kg) below minimum 1000 kg requirement. Skipping order.");
@@ -197,11 +197,11 @@ namespace esAPI.Services
                 if (!string.IsNullOrEmpty(accountNumber) && total > 0)
                 {
                     _logger.LogInformation($"[Payment] Paying Recycler {total} for order {orderId}");
-                    
+
                     bool paymentSuccessful = false;
                     int retryCount = 0;
                     const int maxRetries = 3;
-                    
+
                     while (!paymentSuccessful && retryCount < maxRetries)
                     {
                         try
@@ -214,18 +214,18 @@ namespace esAPI.Services
                         {
                             retryCount++;
                             _logger.LogWarningColored("[Payment] Payment attempt {0}/{1} failed for Recycler order {2}: {3}", retryCount, maxRetries, orderId, ex.Message);
-                            
+
                             if (retryCount >= maxRetries)
                             {
                                 _logger.LogErrorColored("[Payment] Failed to pay Recycler after {0} attempts for order {1}. Skipping logistics arrangement.", maxRetries, orderId);
                                 return false;
                             }
-                            
+
                             // Wait before retry (exponential backoff)
                             await Task.Delay(1000 * retryCount);
                         }
                     }
-                    
+
                     if (!paymentSuccessful)
                     {
                         _logger.LogErrorColored("[Payment] Payment to Recycler failed after all retries for order {0}", orderId);
@@ -306,7 +306,7 @@ namespace esAPI.Services
             try
             {
                 _logger.LogInformation("[MaterialOrdering] Arranging pickup for material: '{MaterialName}' (quantity: {Quantity}) from {OriginCompany}", materialName, quantity, originCompany);
-                
+
                 var pickupRequest = new LogisticsPickupRequest
                 {
                     OriginalExternalOrderId = externalOrderId,
@@ -320,7 +320,7 @@ namespace esAPI.Services
                 if (pickupResponse != null)
                 {
                     _logger.LogInformation($"[Logistics] Pickup response received: ID={pickupResponse.PickupRequestId}, Cost={pickupResponse.Cost}, BankAccount='{pickupResponse.BulkLogisticsBankAccountNumber}', Status='{pickupResponse.Status}'");
-                    
+
                     if (!string.IsNullOrEmpty(pickupResponse.BulkLogisticsBankAccountNumber))
                     {
                         _logger.LogInformation($"[Payment] Paying Bulk Logistics {pickupResponse.Cost} for pickup service (Order: {externalOrderId})");
@@ -338,7 +338,7 @@ namespace esAPI.Services
 
                         // Insert pickup request record
                         await CreatePickupRequestRecordAsync(int.Parse(externalOrderId), pickupResponse.PickupRequestId, materialName, quantity);
-                        
+
                         // Update material order with pickup request ID
                         await UpdateMaterialOrderWithPickupRequestId(int.Parse(externalOrderId), pickupResponse.PickupRequestId);
                     }

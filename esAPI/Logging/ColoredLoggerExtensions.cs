@@ -15,7 +15,7 @@ namespace esAPI.Logging
         {
             // Log normally first
             logger.LogError(message, args);
-            
+
             // Then write to console in red for immediate visibility
             var formattedMessage = args.Length > 0 ? string.Format(message, args) : message;
             WriteToConsoleColored($"[ERROR] {formattedMessage}", ConsoleColor.Red);
@@ -28,7 +28,7 @@ namespace esAPI.Logging
         {
             // Log normally first
             logger.LogError(exception, message, args);
-            
+
             // Then write to console in red for immediate visibility
             var formattedMessage = args.Length > 0 ? string.Format(message, args) : message;
             WriteToConsoleColored($"[ERROR] {formattedMessage} - Exception: {exception.Message}", ConsoleColor.Red);
@@ -41,7 +41,7 @@ namespace esAPI.Logging
         {
             // Log normally first
             logger.LogWarning(message, args);
-            
+
             // Then write to console in yellow for visibility
             var formattedMessage = args.Length > 0 ? string.Format(message, args) : message;
             WriteToConsoleColored($"[WARNING] {formattedMessage}", ConsoleColor.Yellow);
@@ -54,7 +54,7 @@ namespace esAPI.Logging
         {
             // Log normally first
             logger.LogCritical(message, args);
-            
+
             // Then write to console in magenta for maximum visibility
             var formattedMessage = args.Length > 0 ? string.Format(message, args) : message;
             WriteToConsoleColored($"[CRITICAL] {formattedMessage}", ConsoleColor.Magenta);

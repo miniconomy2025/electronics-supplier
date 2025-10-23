@@ -42,7 +42,7 @@ namespace esAPI.Clients
                 if (doc.RootElement.TryGetProperty("balance", out var balanceProp))
                 {
                     decimal balance = 0m;
-                    
+
                     // Handle balance as either number or string
                     if (balanceProp.ValueKind == JsonValueKind.Number)
                     {
@@ -232,7 +232,7 @@ namespace esAPI.Clients
             Console.WriteLine($"[CommercialBankClient] GetAccountDetails using full URL: {fullUrl}");
             var response = await _client.GetAsync(fullUrl);
             Console.WriteLine($"[CommercialBankClient] Account details response status: {response.StatusCode}");
-            
+
             if (!response.IsSuccessStatusCode)
             {
                 Console.WriteLine($"❌ CommercialBankClient: Failed to get account details. Status: {response.StatusCode}");

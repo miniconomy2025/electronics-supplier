@@ -25,7 +25,7 @@ namespace esAPI.Configuration
             Console.WriteLine($"  THOH: {externalApiConfig.THOH}");
             Console.WriteLine($"  Recycler: {externalApiConfig.Recycler}");
             Console.WriteLine($"  Client ID: {externalApiConfig.ClientId}");
-            
+
             // Debug: Show what the actual URIs will be
             Console.WriteLine("[ApiClientExtensions] Resolved Base URIs:");
             Console.WriteLine($"  THOH Base URI: {new Uri(externalApiConfig.THOH)}");

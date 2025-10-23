@@ -101,7 +101,7 @@ namespace esAPI.Services
 
                             // Arrange pickup with bulk logistics
                             await ArrangePickupWithBulkLogistics(orderId, quantity);
-                            
+
                             return true;
                         }
                         catch (Exception ex)
@@ -134,7 +134,7 @@ namespace esAPI.Services
                     await Task.Delay(TimeSpan.FromSeconds(2 * attempt)); // Quick retry for simulation
                 }
             }
-            
+
             return false; // All retries failed
         }
 

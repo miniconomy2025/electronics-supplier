@@ -30,7 +30,7 @@ namespace esAPI.Services
             _stateService = stateService;
             _queueUrl = config["Retry:QueueUrl"];
             _isEnabled = _sqs != null && !string.IsNullOrEmpty(_queueUrl);
-            
+
             if (!_isEnabled)
             {
                 _logger.LogWarning("[RetryJobDispatcher] Created but AWS SQS or queue URL not available - retry processing disabled");

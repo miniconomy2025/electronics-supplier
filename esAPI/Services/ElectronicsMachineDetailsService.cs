@@ -38,9 +38,9 @@ namespace esAPI.Services
                     _logger.LogErrorColored("[ElectronicsMachine] Could not retrieve electronics machine details from THOH API");
                     return false;
                 }
-                _logger.LogInformation("[ElectronicsMachine] Retrieved electronics machine: ProductionRate={ProductionRate}, Price={Price}, InputRatio={InputRatio}", 
-                    electronicsMachine.ProductionRate, 
-                    electronicsMachine.Price, 
+                _logger.LogInformation("[ElectronicsMachine] Retrieved electronics machine: ProductionRate={ProductionRate}, Price={Price}, InputRatio={InputRatio}",
+                    electronicsMachine.ProductionRate,
+                    electronicsMachine.Price,
                     string.Join(", ", electronicsMachine.InputRatio.Select(kv => kv.Key + ":" + kv.Value)));
                 // Create or update MachineRatio for each input
                 foreach (var input in electronicsMachine.InputRatio)
