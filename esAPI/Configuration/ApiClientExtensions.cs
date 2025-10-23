@@ -25,6 +25,12 @@ namespace esAPI.Configuration
             Console.WriteLine($"  THOH: {externalApiConfig.THOH}");
             Console.WriteLine($"  Recycler: {externalApiConfig.Recycler}");
             Console.WriteLine($"  Client ID: {externalApiConfig.ClientId}");
+            
+            // Debug: Show what the actual URIs will be
+            Console.WriteLine("[ApiClientExtensions] Resolved Base URIs:");
+            Console.WriteLine($"  THOH Base URI: {new Uri(externalApiConfig.THOH)}");
+            Console.WriteLine($"  THOH /raw-materials: {new Uri(new Uri(externalApiConfig.THOH), "/raw-materials")}");
+            Console.WriteLine($"  THOH /machines: {new Uri(new Uri(externalApiConfig.THOH), "/machines")}");
 
             // Configure HTTP clients with simulation-appropriate timeouts (2 min = 1 day)
             services.AddHttpClient("commercial-bank", client =>
