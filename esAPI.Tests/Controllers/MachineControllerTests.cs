@@ -14,8 +14,8 @@ namespace esAPI.Tests.Controllers
     public class MachineControllerTests
     {
         private readonly DbContextOptions<AppDbContext> _options;
-        private readonly Mock<ISimulationStateService> _mockStateService;
-        private readonly Mock<ILogger<MachinesController>> _mockLogger;
+    private readonly Mock<ISimulationStateService> _mockStateService;
+    private readonly Mock<ILogger<MachinesController>> _mockLogger;
 
         public MachineControllerTests()
         {

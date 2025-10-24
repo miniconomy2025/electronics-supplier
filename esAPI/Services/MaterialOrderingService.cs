@@ -96,12 +96,12 @@ namespace esAPI.Services
 
                 // Calculate quantity based on 50,000 budget limit
                 const decimal maxBudgetPerMaterial = 50000m;
-                int maxAffordableQty = thohMat.PricePerKg > 0
-                    ? (int)(maxBudgetPerMaterial / thohMat.PricePerKg)
+                int maxAffordableQty = thohMat.PricePerKg > 0 
+                    ? (int)(maxBudgetPerMaterial / thohMat.PricePerKg) 
                     : thohMat.AvailableQuantity; // If price is 0, take what's available
 
                 int thohQty = Math.Min(thohMat.AvailableQuantity, maxAffordableQty);
-
+                
                 if (thohQty <= 0)
                 {
                     _logger.LogInformation($"[Order] Cannot afford any {materialName} from THOH with budget {maxBudgetPerMaterial}. Price per kg: {thohMat.PricePerKg}. No more fallback options available.");
@@ -197,8 +197,8 @@ namespace esAPI.Services
 
                 // Calculate order quantity based on 50,000 budget limit and ensure it's a multiple of 1000 kg (Recycler requirement)
                 const decimal maxBudgetPerMaterial = 50000m;
-                int maxAffordableQty = mat.PricePerKg > 0
-                    ? (int)(maxBudgetPerMaterial / mat.PricePerKg)
+                int maxAffordableQty = mat.PricePerKg > 0 
+                    ? (int)(maxBudgetPerMaterial / mat.PricePerKg) 
                     : mat.AvailableQuantity; // If price is 0, take what's available
 
                 int desiredQty = Math.Min(mat.AvailableQuantity, maxAffordableQty);

@@ -17,13 +17,13 @@ namespace esAPI.Tests.Services
     public class MachineManagementServiceTests : IDisposable
     {
         private readonly AppDbContext _context;
-        private readonly Mock<IHttpClientFactory> _httpClientFactoryMock;
-        private readonly Mock<ICommercialBankClient> _bankClientMock;
-        private readonly Mock<IThohApiClient> _thohApiClientMock;
-        private readonly Mock<IBulkLogisticsClient> _bulkLogisticsClientMock;
-        private readonly Mock<ILogger<MachineManagementService>> _loggerMock;
-        private readonly Mock<HttpMessageHandler> _httpMessageHandlerMock;
-        private readonly MachineManagementService _service;
+    private readonly Mock<IHttpClientFactory> _httpClientFactoryMock;
+    private readonly Mock<ICommercialBankClient> _bankClientMock;
+    private readonly Mock<IThohApiClient> _thohApiClientMock;
+    private readonly Mock<IBulkLogisticsClient> _bulkLogisticsClientMock;
+    private readonly Mock<ILogger<MachineManagementService>> _loggerMock;
+    private readonly Mock<HttpMessageHandler> _httpMessageHandlerMock;
+    private readonly MachineManagementService _service;
 
         public MachineManagementServiceTests()
         {
