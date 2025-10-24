@@ -55,7 +55,7 @@ namespace esAPI.Tests.Controllers
         public async Task HandleLogisticsRequest_Delivery_MachineHappyPath_AddsMachinesAndUpdatesOrder()
         {
             // seed pickup request and machine order
-            var pickup = new Models.PickupRequest { RequestId = 123, ExternalRequestId = 1, Type = "PICKUP" };
+            var pickup = new Models.PickupRequest { RequestId = 123, PickupRequestId = 123, ExternalRequestId = 1, Type = "PICKUP" };
             var machineOrder = new MachineOrder { OrderId = 1, ExternalOrderId = 1, RemainingAmount = 2, TotalAmount = 2, OrderStatusId = (int)Order.Status.Accepted, SupplierId = 7 };
             _context.PickupRequests.Add(pickup);
             _context.MachineOrders.Add(machineOrder);
@@ -80,7 +80,7 @@ namespace esAPI.Tests.Controllers
         [Fact]
         public async Task HandleLogisticsRequest_Delivery_MaterialHappyPath_AddsSuppliesAndUpdatesOrder()
         {
-            var pickup = new Models.PickupRequest { RequestId = 200, ExternalRequestId = 2, Type = "PICKUP" };
+            var pickup = new Models.PickupRequest { RequestId = 200, PickupRequestId = 200, ExternalRequestId = 2, Type = "PICKUP" };
             var materialOrder = new MaterialOrder { OrderId = 2, ExternalOrderId = 2, RemainingAmount = 3, TotalAmount = 3, OrderStatusId = (int)Order.Status.Accepted, MaterialId = 5 };
             _context.PickupRequests.Add(pickup);
             _context.MaterialOrders.Add(materialOrder);

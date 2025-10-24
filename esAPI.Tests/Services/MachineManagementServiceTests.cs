@@ -17,11 +17,13 @@ namespace esAPI.Tests.Services
     public class MachineManagementServiceTests : IDisposable
     {
         private readonly AppDbContext _context;
-        private readonly Mock<IHttpClientFactory> _httpClientFactoryMock;
-        private readonly Mock<ICommercialBankClient> _bankClientMock;
-        private readonly Mock<ILogger<MachineManagementService>> _loggerMock;
-        private readonly Mock<HttpMessageHandler> _httpMessageHandlerMock;
-        private readonly MachineManagementService _service;
+    private readonly Mock<IHttpClientFactory> _httpClientFactoryMock;
+    private readonly Mock<ICommercialBankClient> _bankClientMock;
+    private readonly Mock<IThohApiClient> _thohApiClientMock;
+    private readonly Mock<IBulkLogisticsClient> _bulkLogisticsClientMock;
+    private readonly Mock<ILogger<MachineManagementService>> _loggerMock;
+    private readonly Mock<HttpMessageHandler> _httpMessageHandlerMock;
+    private readonly MachineManagementService _service;
 
         public MachineManagementServiceTests()
         {
@@ -32,6 +34,8 @@ namespace esAPI.Tests.Services
 
             _httpClientFactoryMock = new Mock<IHttpClientFactory>();
             _bankClientMock = new Mock<ICommercialBankClient>();
+            _thohApiClientMock = new Mock<IThohApiClient>();
+            _bulkLogisticsClientMock = new Mock<IBulkLogisticsClient>();
             _loggerMock = new Mock<ILogger<MachineManagementService>>();
             _httpMessageHandlerMock = new Mock<HttpMessageHandler>();
 
@@ -45,7 +49,10 @@ namespace esAPI.Tests.Services
             _service = new MachineManagementService(
                 _context,
                 _httpClientFactoryMock.Object,
+                _thohApiClientMock.Object,
+                _bulkLogisticsClientMock.Object,
                 _bankClientMock.Object,
+                new Mock<ISimulationStateService>().Object,
                 _loggerMock.Object);
 
             SetupTestData();

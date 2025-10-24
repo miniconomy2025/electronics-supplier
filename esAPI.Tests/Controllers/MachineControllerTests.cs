@@ -7,13 +7,15 @@ using esAPI.Interfaces;
 using esAPI.DTOs;
 using esAPI.Models;
 using esAPI.Data;
+using Microsoft.Extensions.Logging;
 
 namespace esAPI.Tests.Controllers
 {
     public class MachineControllerTests
     {
         private readonly DbContextOptions<AppDbContext> _options;
-        private readonly Mock<ISimulationStateService> _mockStateService;
+    private readonly Mock<ISimulationStateService> _mockStateService;
+    private readonly Mock<ILogger<MachinesController>> _mockLogger;
 
         public MachineControllerTests()
         {
@@ -22,6 +24,7 @@ namespace esAPI.Tests.Controllers
                 .Options;
 
             _mockStateService = new Mock<ISimulationStateService>();
+            _mockLogger = new Mock<ILogger<MachinesController>>();
             _mockStateService.Setup(s => s.GetCurrentSimulationTime(3)).Returns(1.500m);
         }
 
@@ -48,7 +51,7 @@ namespace esAPI.Tests.Controllers
         {
             // Arrange
             using var context = CreateContext();
-            var controller = new MachinesController(context, _mockStateService.Object);
+            var controller = new MachinesController(context, _mockStateService.Object, _mockLogger.Object);
 
             // Add some working machines
             var standbyStatus = context.Set<MachineStatus>().First(s => s.Status == "STANDBY");
@@ -101,7 +104,7 @@ namespace esAPI.Tests.Controllers
         {
             // Arrange
             using var context = CreateContext();
-            var controller = new MachinesController(context, _mockStateService.Object);
+            var controller = new MachinesController(context, _mockStateService.Object, _mockLogger.Object);
 
             // Add only 2 working machines
             var standbyStatus = context.Set<MachineStatus>().First(s => s.Status == "STANDBY");
@@ -143,7 +146,7 @@ namespace esAPI.Tests.Controllers
         {
             // Arrange
             using var context = CreateContext();
-            var controller = new MachinesController(context, _mockStateService.Object);
+            var controller = new MachinesController(context, _mockStateService.Object, _mockLogger.Object);
 
             // Add only broken machines
             var brokenStatus = context.Set<MachineStatus>().First(s => s.Status == "BROKEN");
@@ -177,7 +180,7 @@ namespace esAPI.Tests.Controllers
         {
             // Arrange
             using var context = CreateContext();
-            var controller = new MachinesController(context, _mockStateService.Object);
+            var controller = new MachinesController(context, _mockStateService.Object, _mockLogger.Object);
 
             var failureRequest = new MachineFailureDto
             {
@@ -200,7 +203,7 @@ namespace esAPI.Tests.Controllers
         {
             // Arrange
             using var context = CreateContext();
-            var controller = new MachinesController(context, _mockStateService.Object);
+            var controller = new MachinesController(context, _mockStateService.Object, _mockLogger.Object);
 
             var standbyStatus = context.Set<MachineStatus>().First(s => s.Status == "STANDBY");
             var inUseStatus = context.Set<MachineStatus>().First(s => s.Status == "IN_USE");
