@@ -174,21 +174,21 @@ namespace esAPI.Controllers
             // Break the machines
             _logger.LogInformation("[Machine-Failure] Updating {MachineCount} machines to BROKEN status", machinesToBreak);
             var brokenMachineIds = new List<int>();
-            
+
             foreach (var machineData in workingMachines)
             {
-                _logger.LogDebug("[Machine-Failure] Breaking machine ID {MachineId} (was {PreviousStatus})", 
+                _logger.LogDebug("[Machine-Failure] Breaking machine ID {MachineId} (was {PreviousStatus})",
                     machineData.Machine.MachineId, machineData.Status.Status);
-                
+
                 machineData.Machine.MachineStatusId = brokenStatus.StatusId;
                 brokenMachineIds.Add(machineData.Machine.MachineId);
             }
 
             // Record the disaster
             var currentTime = _stateService.GetCurrentSimulationTime(3);
-            _logger.LogInformation("[Machine-Failure] Recording disaster at simulation time {SimulationTime} affecting {MachineCount} machines", 
+            _logger.LogInformation("[Machine-Failure] Recording disaster at simulation time {SimulationTime} affecting {MachineCount} machines",
                 currentTime, machinesToBreak);
-            
+
             var disaster = new Disaster
             {
                 BrokenAt = currentTime,
@@ -196,11 +196,11 @@ namespace esAPI.Controllers
             };
 
             _context.Disasters.Add(disaster);
-            
+
             _logger.LogInformation("[Machine-Failure] Saving changes to database (machine status updates and disaster record)");
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("[Machine-Failure] Successfully completed machine failure process. Disaster ID: {DisasterId}, Broken machine IDs: [{MachineIds}]", 
+            _logger.LogInformation("[Machine-Failure] Successfully completed machine failure process. Disaster ID: {DisasterId}, Broken machine IDs: [{MachineIds}]",
                 disaster.DisasterId, string.Join(", ", brokenMachineIds));
 
             // Return the disaster information
