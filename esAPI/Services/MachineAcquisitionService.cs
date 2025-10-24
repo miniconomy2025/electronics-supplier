@@ -19,7 +19,7 @@ namespace esAPI.Services
         public async Task<bool> CheckTHOHForMachines()
         {
             var client = _httpClientFactory.CreateClient("thoh");
-            var response = await client.GetAsync("/machines");
+            var response = await client.GetAsync("api/machines");
             response.EnsureSuccessStatusCode();
             var content = await response.Content.ReadAsStringAsync();
             using var doc = JsonDocument.Parse(content);
@@ -43,7 +43,7 @@ namespace esAPI.Services
 
             // 2. Get machine price and available quantity from THOH
             var thohClient = _httpClientFactory.CreateClient("thoh");
-            var machinesResp = await thohClient.GetAsync("/machines");
+            var machinesResp = await thohClient.GetAsync("api/machines");
             machinesResp.EnsureSuccessStatusCode();
             var machinesContent = await machinesResp.Content.ReadAsStringAsync();
             using var machinesDoc = JsonDocument.Parse(machinesContent);
@@ -72,7 +72,7 @@ namespace esAPI.Services
                 machineName = "electronics_machine",
                 quantity = toBuy
             };
-            var orderResp = await thohClient.PostAsJsonAsync("/machines", orderReq);
+            var orderResp = await thohClient.PostAsJsonAsync("api/machines", orderReq);
             orderResp.EnsureSuccessStatusCode();
             var orderContent = await orderResp.Content.ReadAsStringAsync();
             using var orderDoc = JsonDocument.Parse(orderContent);
@@ -113,7 +113,7 @@ namespace esAPI.Services
                 thohBankAccount,
                 "thoh",
                 totalPrice,
-                $"Purchase {toBuy} electronics_machine from THOH"
+                orderId?.ToString() ?? "machine-order"
             );
 
 
@@ -148,30 +148,59 @@ namespace esAPI.Services
 
             var pickupRequestId = pickup.GetProperty("pickupRequestId").GetInt32();
             var cost = pickup.GetProperty("cost").GetDecimal();
-            var bulkBankAccount = pickup.GetProperty("bulkLogisticsBankAccountNumber").GetString();
+            var bulkBankAccount = pickup.GetProperty("accountNumber").GetString();
 
             // 2. Pay Bulk Logistics
             await _bankClient.MakePaymentAsync(
                 bulkBankAccount!,
                 "commercial-bank",
                 cost,
-                $"Pickup {quantity} electronics_machine from THOH order {thohOrderId}"
+                pickupRequestId.ToString()
             );
 
             // 3. Store the pickup request in the pickup_requests table
             var pickupRequest = new Models.PickupRequest
             {
                 ExternalRequestId = thohOrderId,
-                Type = Models.Enums.PickupRequest.PickupType.MACHINE,
+                PickupRequestId = pickupRequestId,
+                Type = "PICKUP", // Operation type for Bulk Logistics API
                 Quantity = quantity,
                 PlacedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
             };
 
             _context.PickupRequests.Add(pickupRequest);
             await _context.SaveChangesAsync();
+
+            // 4. Update the machine order with pickup request ID
+            await UpdateMachineOrderWithPickupRequestId(thohOrderId, pickupRequestId);
         }
 
 
         public Task QueryOrderDetailsFromTHOH() => Task.CompletedTask;
+
+        private async Task UpdateMachineOrderWithPickupRequestId(int externalOrderId, int pickupRequestId)
+        {
+            try
+            {
+                var machineOrder = await _context.MachineOrders
+                    .FirstOrDefaultAsync(o => o.ExternalOrderId == externalOrderId);
+
+                if (machineOrder != null)
+                {
+                    machineOrder.PickupRequestId = pickupRequestId;
+                    await _context.SaveChangesAsync();
+                    Console.WriteLine($"[DB] Updated machine order {machineOrder.OrderId} with pickup request ID {pickupRequestId}");
+                }
+                else
+                {
+                    Console.WriteLine($"⚠️ [DB] Could not find machine order with external order ID {externalOrderId} to update with pickup request ID {pickupRequestId}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ [DB] Error updating machine order with pickup request ID: ExternalOrderId={externalOrderId}, PickupRequestId={pickupRequestId}");
+                Console.WriteLine($"❌ [DB] Machine order update exception details: {ex.Message}");
+            }
+        }
     }
 }

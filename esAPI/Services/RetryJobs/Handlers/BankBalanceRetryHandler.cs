@@ -22,29 +22,33 @@ namespace esAPI.Services
 
         public async Task<bool> HandleAsync(BankBalanceRetryJob job, CancellationToken token)
         {
-            _logger.LogInformation("[BankBalanceRetryHandler] Processing BankBalanceRetryJob for day {Day}, attempt {Attempt}", job.SimulationDay, job.RetryAttempt);
+            _logger.LogInformation("[BankBalanceRetryHandler] BankBalanceRetryJob disabled - bank snapshots have been removed");
 
-            try
-            {
-                var balance = await _bankClient.GetAccountBalanceAsync();
+            // NOTE: Bank balance snapshots disabled as they were causing errors and clogging logs
+            // try
+            // {
+            //     var balance = await _bankClient.GetAccountBalanceAsync();
 
-                var snapshot = new BankBalanceSnapshot
-                {
-                    SimulationDay = job.SimulationDay,
-                    Balance = (double)balance,
-                    Timestamp = job.SimulationDay // Use the day number as timestamp
-                };
-                _db.BankBalanceSnapshots.Add(snapshot);
-                await _db.SaveChangesAsync(token);
+            //     var snapshot = new BankBalanceSnapshot
+            //     {
+            //         SimulationDay = job.SimulationDay,
+            //         Balance = (double)balance,
+            //         Timestamp = job.SimulationDay // Use the day number as timestamp
+            //     };
+            //     _db.BankBalanceSnapshots.Add(snapshot);
+            //     await _db.SaveChangesAsync(token);
 
-                _logger.LogInformation("✅ Successfully stored bank balance snapshot on retry for day {Day}", job.SimulationDay);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ Failed to process BankBalanceRetryJob");
-                return false; // Will retry again if needed
-            }
+            //     _logger.LogInformation("✅ Successfully stored bank balance snapshot on retry for day {Day}", job.SimulationDay);
+            //     return true;
+            // }
+            // catch (Exception ex)
+            // {
+            //     _logger.LogError(ex, "❌ Failed to process BankBalanceRetryJob");
+            //     return false; // Will retry again if needed
+            // }
+
+            await Task.CompletedTask; // Satisfy async method requirement
+            return true; // Return success to prevent further retries
         }
     }
 

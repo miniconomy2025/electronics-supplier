@@ -41,7 +41,7 @@ namespace esAPI.Tests.Integration
                 new { rawMaterialName = "Copper", quantityAvailable = 100, pricePerKg = 50.5m }
             };
 
-            _server.Given(Request.Create().WithPath("/raw-materials").UsingGet())
+            _server.Given(Request.Create().WithPath("/api/raw-materials").UsingGet())
                    .RespondWith(Response.Create()
                        .WithHeader("Content-Type", "application/json")
                        .WithBodyAsJson(body)
@@ -65,7 +65,7 @@ namespace esAPI.Tests.Integration
         {
             // Arrange: stub POST
             var responsePayload = new { price = 123.45m, bankAccount = "123-456", orderId = 999 };
-            _server.Given(Request.Create().WithPath("/raw-materials").UsingPost())
+            _server.Given(Request.Create().WithPath("/api/raw-materials").UsingPost())
                    .RespondWith(Response.Create()
                        .WithHeader("Content-Type", "application/json")
                        .WithBodyAsJson(responsePayload)
@@ -85,7 +85,7 @@ namespace esAPI.Tests.Integration
             Assert.Equal(123.45m, resp.Price);
 
             // Verify WireMock recorded the request
-            var logs = _server.FindLogEntries(Request.Create().WithPath("/raw-materials").UsingPost());
+            var logs = _server.FindLogEntries(Request.Create().WithPath("/api/raw-materials").UsingPost());
             Assert.NotEmpty(logs);
 
             var requestBody = logs[0].RequestMessage.Body;
@@ -108,7 +108,7 @@ namespace esAPI.Tests.Integration
                 }
             };
 
-            _server.Given(Request.Create().WithPath("/machines").UsingGet())
+            _server.Given(Request.Create().WithPath("/api/machines").UsingGet())
                    .RespondWith(Response.Create()
                        .WithHeader("Content-Type", "application/json")
                        .WithBodyAsJson(payload)
@@ -128,7 +128,7 @@ namespace esAPI.Tests.Integration
         public async Task GetAvailableMaterialsAsync_ServerError_ReturnsEmptyList()
         {
             // Arrange: server returns 500
-            _server.Given(Request.Create().WithPath("/raw-materials").UsingGet())
+            _server.Given(Request.Create().WithPath("/api/raw-materials").UsingGet())
                    .RespondWith(Response.Create().WithStatusCode(500));
 
             var factory = CreateFactoryForWireMock();
@@ -146,7 +146,7 @@ namespace esAPI.Tests.Integration
         public async Task GetAvailableMaterialsAsync_MalformedJson_ReturnsEmptyList()
         {
             // Arrange: server returns non-JSON content
-            _server.Given(Request.Create().WithPath("/raw-materials").UsingGet())
+            _server.Given(Request.Create().WithPath("/api/raw-materials").UsingGet())
                    .RespondWith(Response.Create()
                        .WithHeader("Content-Type", "application/json")
                        .WithBody("this is not valid json")
@@ -168,7 +168,7 @@ namespace esAPI.Tests.Integration
         {
             // Arrange: respond OK
             var responsePayload = new { price = 9.99m, bankAccount = "acct-1", orderId = 42 };
-            _server.Given(Request.Create().WithPath("/raw-materials").UsingPost())
+            _server.Given(Request.Create().WithPath("/api/raw-materials").UsingPost())
                    .RespondWith(Response.Create()
                        .WithHeader("Content-Type", "application/json")
                        .WithBodyAsJson(responsePayload)
@@ -187,7 +187,7 @@ namespace esAPI.Tests.Integration
             Assert.Equal(42, resp.OrderId);
 
             // Verify request recorded and has Content-Type header + expected JSON body
-            var logs = _server.FindLogEntries(Request.Create().WithPath("/raw-materials").UsingPost());
+            var logs = _server.FindLogEntries(Request.Create().WithPath("/api/raw-materials").UsingPost());
             Assert.NotEmpty(logs);
 
             var entry = logs[0].RequestMessage;
@@ -204,7 +204,7 @@ namespace esAPI.Tests.Integration
         public async Task PlaceOrder_ReturnsNullOnBadRequest()
         {
             // Arrange: server returns 400
-            _server.Given(Request.Create().WithPath("/raw-materials").UsingPost())
+            _server.Given(Request.Create().WithPath("/api/raw-materials").UsingPost())
                    .RespondWith(Response.Create().WithStatusCode(400));
 
             var factory = CreateFactoryForWireMock();

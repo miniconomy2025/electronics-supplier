@@ -27,13 +27,13 @@ namespace esAPI.Logging
                 return;
 
             var message = formatter(state, exception);
-            
+
             // Set console color based on log level
             var originalColor = Console.ForegroundColor;
             try
             {
                 Console.ForegroundColor = GetLogLevelColor(logLevel);
-                
+
                 // Let the inner logger handle the actual logging
                 _innerLogger.Log(logLevel, eventId, state, exception, formatter);
             }

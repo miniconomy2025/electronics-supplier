@@ -10,10 +10,11 @@ namespace esAPI.Controllers
 {
     [ApiController]
     [Route("machines")]
-    public class MachinesController(AppDbContext context, ISimulationStateService stateService) : ControllerBase
+    public class MachinesController(AppDbContext context, ISimulationStateService stateService, ILogger<MachinesController> logger) : ControllerBase
     {
         private readonly AppDbContext _context = context;
         private readonly ISimulationStateService _stateService = stateService;
+        private readonly ILogger<MachinesController> _logger = logger;
 
         [HttpPost]
         public async Task<ActionResult<MachineDto>> CreateMachine([FromBody] MachineDto dto)
@@ -121,17 +122,36 @@ namespace esAPI.Controllers
         [HttpPost("failure")]
         public async Task<ActionResult<DisasterDto>> ReportMachineFailure([FromBody] MachineFailureDto dto)
         {
+            _logger.LogInformation("[Machine-Failure] POST /machines/failure endpoint called");
+            _logger.LogInformation("[Machine-Failure] Request body: FailureQuantity={FailureQuantity}", dto?.FailureQuantity ?? 0);
+
+            if (dto == null)
+            {
+                _logger.LogWarning("[Machine-Failure] Request body is null");
+                return BadRequest("Request body cannot be null");
+            }
+
             if (!ModelState.IsValid)
+            {
+                _logger.LogWarning("[Machine-Failure] Invalid model state: {ModelState}", string.Join(", ", ModelState.Values.SelectMany(v => v.Errors.Select(e => e.ErrorMessage))));
                 return BadRequest(ModelState);
+            }
 
             // Get the BROKEN status ID
+            _logger.LogInformation("[Machine-Failure] Looking up BROKEN status in database");
             var brokenStatus = await _context.Set<MachineStatus>()
                 .FirstOrDefaultAsync(s => s.Status == "BROKEN");
 
             if (brokenStatus == null)
+            {
+                _logger.LogError("[Machine-Failure] BROKEN status not found in database");
                 return BadRequest("BROKEN status not found in database.");
+            }
+
+            _logger.LogInformation("[Machine-Failure] Found BROKEN status with ID: {StatusId}", brokenStatus.StatusId);
 
             // Get all machines that are currently working (STANDBY or IN_USE)
+            _logger.LogInformation("[Machine-Failure] Querying for working machines (STANDBY or IN_USE) to break {RequestedQuantity} machines", dto.FailureQuantity);
             var workingMachines = await _context.Machines
                 .Join(_context.Set<MachineStatus>(),
                       m => m.MachineStatusId,
@@ -143,27 +163,45 @@ namespace esAPI.Controllers
                 .ToListAsync();
 
             var machinesToBreak = workingMachines.Count;
+            _logger.LogInformation("[Machine-Failure] Found {AvailableToBreak} working machines to break (requested: {RequestedQuantity})", machinesToBreak, dto.FailureQuantity);
 
             if (machinesToBreak == 0)
             {
+                _logger.LogWarning("[Machine-Failure] No working machines available to break");
                 return BadRequest("No working machines available to break.");
             }
 
             // Break the machines
+            _logger.LogInformation("[Machine-Failure] Updating {MachineCount} machines to BROKEN status", machinesToBreak);
+            var brokenMachineIds = new List<int>();
+            
             foreach (var machineData in workingMachines)
             {
+                _logger.LogDebug("[Machine-Failure] Breaking machine ID {MachineId} (was {PreviousStatus})", 
+                    machineData.Machine.MachineId, machineData.Status.Status);
+                
                 machineData.Machine.MachineStatusId = brokenStatus.StatusId;
+                brokenMachineIds.Add(machineData.Machine.MachineId);
             }
 
             // Record the disaster
+            var currentTime = _stateService.GetCurrentSimulationTime(3);
+            _logger.LogInformation("[Machine-Failure] Recording disaster at simulation time {SimulationTime} affecting {MachineCount} machines", 
+                currentTime, machinesToBreak);
+            
             var disaster = new Disaster
             {
-                BrokenAt = _stateService.GetCurrentSimulationTime(3),
+                BrokenAt = currentTime,
                 MachinesAffected = machinesToBreak
             };
 
             _context.Disasters.Add(disaster);
+            
+            _logger.LogInformation("[Machine-Failure] Saving changes to database (machine status updates and disaster record)");
             await _context.SaveChangesAsync();
+
+            _logger.LogInformation("[Machine-Failure] Successfully completed machine failure process. Disaster ID: {DisasterId}, Broken machine IDs: [{MachineIds}]", 
+                disaster.DisasterId, string.Join(", ", brokenMachineIds));
 
             // Return the disaster information
             var disasterDto = new DisasterDto

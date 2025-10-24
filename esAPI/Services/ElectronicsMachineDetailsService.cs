@@ -38,18 +38,26 @@ namespace esAPI.Services
                     _logger.LogErrorColored("[ElectronicsMachine] Could not retrieve electronics machine details from THOH API");
                     return false;
                 }
-                _logger.LogInformation("[ElectronicsMachine] Retrieved electronics machine: ProductionRate={ProductionRate}, Price={Price}, InputRatio={InputRatio}", 
-                    electronicsMachine.ProductionRate, 
-                    electronicsMachine.Price, 
+                _logger.LogInformation("[ElectronicsMachine] Retrieved electronics machine: ProductionRate={ProductionRate}, Price={Price}, InputRatio={InputRatio}",
+                    electronicsMachine.ProductionRate,
+                    electronicsMachine.Price,
                     string.Join(", ", electronicsMachine.InputRatio.Select(kv => kv.Key + ":" + kv.Value)));
                 // Create or update MachineRatio for each input
                 foreach (var input in electronicsMachine.InputRatio)
                 {
-                    var material = _context.Materials.FirstOrDefault(mat => mat.MaterialName.ToLower() == input.Key.ToLower());
+                    var materialName = input.Key.ToLower();
+                    var material = _context.Materials.FirstOrDefault(mat => mat.MaterialName.ToLower() == materialName);
                     if (material == null)
                     {
-                        _logger.LogWarningColored("[ElectronicsMachine] Material '{0}' not found in DB, skipping ratio", input.Key);
-                        continue;
+                        _logger.LogInformation("[ElectronicsMachine] Material '{0}' not found in DB, creating it", input.Key);
+                        material = new Models.Material
+                        {
+                            MaterialName = materialName,
+                            PricePerKg = 10.0m // Default price - will be updated by material ordering service
+                        };
+                        _context.Materials.Add(material);
+                        await _context.SaveChangesAsync();
+                        _logger.LogInformation("[ElectronicsMachine] Created material '{0}' with ID {1}", materialName, material.MaterialId);
                     }
                     var ratio = _context.MachineRatios.FirstOrDefault(r => r.MaterialId == material.MaterialId);
                     if (ratio == null)

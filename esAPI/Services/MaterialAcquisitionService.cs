@@ -96,7 +96,7 @@ namespace esAPI.Services
             }
 
             // --- Attempt to Pay the Supplier ---
-            var paymentSuccess = await _bankClient.MakePaymentAsync(orderResponse.BankAccount, sourcedInfo.Name, orderResponse.Price, $"Order {orderResponse.OrderId}");
+            var paymentSuccess = await _bankClient.MakePaymentAsync(orderResponse.BankAccount, sourcedInfo.Name, orderResponse.Price, orderResponse.OrderId.ToString());
             if (paymentSuccess == string.Empty)
             {
                 await UpdateOrderStatusAsync(localOrder.OrderId, "REJECTED");
@@ -124,7 +124,7 @@ namespace esAPI.Services
         private async Task<bool> ArrangeLogisticsAsync(SupplierOrderResponse order, string materialName, int quantity, string supplierName)
         {
             Console.WriteLine($"[MaterialAcquisition] Arranging pickup for material: '{materialName}' (quantity: {quantity}) from {supplierName}");
-            
+
             var pickupReq = new LogisticsPickupRequest
             {
                 OriginalExternalOrderId = order.OrderId.ToString(),
@@ -136,12 +136,15 @@ namespace esAPI.Services
             var pickupResp = await _logisticsClient.ArrangePickupAsync(pickupReq);
             if (pickupResp == null || string.IsNullOrEmpty(pickupResp.BulkLogisticsBankAccountNumber)) return false;
 
-            var pickupRequest = await CreatePickupRequestAsync(order.OrderId, quantity, materialName);
+            var pickupRequest = await CreatePickupRequestAsync(order.OrderId, pickupResp.PickupRequestId, quantity, materialName);
 
             if (pickupRequest == null)
                 return false;
 
-            var paymentSuccess = await _bankClient.MakePaymentAsync(pickupResp.BulkLogisticsBankAccountNumber, "commercial-bank", pickupResp.Cost, $"Pickup for order {order.OrderId}");
+            // Update the material order with the pickup request ID
+            await UpdateMaterialOrderWithPickupRequestId(order.OrderId, pickupResp.PickupRequestId);
+
+            var paymentSuccess = await _bankClient.MakePaymentAsync(pickupResp.BulkLogisticsBankAccountNumber, "commercial-bank", pickupResp.Cost, pickupResp.PickupRequestId.ToString());
 
             return paymentSuccess == string.Empty;
         }
@@ -165,6 +168,7 @@ namespace esAPI.Services
                 MaterialId = materialId.Value,
                 ExternalOrderId = supplierResponse.OrderId,
                 RemainingAmount = quantity,
+                TotalAmount = quantity,
                 OrderStatusId = pendingStatusId,
                 OrderedAt = 1.0m,
             };
@@ -208,22 +212,13 @@ namespace esAPI.Services
             return 0;
         }
 
-        private async Task<PickupRequest?> CreatePickupRequestAsync(int externalOrderId, int quantity, string materialName)
+        private async Task<PickupRequest?> CreatePickupRequestAsync(int externalOrderId, int pickupRequestId, int quantity, string materialName)
         {
-            Models.Enums.PickupRequest.PickupType pickupType;
-
-            // Map the materialName string to PickupType enum
-            if (materialName.Equals("copper", StringComparison.OrdinalIgnoreCase))
-                pickupType = Models.Enums.PickupRequest.PickupType.COPPER;
-            else if (materialName.Equals("silicone", StringComparison.OrdinalIgnoreCase))
-                pickupType = Models.Enums.PickupRequest.PickupType.SILICONE;
-            else
-                throw new ArgumentException($"Unsupported material name: {materialName}");
-
             var pickupRequest = new PickupRequest
             {
                 ExternalRequestId = externalOrderId,
-                Type = pickupType,
+                PickupRequestId = pickupRequestId,
+                Type = "PICKUP", // Operation type for Bulk Logistics API
                 Quantity = quantity,
                 PlacedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
             };
@@ -234,6 +229,30 @@ namespace esAPI.Services
             return pickupRequest;
         }
 
+        private async Task UpdateMaterialOrderWithPickupRequestId(int externalOrderId, int pickupRequestId)
+        {
+            try
+            {
+                var materialOrder = await _dbContext.MaterialOrders
+                    .FirstOrDefaultAsync(o => o.ExternalOrderId == externalOrderId);
+
+                if (materialOrder != null)
+                {
+                    materialOrder.PickupRequestId = pickupRequestId;
+                    await _dbContext.SaveChangesAsync();
+                    Console.WriteLine($"[DB] Updated material order {materialOrder.OrderId} with pickup request ID {pickupRequestId}");
+                }
+                else
+                {
+                    Console.WriteLine($"⚠️ [DB] Could not find material order with external order ID {externalOrderId} to update with pickup request ID {pickupRequestId}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ [DB] Error updating material order with pickup request ID: ExternalOrderId={externalOrderId}, PickupRequestId={pickupRequestId}");
+                Console.WriteLine($"❌ [DB] Material order update exception details: {ex.Message}");
+            }
+        }
 
     }
 }

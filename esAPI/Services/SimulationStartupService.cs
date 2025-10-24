@@ -65,12 +65,12 @@ namespace esAPI.Services
                 var currentBalance = await _bankClient.GetAccountBalanceAsync();
                 _logger.LogInformation("[SimulationStartup] Current account balance: {Balance}", currentBalance);
 
-                if (currentBalance <= 10000m)
+                if (currentBalance <= 50000m)
                 {
-                    _logger.LogInformation("[SimulationStartup] Balance is {Balance} (≤ 10,000), requesting startup loan", currentBalance);
+                    _logger.LogInformation("[SimulationStartup] Balance is {Balance} (≤ 50 000), requesting startup loan", currentBalance);
                     try
                     {
-                        const decimal initialLoanAmount = 20000000m; // 20 million
+                        const decimal initialLoanAmount = 200000m; // R200k
                         string? loanSuccess = await _bankClient.RequestLoanAsync(initialLoanAmount);
                         if (loanSuccess == null)
                         {

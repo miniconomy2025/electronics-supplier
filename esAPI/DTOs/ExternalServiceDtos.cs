@@ -1,4 +1,6 @@
 using System.Text.Json.Serialization;
+using System.Text.Json;
+using System.Globalization;
 
 namespace esAPI.DTOs;
 
@@ -41,6 +43,9 @@ public class LogisticsPickupRequest
     [JsonPropertyName("destinationCompany")]
     public required string DestinationCompany { get; set; }
 
+    [JsonPropertyName("type")]
+    public string Type { get; set; } = "PICKUP";
+
     [JsonPropertyName("items")]
     public required LogisticsItem[] Items { get; set; }
 }
@@ -50,12 +55,13 @@ public class LogisticsPickupResponse
     public int PickupRequestId { get; set; }
 
     [JsonPropertyName("cost")]
+    [JsonConverter(typeof(StringToDecimalConverter))]
     public decimal Cost { get; set; }
 
     [JsonPropertyName("paymentReferenceId")]
     public string? PaymentReferenceId { get; set; }
 
-    [JsonPropertyName("bulkLogisticsBankAccountNumber")]
+    [JsonPropertyName("accountNumber")]
     public string? BulkLogisticsBankAccountNumber { get; set; }
 
     [JsonPropertyName("status")]
@@ -63,4 +69,32 @@ public class LogisticsPickupResponse
 
     [JsonPropertyName("statusCheckUrl")]
     public string? StatusCheckUrl { get; set; }
+}
+
+public class StringToDecimalConverter : JsonConverter<decimal>
+{
+    public override decimal Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.String)
+        {
+            var stringValue = reader.GetString();
+            if (decimal.TryParse(stringValue, NumberStyles.Number, CultureInfo.InvariantCulture, out var result))
+            {
+                return result;
+            }
+            throw new JsonException($"Unable to convert \"{stringValue}\" to decimal");
+        }
+
+        if (reader.TokenType == JsonTokenType.Number)
+        {
+            return reader.GetDecimal();
+        }
+
+        throw new JsonException($"Unexpected token type {reader.TokenType} when parsing decimal");
+    }
+
+    public override void Write(Utf8JsonWriter writer, decimal value, JsonSerializerOptions options)
+    {
+        writer.WriteNumberValue(value);
+    }
 }

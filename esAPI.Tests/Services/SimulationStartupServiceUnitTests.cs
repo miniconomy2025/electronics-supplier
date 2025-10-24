@@ -101,7 +101,7 @@ namespace esAPI.Tests.Services
             _mockBankAccountService.Setup(s => s.SetupBankAccountAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync((true, "ACC-123", null));
             _mockBankClient.Setup(c => c.GetAccountBalanceAsync()).ReturnsAsync(0m);
-            _mockBankClient.Setup(c => c.RequestLoanAsync(20000000m)).ReturnsAsync("LOAN-SUCCESS");
+            _mockBankClient.Setup(c => c.RequestLoanAsync(200000m)).ReturnsAsync("LOAN-SUCCESS");
 
             _mockMachineDetailsService.Setup(s => s.SyncElectronicsMachineDetailsAsync())
                 .ReturnsAsync(true);
@@ -111,7 +111,7 @@ namespace esAPI.Tests.Services
 
             // Assert
             success.Should().BeTrue();
-            _mockBankClient.Verify(c => c.RequestLoanAsync(20000000m), Times.Once, "Initial high-amount loan should be requested");
+            _mockBankClient.Verify(c => c.RequestLoanAsync(200000m), Times.Once, "Initial loan should be requested");
             _mockBankClient.Verify(c => c.RequestLoanAsync(10000000m), Times.Never, "Fallback loan should not be requested when initial succeeds");
         }
 
@@ -121,7 +121,7 @@ namespace esAPI.Tests.Services
             // Arrange
             _mockBankAccountService.Setup(s => s.SetupBankAccountAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync((true, "ACC-123", null));
-            _mockBankClient.Setup(c => c.GetAccountBalanceAsync()).ReturnsAsync(50000m);
+            _mockBankClient.Setup(c => c.GetAccountBalanceAsync()).ReturnsAsync(60000m); // Above 50K threshold
 
             _mockMachineDetailsService.Setup(s => s.SyncElectronicsMachineDetailsAsync())
                 .ReturnsAsync(true);
@@ -131,7 +131,7 @@ namespace esAPI.Tests.Services
 
             // Assert
             success.Should().BeTrue();
-            _mockBankClient.Verify(c => c.RequestLoanAsync(It.IsAny<decimal>()), Times.Never, "No loan should be requested for balance > 10,000");
+            _mockBankClient.Verify(c => c.RequestLoanAsync(It.IsAny<decimal>()), Times.Never, "No loan should be requested for balance > 50,000");
         }
 
         [Fact]
@@ -141,7 +141,7 @@ namespace esAPI.Tests.Services
             _mockBankAccountService.Setup(s => s.SetupBankAccountAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync((true, "ACC-123", null));
             _mockBankClient.Setup(c => c.GetAccountBalanceAsync()).ReturnsAsync(0m);
-            _mockBankClient.Setup(c => c.RequestLoanAsync(20000000m)).ReturnsAsync((string?)null); // Initial loan fails
+            _mockBankClient.Setup(c => c.RequestLoanAsync(200000m)).ReturnsAsync((string?)null); // Initial loan fails
             _mockBankClient.Setup(c => c.RequestLoanAsync(10000000m)).ReturnsAsync("LOAN-FALLBACK-SUCCESS"); // Fallback succeeds
 
             _mockMachineDetailsService.Setup(s => s.SyncElectronicsMachineDetailsAsync())
@@ -152,7 +152,7 @@ namespace esAPI.Tests.Services
 
             // Assert
             success.Should().BeTrue();
-            _mockBankClient.Verify(c => c.RequestLoanAsync(20000000m), Times.Once, "Initial loan should be attempted");
+            _mockBankClient.Verify(c => c.RequestLoanAsync(200000m), Times.Once, "Initial loan should be attempted");
             _mockBankClient.Verify(c => c.RequestLoanAsync(10000000m), Times.Once, "Fallback loan should be attempted when initial fails");
         }
 

@@ -17,8 +17,8 @@ BEGIN
     END IF;
 
     -- Create order with default status 'PENDING' (ID 1)
-    INSERT INTO material_orders (supplier_id, material_id, remaining_amount, order_status, ordered_at)
-    VALUES (p_supplier_id, p_material_id, p_amount, 1, p_current_day)
+    INSERT INTO material_orders (supplier_id, material_id, remaining_amount, total_amount, order_status, ordered_at)
+    VALUES (p_supplier_id, p_material_id, p_amount, p_amount, 1, p_current_day)
     RETURNING order_id INTO p_created_order_id;
 
 EXCEPTION

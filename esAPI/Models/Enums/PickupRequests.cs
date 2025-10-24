@@ -4,9 +4,9 @@ namespace esAPI.Models.Enums
     {
         public enum PickupType
         {
-            MACHINE = 1,
-            COPPER = 2,
-            SILICONE = 3
+            MACHINE,
+            COPPER,
+            SILICONE
         }
     }
 }

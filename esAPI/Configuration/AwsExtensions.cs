@@ -25,7 +25,7 @@ namespace esAPI.Configuration
                     return null!; // Return null - services should handle this gracefully
                 }
             });
-            
+
             return services;
         }
 
@@ -86,7 +86,7 @@ namespace esAPI.Configuration
             // Check for environment variables
             var accessKey = Environment.GetEnvironmentVariable("AWS_ACCESS_KEY_ID");
             var secretKey = Environment.GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY");
-            
+
             if (!string.IsNullOrEmpty(accessKey) && !string.IsNullOrEmpty(secretKey))
             {
                 Console.WriteLine("🔑 Found AWS credentials in environment variables");
@@ -97,11 +97,11 @@ namespace esAPI.Configuration
             try
             {
                 var awsCredentialsPath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), 
-                    ".aws", 
+                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                    ".aws",
                     "credentials"
                 );
-                
+
                 if (File.Exists(awsCredentialsPath))
                 {
                     Console.WriteLine("🔑 Found AWS credentials file");
@@ -121,7 +121,7 @@ namespace esAPI.Configuration
                 var task = httpClient.GetAsync("http://169.254.169.254/latest/meta-data/iam/security-credentials/");
                 task.Wait(TimeSpan.FromSeconds(3));
                 var response = task.Result;
-                
+
                 if (response.IsSuccessStatusCode)
                 {
                     Console.WriteLine("🔑 Found EC2 IAM role credentials");
@@ -141,7 +141,7 @@ namespace esAPI.Configuration
             // Register null services for components that depend on AWS
             services.AddSingleton<IAmazonSQS>(provider => null!);
             services.AddScoped<RetryQueuePublisher>(provider => null!);
-            
+
             // Don't register the hosted service if AWS is not available
             Console.WriteLine("🔧 AWS services disabled - RetryQueuePublisher set to null, RetryJobDispatcher not registered");
         }

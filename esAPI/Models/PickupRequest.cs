@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using static esAPI.Models.Enums.PickupRequest;
 
 namespace esAPI.Models
 {
@@ -14,8 +13,12 @@ namespace esAPI.Models
         [Column("external_request_id")]
         public int ExternalRequestId { get; set; }
 
+        [Column("pickup_request_id")]
+        public int? PickupRequestId { get; set; }
+
         [Column("type")]
-        public PickupType Type { get; set; }  // EF will store it as string if configured
+        [MaxLength(20)]
+        public string Type { get; set; } = "PICKUP"; // Operation type (PICKUP/DELIVERY) for Bulk Logistics API
 
         [Column("quantity")]
         public int Quantity { get; set; }

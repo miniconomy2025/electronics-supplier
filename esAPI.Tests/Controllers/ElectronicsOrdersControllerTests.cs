@@ -114,7 +114,7 @@ namespace esAPI.Tests.Controllers
             savedOrder!.TotalAmount.Should().Be(10);
             savedOrder.RemainingAmount.Should().Be(10);
             savedOrder.ManufacturerId.Should().Be(2);
-            savedOrder.OrderStatusId.Should().Be(1); 
+            savedOrder.OrderStatusId.Should().Be(1);
         }
 
         [Fact]
@@ -210,10 +210,10 @@ namespace esAPI.Tests.Controllers
             var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
             var orderList = okResult.Value.Should().BeAssignableTo<List<ElectronicsOrderReadDto>>().Subject;
             orderList.Should().HaveCount(2);
-            
+
             var order10 = orderList.First(o => o.TotalAmount == 10);
             var order20 = orderList.First(o => o.TotalAmount == 20);
-            
+
             order10.OrderStatus.Should().Be("PENDING");
             order20.OrderStatus.Should().Be("ACCEPTED");
         }
@@ -224,13 +224,13 @@ namespace esAPI.Tests.Controllers
             using var context = CreateContext();
             var controller = CreateController(context);
 
-            var order = new Models.ElectronicsOrder 
-            { 
-                ManufacturerId = 2, 
-                TotalAmount = 15, 
-                RemainingAmount = 15, 
-                OrderedAt = 1.0m, 
-                OrderStatusId = 1 
+            var order = new Models.ElectronicsOrder
+            {
+                ManufacturerId = 2,
+                TotalAmount = 15,
+                RemainingAmount = 15,
+                OrderedAt = 1.0m,
+                OrderStatusId = 1
             };
             context.ElectronicsOrders.Add(order);
             await context.SaveChangesAsync();
@@ -261,13 +261,13 @@ namespace esAPI.Tests.Controllers
             using var context = CreateContext();
             var controller = CreateController(context);
 
-            var order = new Models.ElectronicsOrder 
-            { 
-                ManufacturerId = 2, 
-                TotalAmount = 15, 
-                RemainingAmount = 15, 
-                OrderedAt = 1.0m, 
-                OrderStatusId = 1 
+            var order = new Models.ElectronicsOrder
+            {
+                ManufacturerId = 2,
+                TotalAmount = 15,
+                RemainingAmount = 15,
+                OrderedAt = 1.0m,
+                OrderStatusId = 1
             };
             context.ElectronicsOrders.Add(order);
             await context.SaveChangesAsync();
@@ -308,13 +308,13 @@ namespace esAPI.Tests.Controllers
             using var context = CreateContext();
             var controller = CreateController(context);
 
-            var order = new Models.ElectronicsOrder 
-            { 
-                ManufacturerId = 2, 
-                TotalAmount = 15, 
-                RemainingAmount = 15, 
-                OrderedAt = 1.0m, 
-                OrderStatusId = 1 
+            var order = new Models.ElectronicsOrder
+            {
+                ManufacturerId = 2,
+                TotalAmount = 15,
+                RemainingAmount = 15,
+                OrderedAt = 1.0m,
+                OrderStatusId = 1
             };
             context.ElectronicsOrders.Add(order);
             await context.SaveChangesAsync();
@@ -354,7 +354,7 @@ namespace esAPI.Tests.Controllers
 
             var okResult = result.Result.Should().BeOfType<OkObjectResult>().Subject;
             var inventory = okResult.Value.Should().BeAssignableTo<object>().Subject;
-            
+
             var inventoryType = inventory.GetType();
             var availableProperty = inventoryType.GetProperty("Available");
             var reservedProperty = inventoryType.GetProperty("Reserved");

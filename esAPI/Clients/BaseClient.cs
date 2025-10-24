@@ -22,10 +22,14 @@ namespace esAPI.Clients
         {
             try
             {
+                var fullUrl = _client.BaseAddress != null ? new Uri(_client.BaseAddress, requestUri).ToString() : requestUri;
+                Console.WriteLine($"[BaseClient] GET Request: {fullUrl}");
                 return await _client.GetFromJsonAsync<TResponse>(requestUri);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                var fullUrl = _client.BaseAddress != null ? new Uri(_client.BaseAddress, requestUri).ToString() : requestUri;
+                Console.WriteLine($"❌ [BaseClient] GET Exception for {fullUrl}: {ex.Message}");
                 return default;
             }
         }
@@ -34,17 +38,21 @@ namespace esAPI.Clients
         {
             try
             {
+                var fullUrl = _client.BaseAddress != null ? new Uri(_client.BaseAddress, requestUri).ToString() : requestUri;
+                Console.WriteLine($"[BaseClient] POST Request: {fullUrl}");
+                Console.WriteLine($"[BaseClient] POST Body: {System.Text.Json.JsonSerializer.Serialize(requestBody)}");
+
                 var response = await _client.PostAsJsonAsync(requestUri, requestBody);
                 var responseContent = await response.Content.ReadAsStringAsync();
-                
+
                 if (!response.IsSuccessStatusCode)
                 {
-                    Console.WriteLine($"External API error response (Status {(int)response.StatusCode}): {responseContent}");
+                    Console.WriteLine($"❌ [BaseClient] External API error response for {fullUrl} (Status {(int)response.StatusCode}): {responseContent}");
                     return default;
                 }
-                
-                Console.WriteLine($"[BaseClient] External API success response (Status {(int)response.StatusCode}): {responseContent}");
-                
+
+                Console.WriteLine($"✅ [BaseClient] External API success response for {fullUrl} (Status {(int)response.StatusCode}): {responseContent}");
+
                 return System.Text.Json.JsonSerializer.Deserialize<TResponse>(responseContent, new System.Text.Json.JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true
@@ -52,7 +60,8 @@ namespace esAPI.Clients
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ External API exception: {ex.Message}");
+                var fullUrl = _client.BaseAddress != null ? new Uri(_client.BaseAddress, requestUri).ToString() : requestUri;
+                Console.WriteLine($"❌ [BaseClient] External API exception for {fullUrl}: {ex.Message}");
                 return default;
             }
         }

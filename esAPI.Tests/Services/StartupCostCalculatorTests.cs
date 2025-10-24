@@ -98,7 +98,7 @@ namespace esAPI.Tests.Services
 
             // Assert
             plans.Should().HaveCount(1);
-            plans.First().MachineName.Should().Be("CopperCoiler"); 
+            plans.First().MachineName.Should().Be("CopperCoiler");
         }
     }
 }

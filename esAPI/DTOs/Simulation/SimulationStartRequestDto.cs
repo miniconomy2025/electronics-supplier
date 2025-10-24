@@ -24,24 +24,24 @@ namespace esAPI.DTOs.Simulation
         {
             if (reader.TokenType == JsonTokenType.Null)
                 return null;
-                
+
             if (reader.TokenType == JsonTokenType.Number)
             {
                 return reader.GetInt64();
             }
-            
+
             if (reader.TokenType == JsonTokenType.String)
             {
                 var stringValue = reader.GetString();
                 if (string.IsNullOrEmpty(stringValue))
                     return null;
-                    
+
                 if (long.TryParse(stringValue, out var result))
                     return result;
-                    
+
                 throw new JsonException($"Cannot convert string '{stringValue}' to long. Expected a valid integer.");
             }
-            
+
             throw new JsonException($"Cannot convert {reader.TokenType} to long. Expected a number or string containing a valid integer.");
         }
 

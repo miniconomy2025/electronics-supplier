@@ -20,7 +20,7 @@ namespace esAPI.Services
             _logger = logger;
             _stateService = stateService;
             _queueUrl = config?["Retry:QueueUrl"];
-            
+
             if (_sqs == null)
             {
                 _logger.LogWarning("[RetryQueuePublisher] Created without AWS SQS client - retry functionality disabled");
